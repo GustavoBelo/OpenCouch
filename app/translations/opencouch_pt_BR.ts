@@ -82,5 +82,34 @@
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Continuar em segundo plano ao fechar a janela</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Compre um café</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch é software livre, mantido no tempo livre. Se ele te ajudou, considere apoiar o projeto.</translation></message>
+<message id="status.scale"><source>status.scale</source><translation> (escala %1x)</translation></message>
+<message id="settings.error.select_desktop"><source>settings.error.select_desktop</source><translation>Selecione o monitor do desktop.</translation></message>
+<message id="settings.error.select_tv"><source>settings.error.select_tv</source><translation>Selecione o monitor da TV/sala.</translation></message>
+<message id="settings.error.same_output"><source>settings.error.same_output</source><translation>Os monitores do desktop e da sala devem ser diferentes.</translation></message>
+<message id="settings.error.desktop_scale"><source>settings.error.desktop_scale</source><translation>A escala do desktop deve ser um número maior que zero.</translation></message>
+<message id="settings.error.tv_scale"><source>settings.error.tv_scale</source><translation>A escala da TV deve ser um número maior que zero.</translation></message>
+<message id="settings.error.desktop_pos"><source>settings.error.desktop_pos</source><translation>A posição do desktop deve seguir o formato: x,y</translation></message>
+<message id="settings.error.tv_pos"><source>settings.error.tv_pos</source><translation>A posição da TV deve seguir o formato: x,y</translation></message>
+<message id="settings.error.scale_value"><source>settings.error.scale_value</source><translation>O valor de %1 deve ser um número maior que zero.</translation></message>
+<message id="settings.error.no_outputs"><source>settings.error.no_outputs</source><translation>Nenhum monitor detectado, ou o engine (open-couch-engine) nao esta instalado no sistema.</translation></message>
+<message id="settings.error.save_failed"><source>settings.error.save_failed</source><translation>Falha ao salvar as configurações.</translation></message>
+<message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>Visualizando log antigo: %1</translation></message>
+<message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Voltar ao log ao vivo</translation></message>
+<message id="common.version"><source>common.version</source><translation>Versão %1</translation></message>
+<message id="dashboard.view"><source>dashboard.view</source><translation>Visualizar</translation></message>
+<message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>Falha ao ler o log ou arquivo vazio.</translation></message>
+<message id="settings.no_monitors"><source>settings.no_monitors</source><translation>Nenhum monitor detectado.</translation></message>
+<message id="settings.desktop_environment"><source>settings.desktop_environment</source><translation>Ambiente do Escritório</translation></message>
+<message id="settings.resolution"><source>settings.resolution</source><translation>Resolução:</translation></message>
+<message id="settings.refresh_rate"><source>settings.refresh_rate</source><translation>Taxa de atualização:</translation></message>
+<message id="settings.couch_environment"><source>settings.couch_environment</source><translation>Ambiente da Sala de Estar</translation></message>
+<message id="settings.mirroring"><source>settings.mirroring</source><translation>Espelhamento</translation></message>
+<message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Espelhar a tela do escritório na sala quando a TV for a principal</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Quando ativado, a tela do escritório espelha a sala e a TV fica como monitor principal.</translation></message>
+<message id="settings.system"><source>settings.system</source><translation>Sistema</translation></message>
+<message id="settings.background"><source>settings.background</source><translation>Segundo plano</translation></message>
+<message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Telas detectadas novamente.</translation></message>
+<message id="settings.saved"><source>settings.saved</source><translation>Configurações salvas.</translation></message>
+<message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
 </context>
 </TS>

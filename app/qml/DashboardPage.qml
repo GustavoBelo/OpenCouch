@@ -218,10 +218,10 @@ Kirigami.ScrollablePage {
             Layout.bottomMargin: Kirigami.Units.smallSpacing
             visible: page.viewingHistoryId !== ""
             type: Kirigami.MessageType.Warning
-            text: "Visualizando log antigo: " + page.viewingHistoryName
+            text: qsTrId("dashboard.viewing_history").arg(page.viewingHistoryName)
             actions: [
                 Kirigami.Action {
-                    text: "Voltar ao log ao vivo"
+                    text: qsTrId("dashboard.back_to_live_log")
                     icon.name: "media-skip-backward"
                     onTriggered: {
                         page.viewingHistoryId = "";
@@ -357,7 +357,7 @@ Kirigami.ScrollablePage {
         Controls.Label {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignRight
-            text: "Versão " + appInfo.formattedVersion()
+            text: qsTrId("common.version").arg(appInfo.formattedVersion())
             opacity: 0.7
         }
     }
@@ -462,7 +462,7 @@ Kirigami.ScrollablePage {
                 spacing: Kirigami.Units.smallSpacing
 
                 Controls.Button {
-                    text: "Visualizar"
+                    text: qsTrId("dashboard.view")
                     icon.name: "document-preview"
                     enabled: historyDialog.selectedId.length > 0
                     onClicked: {
@@ -490,7 +490,7 @@ Kirigami.ScrollablePage {
                             historyDialog.close();
                         } else {
                             banner.type = Kirigami.MessageType.Error;
-                            banner.text = "Falha ao ler o log ou arquivo vazio.";
+                            banner.text = qsTrId("dashboard.read_log_failed");
                             banner.visible = true;
                         }
                     }

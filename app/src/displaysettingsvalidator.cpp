@@ -24,21 +24,21 @@ bool DisplaySettingsValidator::validate(const QVariantMap &config, QString *erro
 
     if (deskOutput.isEmpty()) {
         if (error) {
-            *error = QStringLiteral("Selecione o monitor do desktop.");
+            *error = qtTrId("settings.error.select_desktop");
         }
         return false;
     }
 
     if (tvOutput.isEmpty()) {
         if (error) {
-            *error = QStringLiteral("Selecione o monitor da TV/sala.");
+            *error = qtTrId("settings.error.select_tv");
         }
         return false;
     }
 
     if (deskOutput == tvOutput) {
         if (error) {
-            *error = QStringLiteral("Os monitores do desktop e da sala devem ser diferentes.");
+            *error = qtTrId("settings.error.same_output");
         }
         return false;
     }
@@ -46,7 +46,7 @@ bool DisplaySettingsValidator::validate(const QVariantMap &config, QString *erro
     if (!parsePositiveDouble(config.value(QStringLiteral("FALLBACK_DESK_SCALE")),
                             QStringLiteral("FALLBACK_DESK_SCALE"), nullptr)) {
         if (error) {
-            *error = QStringLiteral("A escala do desktop deve ser um número maior que zero.");
+            *error = qtTrId("settings.error.desktop_scale");
         }
         return false;
     }
@@ -54,7 +54,7 @@ bool DisplaySettingsValidator::validate(const QVariantMap &config, QString *erro
     if (!parsePositiveDouble(config.value(QStringLiteral("FALLBACK_TV_SCALE")),
                             QStringLiteral("FALLBACK_TV_SCALE"), nullptr)) {
         if (error) {
-            *error = QStringLiteral("A escala da TV deve ser um número maior que zero.");
+            *error = qtTrId("settings.error.tv_scale");
         }
         return false;
     }
@@ -62,7 +62,7 @@ bool DisplaySettingsValidator::validate(const QVariantMap &config, QString *erro
     const QString deskPos = config.value(QStringLiteral("FALLBACK_DESK_POS")).toString().trimmed();
     if (!deskPos.isEmpty() && !DisplaySettingsValidator::isValidPosition(deskPos)) {
         if (error) {
-            *error = QStringLiteral("A posição do desktop deve seguir o formato: x,y");
+            *error = qtTrId("settings.error.desktop_pos");
         }
         return false;
     }
@@ -70,7 +70,7 @@ bool DisplaySettingsValidator::validate(const QVariantMap &config, QString *erro
     const QString tvPos = config.value(QStringLiteral("FALLBACK_TV_POS")).toString().trimmed();
     if (!tvPos.isEmpty() && !DisplaySettingsValidator::isValidPosition(tvPos)) {
         if (error) {
-            *error = QStringLiteral("A posição da TV deve seguir o formato: x,y");
+            *error = qtTrId("settings.error.tv_pos");
         }
         return false;
     }
@@ -100,7 +100,7 @@ bool DisplaySettingsValidator::parsePositiveDouble(const QVariant &value, const 
     double parsed = 0.0;
     if (!isPositiveDouble(value.toString(), &parsed)) {
         if (error) {
-            *error = QStringLiteral("O valor de %1 deve ser um número maior que zero.").arg(key);
+            *error = qtTrId("settings.error.scale_value").arg(key);
         }
         return false;
     }

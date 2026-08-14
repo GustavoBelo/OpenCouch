@@ -137,7 +137,7 @@ Controls.Popup {
 
                                 Controls.ToolButton {
                                     icon.name: "edit-copy"
-                                    Controls.ToolTip.text: "Copiar comando"
+                                    Controls.ToolTip.text: qsTrId("common.copy_command")
                                     Controls.ToolTip.visible: hovered
                                     onClicked: {
                                         codeField.selectAll();

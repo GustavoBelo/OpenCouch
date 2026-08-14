@@ -29,7 +29,7 @@ Kirigami.ScrollablePage {
         function onOutputsChanged() {
             if (displaySettingsModel.outputs.length === 0) {
                 statusLabel.type = Kirigami.MessageType.Warning;
-                statusLabel.text = displaySettingsModel.lastError || "Nenhum monitor detectado.";
+                statusLabel.text = displaySettingsModel.lastError || qsTrId("settings.no_monitors");
                 statusLabel.visible = true;
             } else {
                 statusLabel.visible = false;
@@ -128,7 +128,7 @@ Kirigami.ScrollablePage {
                 }
                 
                 Kirigami.Heading {
-                    text: "Ambiente do Escritório"
+                    text: qsTrId("settings.desktop_environment")
                     level: 4
                     Layout.fillWidth: true
                 }
@@ -147,7 +147,7 @@ Kirigami.ScrollablePage {
 
                 Controls.ComboBox {
                     id: deskResCombo
-                    Kirigami.FormData.label: "Resolução:"
+                    Kirigami.FormData.label: qsTrId("settings.resolution")
                     
                     property var allModes: {
                         var _trigger = displaySettingsModel.outputs;
@@ -168,7 +168,7 @@ Kirigami.ScrollablePage {
 
                 Controls.ComboBox {
                     id: deskRateCombo
-                    Kirigami.FormData.label: "Taxa de atualização:"
+                    Kirigami.FormData.label: qsTrId("settings.refresh_rate")
                     
                     property var allModes: deskResCombo.allModes
                     property string currentRes: String(displaySettingsModel.desktopMode).split('@')[0]
@@ -233,7 +233,7 @@ Kirigami.ScrollablePage {
                 }
                 
                 Kirigami.Heading {
-                    text: "Ambiente da Sala de Estar"
+                    text: qsTrId("settings.couch_environment")
                     level: 4
                     Layout.fillWidth: true
                 }
@@ -252,7 +252,7 @@ Kirigami.ScrollablePage {
 
                 Controls.ComboBox {
                     id: tvResCombo
-                    Kirigami.FormData.label: "Resolução:"
+                    Kirigami.FormData.label: qsTrId("settings.resolution")
                     
                     property var allModes: {
                         var _trigger = displaySettingsModel.outputs;
@@ -273,7 +273,7 @@ Kirigami.ScrollablePage {
 
                 Controls.ComboBox {
                     id: tvRateCombo
-                    Kirigami.FormData.label: "Taxa de atualização:"
+                    Kirigami.FormData.label: qsTrId("settings.refresh_rate")
                     
                     property var allModes: tvResCombo.allModes
                     property string currentRes: String(displaySettingsModel.tvMode).split('@')[0]
@@ -349,14 +349,14 @@ Kirigami.ScrollablePage {
             }
 
             ColumnLayout {
-                Kirigami.FormData.label: "Espelhamento"
+                Kirigami.FormData.label: qsTrId("settings.mirroring")
                 visible: keepDeskEnabledCheck.checked
                 spacing: 0
 
                 Controls.CheckBox {
                     id: mirrorDeskToTvCheck
                     Layout.fillWidth: true
-                    text: "Espelhar a tela do escritório na sala quando a TV for a principal"
+                    text: qsTrId("settings.mirror_desktop")
                     checked: displaySettingsModel.mirrorDeskToTv
                     onToggled: displaySettingsModel.mirrorDeskToTv = checked
                 }
@@ -364,7 +364,7 @@ Kirigami.ScrollablePage {
                     Layout.fillWidth: true
                     Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
                     wrapMode: Text.Wrap
-                    text: "Quando ativado, a tela do escritório espelha a sala e a TV fica como monitor principal."
+                    text: qsTrId("settings.mirror_desktop_description")
                     opacity: 0.7
                     font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
                 }
@@ -405,7 +405,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
 
             ColumnLayout {
-                Kirigami.FormData.label: "Sistema"
+                Kirigami.FormData.label: qsTrId("settings.system")
                 spacing: 0
 
                 Controls.CheckBox {
@@ -426,7 +426,7 @@ Kirigami.ScrollablePage {
             }
 
             ColumnLayout {
-                Kirigami.FormData.label: "Segundo plano"
+                Kirigami.FormData.label: qsTrId("settings.background")
                 spacing: 0
 
                 Controls.CheckBox {
@@ -468,7 +468,7 @@ Kirigami.ScrollablePage {
                     displaySettingsModel.refreshOutputs();
                     if (displaySettingsModel.outputs.length > 0) {
                         statusLabel.type = Kirigami.MessageType.Positive;
-                        statusLabel.text = "Telas detectadas novamente.";
+                        statusLabel.text = qsTrId("settings.outputs_detected");
                         statusLabel.visible = true;
                         outputsFeedbackTimer.restart();
                     }
@@ -494,12 +494,12 @@ Kirigami.ScrollablePage {
                     var ok = displaySettingsModel.save();
                     if (ok) {
                         statusLabel.type = Kirigami.MessageType.Positive;
-                        statusLabel.text = "Configurações salvas.";
+                        statusLabel.text = qsTrId("settings.saved");
                         statusLabel.visible = true;
                         saveFeedbackTimer.restart();
                     } else {
                         statusLabel.type = Kirigami.MessageType.Error;
-                        statusLabel.text = displaySettingsModel.lastError || "Falha ao salvar as configurações.";
+                        statusLabel.text = displaySettingsModel.lastError || qsTrId("settings.error.save_failed");
                         statusLabel.visible = true;
                     }
                 }

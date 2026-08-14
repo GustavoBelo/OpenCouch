@@ -274,7 +274,7 @@ void DisplaySettingsModel::refreshOutputs()
 {
     m_outputs = backendOutputs(m_backend);
     if (m_outputs.isEmpty()) {
-        updateLastError(QStringLiteral("Nenhum monitor detectado, ou o engine (open-couch-engine) nao esta instalado no sistema."));
+        updateLastError(qtTrId("settings.error.no_outputs"));
     } else {
         m_lastError.clear();
         emit lastErrorChanged();
@@ -345,7 +345,7 @@ bool DisplaySettingsModel::save()
     backgroundSaved = setBackendBoolean("setBackgroundOnClose", m_backgroundOnClose);
 
     if (!configSaved || !autostartSaved || !backgroundSaved) {
-        updateLastError(QStringLiteral("Falha ao salvar as configurações."));
+        updateLastError(qtTrId("settings.error.save_failed"));
         return false;
     }
 

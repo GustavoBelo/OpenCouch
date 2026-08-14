@@ -75,7 +75,7 @@ QString formatOutputLine(const QJsonObject &out)
             state += QStringLiteral(", %1").arg(mode);
         }
         if (scale != 1.0) {
-            state += QStringLiteral(" (escala %1x)").arg(scale);
+            state += qtTrId("status.scale").arg(scale);
         }
     }
 

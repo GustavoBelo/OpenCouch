@@ -74,7 +74,6 @@
 <message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Desktop display in couch mode</translation></message>
 <message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>By default, the desktop display is turned off in couch mode. You can keep both displays enabled in Settings.</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch switches your display layout with one click, from desktop mode to couch mode and back.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>If this warning appears, open the project folder, run ./packaging/host/install.sh and restart the app.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Extra permission required</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>To be able to change displays and control Steam, Open Couch needs a "helper" installed on your system, since the app runs isolated for security.</translation></message>
 <message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Open the terminal in the folder where you downloaded the project, paste the command below and press Enter. Then restart the app:</translation></message>
@@ -83,21 +82,34 @@
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Welcome to Open Couch</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Buy me a coffee</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch is free software maintained in spare time. If it helped you, consider supporting the project.</translation></message>
-</context>
-<context>
-<name>Backend</name>
-<message><source>Abrir Open Couch</source><translation>Open Open Couch</translation></message>
-<message><source>Sair</source><translation>Quit</translation></message>
-<message><source>Concluido com sucesso</source><translation>Completed successfully</translation></message>
-<message><source>Falhou (codigo %1)</source><translation>Failed (code %1)</translation></message>
-<message><source>Iniciando modo sala...</source><translation>Starting couch mode...</translation></message>
-<message><source>Restaurando layout do desktop...</source><translation>Restoring desktop layout...</translation></message>
-<message><source>Tela de escritório</source><translation>Desktop display</translation></message>
-<message><source>Tela da sala</source><translation>Couch display</translation></message>
-<message><source>desconectada</source><translation>disconnected</translation></message>
-<message><source>desligada</source><translation>disabled</translation></message>
-<message><source>ligada</source><translation>enabled</translation></message>
-<message><source>%1: %2 — %3</source><translation>%1: %2 — %3</translation></message>
-<message><source>Não foi possível obter o status (engine indisponível).</source><translation>Could not get the status (engine unavailable).</translation></message>
+<message id="status.scale"><source>status.scale</source><translation> (%1x scale)</translation></message>
+<message id="settings.error.select_desktop"><source>settings.error.select_desktop</source><translation>Select the desktop display.</translation></message>
+<message id="settings.error.select_tv"><source>settings.error.select_tv</source><translation>Select the TV/couch display.</translation></message>
+<message id="settings.error.same_output"><source>settings.error.same_output</source><translation>Desktop and couch displays must be different.</translation></message>
+<message id="settings.error.desktop_scale"><source>settings.error.desktop_scale</source><translation>Desktop scale must be a number greater than zero.</translation></message>
+<message id="settings.error.tv_scale"><source>settings.error.tv_scale</source><translation>TV scale must be a number greater than zero.</translation></message>
+<message id="settings.error.desktop_pos"><source>settings.error.desktop_pos</source><translation>Desktop position must follow the format: x,y</translation></message>
+<message id="settings.error.tv_pos"><source>settings.error.tv_pos</source><translation>TV position must follow the format: x,y</translation></message>
+<message id="settings.error.scale_value"><source>settings.error.scale_value</source><translation>The value of %1 must be a number greater than zero.</translation></message>
+<message id="settings.error.no_outputs"><source>settings.error.no_outputs</source><translation>No monitors detected, or the engine (open-couch-engine) is not installed on the system.</translation></message>
+<message id="settings.error.save_failed"><source>settings.error.save_failed</source><translation>Failed to save the settings.</translation></message>
+<message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>Viewing old log: %1</translation></message>
+<message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Back to live log</translation></message>
+<message id="common.version"><source>common.version</source><translation>Version %1</translation></message>
+<message id="dashboard.view"><source>dashboard.view</source><translation>View</translation></message>
+<message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>Failed to read the log or the file is empty.</translation></message>
+<message id="settings.no_monitors"><source>settings.no_monitors</source><translation>No monitors detected.</translation></message>
+<message id="settings.desktop_environment"><source>settings.desktop_environment</source><translation>Office Environment</translation></message>
+<message id="settings.resolution"><source>settings.resolution</source><translation>Resolution:</translation></message>
+<message id="settings.refresh_rate"><source>settings.refresh_rate</source><translation>Refresh rate:</translation></message>
+<message id="settings.couch_environment"><source>settings.couch_environment</source><translation>Living Room Environment</translation></message>
+<message id="settings.mirroring"><source>settings.mirroring</source><translation>Mirroring</translation></message>
+<message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Mirror the office display to the couch when the TV is the primary display</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>When enabled, the office display mirrors the couch and the TV becomes the primary monitor.</translation></message>
+<message id="settings.system"><source>settings.system</source><translation>System</translation></message>
+<message id="settings.background"><source>settings.background</source><translation>Background</translation></message>
+<message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Displays detected again.</translation></message>
+<message id="settings.saved"><source>settings.saved</source><translation>Settings saved.</translation></message>
+<message id="common.copy_command"><source>common.copy_command</source><translation>Copy command</translation></message>
 </context>
 </TS>
