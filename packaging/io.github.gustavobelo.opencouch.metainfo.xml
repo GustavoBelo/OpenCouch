@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.gustavobelo.opencouch</id>
+
+  <name>Open Couch</name>
+  <summary>Switch your desktop layout to the couch/TV and back, with one click</summary>
+  <summary xml:lang="pt-BR">Alterne o layout do seu desktop para a TV/sala e volte, com um clique</summary>
+
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <description>
+    <p>
+      Open Couch is a small utility for people who use the same PC both at a desk
+      and on a couch connected to a TV (for example, running Steam Big Picture).
+      It remembers your monitor/TV layout (resolution, scale, position), lets you
+      switch to the "living room" layout with one click, launches Steam in Big
+      Picture mode, and automatically restores your original desktop layout when
+      you are done.
+    </p>
+    <p xml:lang="pt-BR">
+      Open Couch e um pequeno utilitario para quem usa o mesmo PC tanto em uma
+      mesa quanto em um sofa conectado a TV (por exemplo, rodando a Steam em modo
+      Big Picture). Ele lembra o layout dos seus monitores/TV (resolucao, escala,
+      posicao), permite alternar para o layout "sala" com um clique, abre a Steam
+      em Big Picture e restaura automaticamente o layout original do desktop ao
+      terminar.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Guided setup to detect and configure your desktop and TV outputs</li>
+      <li>One-click switch between desktop and couch/TV layouts</li>
+      <li>Automatically launches and monitors Steam Big Picture mode</li>
+      <li>Restores your original layout when Steam closes</li>
+      <li>Live status and log view</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">io.github.gustavobelo.opencouch.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Dashboard showing the switch buttons and current display status</caption>
+      <image>https://raw.githubusercontent.com/GustavoBelo/open-couch/main/packaging/screenshots/dashboard.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Guided setup for detecting desktop and TV outputs</caption>
+      <image>https://raw.githubusercontent.com/GustavoBelo/open-couch/main/packaging/screenshots/setup.png</image>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/GustavoBelo/open-couch</url>
+  <url type="bugtracker">https://github.com/GustavoBelo/open-couch/issues</url>
+  <url type="vcs-browser">https://github.com/GustavoBelo/open-couch</url>
+
+  <developer id="io.github.gustavobelo">
+    <name>Gustavo Belo</name>
+  </developer>
+
+  <content_rating type="oars-1.1"/>
+
+  <categories>
+    <category>Game</category>
+    <category>Utility</category>
+  </categories>
+
+  <releases>
+    <release version="@PROJECT_VERSION@" date="@OPENCOUCH_RELEASE_DATE@">
+      <description>
+        <p>Version @PROJECT_VERSION@: guided monitor setup, one-click couch/desktop switching,
+        Steam Big Picture integration, and visible application versioning.</p>
+      </description>
+    </release>
+  </releases>
+</component>

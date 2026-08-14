@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="pt_BR">
+<context>
+<name></name>
+<message id="tray.tooltip"><source>tray.tooltip</source><translation>Open Couch</translation></message>
+<message id="tray.open"><source>tray.open</source><translation>Abrir Open Couch</translation></message>
+<message id="tray.quit"><source>tray.quit</source><translation>Sair</translation></message>
+<message id="engine.completed"><source>engine.completed</source><translation>Concluído com sucesso</translation></message>
+<message id="engine.failed"><source>engine.failed</source><translation>Falhou (código %1)</translation></message>
+<message id="watcher.failed"><source>watcher.failed</source><translation>ERRO: monitor do Big Picture encerrado (código %1)</translation></message>
+<message id="engine.start_couch"><source>engine.start_couch</source><translation>Iniciando modo sala...</translation></message>
+<message id="engine.restore_desktop"><source>engine.restore_desktop</source><translation>Restaurando layout do desktop...</translation></message>
+<message id="status.desktop"><source>status.desktop</source><translation>Tela de escritório</translation></message>
+<message id="status.couch"><source>status.couch</source><translation>Tela da sala</translation></message>
+<message id="status.disconnected"><source>status.disconnected</source><translation>desconectada</translation></message>
+<message id="status.disabled"><source>status.disabled</source><translation>desligada</translation></message>
+<message id="status.enabled"><source>status.enabled</source><translation>ligada</translation></message>
+<message id="status.format"><source>status.format</source><translation>%1: %2 — %3</translation></message>
+<message id="status.unavailable"><source>status.unavailable</source><translation>Não foi possível obter o status (engine indisponível).</translation></message>
+<message id="app.settings"><source>app.settings</source><translation>Configurações</translation></message>
+<message id="common.back"><source>common.back</source><translation>Voltar</translation></message>
+<message id="common.got_it"><source>common.got_it</source><translation>Entendi</translation></message>
+<message id="common.loading"><source>common.loading</source><translation>Carregando...</translation></message>
+<message id="common.log"><source>common.log</source><translation>Log</translation></message>
+<message id="common.save"><source>common.save</source><translation>Salvar</translation></message>
+<message id="dashboard.copy_log"><source>dashboard.copy_log</source><translation>Copiar log</translation></message>
+<message id="dashboard.couch_active"><source>dashboard.couch_active</source><translation>Modo sala ativo</translation></message>
+<message id="dashboard.download_log"><source>dashboard.download_log</source><translation>Baixar log</translation></message>
+<message id="dashboard.display_status"><source>dashboard.display_status</source><translation>Status atual das telas</translation></message>
+<message id="dashboard.enter_couch"><source>dashboard.enter_couch</source><translation>Entrar no modo sala</translation></message>
+<message id="dashboard.help"><source>dashboard.help</source><translation>Como funciona</translation></message>
+<message id="dashboard.refresh_status"><source>dashboard.refresh_status</source><translation>Atualizar status</translation></message>
+<message id="dashboard.return_desktop"><source>dashboard.return_desktop</source><translation>Voltar para o desktop</translation></message>
+<message id="dashboard.status_updated"><source>dashboard.status_updated</source><translation>Status das telas atualizado.</translation></message>
+<message id="dashboard.log_copied"><source>dashboard.log_copied</source><translation>Log copiado para a área de transferência.</translation></message>
+<message id="dashboard.log_saved"><source>dashboard.log_saved</source><translation>Log salvo em: %1</translation></message>
+<message id="dashboard.log_save_failed"><source>dashboard.log_save_failed</source><translation>Não foi possível salvar o log.</translation></message>
+<message id="dashboard.clear_log"><source>dashboard.clear_log</source><translation>Limpar log</translation></message>
+<message id="dashboard.log_cleared"><source>dashboard.log_cleared</source><translation>Log limpo. O conteúdo anterior foi arquivado no histórico.</translation></message>
+<message id="dashboard.log_history"><source>dashboard.log_history</source><translation>Histórico</translation></message>
+<message id="dashboard.log_resize_hint"><source>dashboard.log_resize_hint</source><translation>Arraste para redimensionar. Duplo clique restaura o tamanho padrão.</translation></message>
+<message id="dashboard.history_title"><source>dashboard.history_title</source><translation>Histórico de logs</translation></message>
+<message id="dashboard.history_empty"><source>dashboard.history_empty</source><translation>Nenhum log no histórico ainda.</translation></message>
+<message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copiar selecionado</translation></message>
+<message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Baixar selecionado</translation></message>
+<message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Não foi possível concluir a ação.</translation></message>
+<message id="engine.missing"><source>engine.missing</source><translation>O componente do sistema não está pronto. Baixe github.com/GustavoBelo/open-couch e execute ./packaging/host/install.sh para instalar as dependências e o engine.</translation></message>
+<message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Bem-vindo ao Open Couch</translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>O Open Couch alterna o layout das telas com um clique, entre o modo desktop e o modo sala.</translation></message>
+<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuração</translation></message>
+<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Escolha as telas do desktop e da sala, a resolução e a escala. A escala controla o tamanho da interface: 1 é 100%.</translation></message>
+<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Tela do desktop no modo sala</translation></message>
+<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>Por padrão, a tela do desktop é desligada no modo sala. Você pode manter as duas telas ligadas nas configurações.</translation></message>
+<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. Usando o app</translation></message>
+<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Use Entrar no modo sala para alternar para a TV e abrir o Steam Big Picture, ou Voltar para o desktop para restaurar o layout original.</translation></message>
+<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permissão extra necessária</translation></message>
+<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Para conseguir alterar os monitores e controlar a Steam, o Open Couch precisa de um "ajudante" instalado no seu sistema, já que o aplicativo roda isolado por segurança.</translation></message>
+<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Abra o terminal na pasta onde você baixou o projeto, cole o comando abaixo e aperte Enter. Em seguida, reinicie o aplicativo:</translation></message>
+<message id="settings.desktop_display"><source>settings.desktop_display</source><translation>Tela do desktop:</translation></message>
+<message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>Tela do desktop:</translation></message>
+<message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Resolução/atualização do desktop:</translation></message>
+<message id="settings.desktop_scale"><source>settings.desktop_scale</source><translation>Escala do desktop:</translation></message>
+<message id="settings.couch_display"><source>settings.couch_display</source><translation>Tela da sala:</translation></message>
+<message id="settings.couch_mode"><source>settings.couch_mode</source><translation>Resolução/atualização da sala:</translation></message>
+<message id="settings.couch_scale"><source>settings.couch_scale</source><translation>Escala da sala:</translation></message>
+<message id="settings.big_picture_label"><source>settings.big_picture_label</source><translation>Big Picture:</translation></message>
+<message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>Quando ativada, a tela do desktop permanece ligada no modo sala. Quando desativada, ela é desligada.</translation></message>
+<message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>Quando ativada, entrar no Big Picture pelo controle aplica o modo sala automaticamente e restaura o desktop quando o Big Picture fecha.</translation></message>
+<message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Quando ativada, o app abre automaticamente depois que você entra no sistema.</translation></message>
+<message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Ao fechar, o Open Couch permanece na bandeja para monitorar o Steam. Use o menu da bandeja para reabrir ou sair.</translation></message>
+<message id="settings.displays"><source>settings.displays</source><translation>Monitores</translation></message>
+<message id="settings.displays_description"><source>settings.displays_description</source><translation>Escolha os monitores usados no desktop e na sala. A tela principal alterna entre esses dois layouts.</translation></message>
+<message id="settings.desktop_scale_tooltip"><source>settings.desktop_scale_tooltip</source><translation>Fator de escala (zoom) da tela. 1 é o tamanho normal/100%; 1,5 é 150%. Se não tiver certeza, deixe em 1.</translation></message>
+<message id="settings.couch_scale_tooltip"><source>settings.couch_scale_tooltip</source><translation>Fator de escala (zoom) da imagem na TV. Uma escala maior facilita ler textos e ícones em uma TV 4K distante.</translation></message>
+<message id="settings.couch_behavior"><source>settings.couch_behavior</source><translation>Comportamento no modo sala</translation></message>
+<message id="settings.startup"><source>settings.startup</source><translation>Inicialização</translation></message>
+<message id="settings.detect_again"><source>settings.detect_again</source><translation>Detectar novamente</translation></message>
+<message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>Manter ligada no modo sala</translation></message>
+<message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Monitorar quando iniciado pelo controle</translation></message>
+<message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar o Open Couch automaticamente ao entrar no sistema</translation></message>
+<message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Continuar em segundo plano ao fechar a janela</translation></message>
+<message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Compre um café</translation></message>
+<message id="support.description"><source>support.description</source><translation>Open Couch é software livre, mantido no tempo livre. Se ele te ajudou, considere apoiar o projeto.</translation></message>
+</context>
+</TS>

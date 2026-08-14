@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
+LOG_FILE="${STATE_DIR}/open-couch-engine.log"
+
+ENGINE_BIN="$(command -v open-couch-engine)"
+if [[ -z "$ENGINE_BIN" ]]; then
+    echo "Erro: nao encontrei o binario do engine (open-couch-engine) no PATH." >&2
+    exit 1
+fi
+
+mkdir -p "$STATE_DIR"
+touch "$LOG_FILE"
+
+exec konsole --hold -e bash -c "
+    echo '=== Status atual das telas (open-couch-engine status) ===';
+    '${ENGINE_BIN}' status;
+    echo;
+    echo '=== Log (${LOG_FILE}) - Ctrl+C para sair do modo ao vivo ===';
+    tail -n 100 -f '${LOG_FILE}'
+"
+

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Open Couch
+Name[pt_BR]=Open Couch
+Comment=Alterna o layout de telas entre desktop e TV/sala, e controla o Big Picture da Steam
+Comment[pt_BR]=Alterna o layout de telas entre desktop e TV/sala, e controla o modo Big Picture da Steam
+Icon=io.github.gustavobelo.opencouch
+Exec=opencouch
+Terminal=false
+Categories=Game;Utility;
+Keywords=steam;bigpicture;couch;tv;monitor;display;kscreen;
+StartupNotify=true
+X-Flatpak=io.github.gustavobelo.opencouch

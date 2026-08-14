@@ -1,0 +1,28 @@
+# Build artifacts
+app/build/
+app-build/
+build/
+*.o
+*.obj
+*.qm
+
+# Python (local test tooling only; the shipped app is C++/QML)
+.venv/
+__pycache__/
+*.pyc
+
+# Flatpak build/state
+.flatpak-builder/
+flatpak-build/
+flatpak-repo/
+repo/
+*.flatpak
+
+# IDE / editor
+.vscode/
+.idea/
+*.kdev4
+.kdev4/
+
+# OS
+.DS_Store

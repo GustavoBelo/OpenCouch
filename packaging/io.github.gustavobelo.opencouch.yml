@@ -1,0 +1,26 @@
+app-id: io.github.gustavobelo.opencouch
+runtime: org.kde.Platform
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+command: opencouch
+
+finish-args:
+  - --talk-name=org.freedesktop.Flatpak
+  - --filesystem=xdg-config/open-couch-engine:create
+  - --filesystem=xdg-config/autostart:create
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+
+modules:
+  - name: opencouch
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: dir
+        path: ../app
+      - type: dir
+        path: .
+        dest: packaging

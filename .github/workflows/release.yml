@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  flatpak:
+    name: Build Flatpak
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check version vs tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
+          if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
+            echo "::error::app/version.txt (${FILE_VERSION}) difere da tag ${TAG}. Crie o release com ./packaging/release.sh ${VERSION}." >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: OpenCouch.flatpak
+          manifest-path: packaging/io.github.gustavobelo.opencouch.yml
+          branch: v${{ steps.version.outputs.version }}
+          cache-key: flatpak-kde-6.10-${{ runner.arch }}
+          artifact-name: OpenCouch.flatpak
+
+  release:
+    name: Create GitHub Release
+    needs: flatpak
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: OpenCouch.flatpak
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            "OpenCouch.flatpak" \
+            --title "Open Couch ${{ github.ref_name }}" \
+            --generate-notes

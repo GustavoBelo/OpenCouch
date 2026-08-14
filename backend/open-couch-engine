@@ -1,0 +1,963 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-couch-engine"
+CONFIG_FILE="${CONFIG_DIR}/config.env"
+SNAPSHOT_FILE="${STATE_DIR}/layout.env"
+SESSION_FILE="${STATE_DIR}/session.pid"
+LOG_FILE="${STATE_DIR}/open-couch-engine.log"
+HISTORY_DIR="${STATE_DIR}/history"
+LOG_MAX_BYTES=524288
+MAX_HISTORY_LOGS=50
+
+DESK_OUTPUT="DP-1"
+TV_OUTPUT="HDMI-A-1"
+
+FALLBACK_DESK_MODE="1920x1080@300"
+FALLBACK_DESK_SCALE="1"
+FALLBACK_DESK_POS="0,0"
+FALLBACK_DESK_PRIORITY="1"
+
+FALLBACK_TV_MODE="3840x2160@120"
+FALLBACK_TV_SCALE="1.7"
+FALLBACK_TV_POS="1920,0"
+FALLBACK_TV_PRIORITY="2"
+
+KEEP_DESK_ENABLED="false"
+MIRROR_DESK_TO_TV="false"
+
+AUTO_RESTORE_ON_EXIT=0
+WATCH_BIG_PICTURE="${WATCH_BIG_PICTURE:-false}"
+
+load_config() {
+    if [[ -f "$CONFIG_FILE" ]]; then
+        source "$CONFIG_FILE"
+    fi
+}
+
+load_config
+
+in_terminal() {
+    [[ -t 1 || -t 2 ]]
+}
+
+archive_log() {
+    local ts dest i
+    mkdir -p "$HISTORY_DIR"
+    ts="$(date '+%Y%m%d-%H%M%S')"
+    dest="${HISTORY_DIR}/open-couch-engine-${ts}.log"
+    i=1
+    while [[ -e "$dest" ]]; do
+        dest="${HISTORY_DIR}/open-couch-engine-${ts}.log.${i}"
+        i=$((i + 1))
+    done
+    if [[ -f "$LOG_FILE" ]]; then
+        cp "$LOG_FILE" "$dest"
+    else
+        : >"$dest"
+    fi
+    find "$HISTORY_DIR" -maxdepth 1 -type f -name 'open-couch-engine-*.log*' -printf '%f\n' 2>/dev/null \
+        | LC_ALL=C sort \
+        | head -n -"$MAX_HISTORY_LOGS" \
+        | while read -r f; do rm -f "${HISTORY_DIR}/${f}"; done
+    printf '%s\n' "$dest"
+}
+
+log() {
+    mkdir -p "$STATE_DIR"
+    if [[ -f "$LOG_FILE" ]] && (( $(stat -c%s "$LOG_FILE" 2>/dev/null || echo 0) > LOG_MAX_BYTES )); then
+        archive_log >/dev/null 2>&1 || true
+        : >"$LOG_FILE"
+    fi
+    local line
+    line="$(date '+%Y-%m-%d %H:%M:%S') [$$] $1"
+    printf '%s\n' "$line" >>"$LOG_FILE"
+    printf '%s\n' "$line" >&2
+}
+
+show_error() {
+    local message="$1"
+    log "ERRO: $message"
+    if in_terminal; then
+        printf 'open-couch-engine: %s\n' "$message" >&2
+        return
+    fi
+
+    if command -v zenity >/dev/null 2>&1; then
+        timeout 15 zenity --error --title="Open Couch" --text="$message" >/dev/null 2>&1 || true
+    else
+        printf 'open-couch-engine: %s\n' "$message" >&2
+    fi
+}
+
+die() {
+    show_error "$1"
+    exit 1
+}
+
+on_error() {
+    local exit_code=$?
+    show_error "Falha inesperada (comando: '${BASH_COMMAND}', linha ${BASH_LINENO[0]:-?}, saida ${exit_code}). O layout de tela pode ter ficado incompleto; tente rodar 'open-couch-engine restore' novamente."
+}
+
+trap on_error ERR
+
+require_commands() {
+    local cmd
+    local -a missing=()
+    for cmd in jq kscreen-doctor pgrep; do
+        command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
+    done
+
+    if ((${#missing[@]} > 0)); then
+        die "Dependencias ausentes: ${missing[*]}. Instale-as no host e tente novamente."
+    fi
+}
+
+current_layout_json() {
+    kscreen-doctor -j
+}
+
+output_snapshot_tsv() {
+    local json="$1"
+    local output="$2"
+
+    jq -r --arg output "$output" '
+        .outputs[]
+        | select(.name == $output)
+        | . as $out
+        | [
+            (.connected | tostring),
+            (.enabled | tostring),
+            ((.priority // "") | tostring),
+            ((((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring))),
+            ((.scale // 1) | tostring),
+            (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
+        ]
+        | @tsv
+    ' <<<"$json"
+}
+
+output_debug_line() {
+    local json="$1"
+    local output="$2"
+    local line
+
+    line="$(jq -r --arg name "$output" '
+        .outputs[]
+        | select(.name == $name)
+        | . as $out
+        | "name=\(.name); connected=\(.connected|tostring); enabled=\(.enabled|tostring); priority=\(.priority // "n/a"); pos=\((((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring))); scale=\(.scale // 1); mode=\(($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "n/a")"
+    ' <<<"$json" 2>/dev/null)"
+
+    if [[ -n "$line" ]]; then
+        printf '%s\n' "$line"
+    else
+        printf '%s\n' "name=${output}; not found"
+    fi
+}
+
+log_layout_debug() {
+    local stage="$1"
+    local json="$2"
+    local primary_output desk_summary tv_summary
+
+    primary_output="$(jq -r '
+        [ .outputs[] | select(.enabled == true) | {name, priority:(.priority // 0)} ]
+        | if length == 0 then "unknown" else (sort_by(.priority | tonumber) | .[0].name) end
+    ' <<<"$json" 2>/dev/null || printf '%s\n' 'unknown')"
+
+    desk_summary="$(output_debug_line "$json" "$DESK_OUTPUT")"
+    tv_summary="$(output_debug_line "$json" "$TV_OUTPUT")"
+
+    log "${stage}: primary_output=${primary_output}; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}; desk={${desk_summary}}; tv={${tv_summary}}"
+}
+
+verify_primary_output() {
+    local stage="$1"
+    local json="$2"
+    local expected_primary="$TV_OUTPUT"
+    local actual_primary
+
+    actual_primary="$(jq -r '
+        [ .outputs[] | select(.enabled == true) | {name, priority:(.priority // 0)} ]
+        | if length == 0 then "unknown" else (sort_by(.priority | tonumber) | .[0].name) end
+    ' <<<"$json" 2>/dev/null || printf '%s\n' 'unknown')"
+
+    if [[ "$actual_primary" == "$expected_primary" ]]; then
+        log "${stage}: confirmacao: a TV (${TV_OUTPUT}) e a saida principal ativa."
+    else
+        log "${stage}: AVISO: a saida principal ativa e ${actual_primary:-unknown}, mas o esperado e ${expected_primary}. Isso pode explicar o Big Picture abrir noutra tela; verifique priority/pos do kscreen-doctor e o compositor."
+    fi
+}
+
+mode_exists() {
+    local json="$1"
+    local output="$2"
+    local mode="$3"
+
+    [[ -n "$mode" ]] || return 1
+
+    jq -e --arg output "$output" --arg mode "$mode" '
+        .outputs[]
+        | select(.name == $output)
+        | .modes[]
+        | select(.name == $mode)
+    ' >/dev/null 2>&1 <<<"$json"
+}
+
+resolve_mode() {
+    local json="$1"
+    local output="$2"
+    local desired_mode="$3"
+
+    if mode_exists "$json" "$output" "$desired_mode"; then
+        printf '%s' "$desired_mode"
+        return 0
+    fi
+
+    if [[ -n "$desired_mode" ]]; then
+        show_error "Aviso: o modo '${desired_mode}' nao esta mais disponivel em ${output} (provavelmente por causa da reconexao do cabo). Usando o melhor modo equivalente." || true
+    fi
+
+    local resolution
+    resolution="${desired_mode%%@*}"
+
+    if [[ -n "$resolution" ]]; then
+        jq -r --arg output "$output" --arg resolution "$resolution" '
+            .outputs[]
+            | select(.name == $output)
+            | .modes[]
+            | select((.name | startswith($resolution + "@")))
+            | [.refreshRate, .name]
+            | @tsv
+        ' <<<"$json" | LC_ALL=C sort -rn -k1 | head -n1 | cut -f2
+    fi
+}
+
+logical_width() {
+    local mode="$1"
+    local scale="$2"
+    local w
+
+    w="${mode%%x*}"
+    if [[ "$w" =~ ^[0-9]+$ ]] && [[ "$scale" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+        awk -v w="$w" -v s="$scale" 'BEGIN { printf "%d\n", (w / s) + 0.999 }'
+    else
+        printf '%s\n' "1920"
+    fi
+}
+
+common_mirror_mode() {
+    local json="$1"
+    local output_a="$2"
+    local output_b="$3"
+    local desired_mode="$4"
+
+    if mode_exists "$json" "$output_a" "$desired_mode" && mode_exists "$json" "$output_b" "$desired_mode"; then
+        printf '%s\n' "$desired_mode"
+        return 0
+    fi
+
+    jq -r --arg a "$output_a" --arg b "$output_b" '
+        ( [ .outputs[] | select(.name == $a) | .modes[].name ] | unique ) as $ma
+        | ( [ .outputs[] | select(.name == $b) | .modes[].name ] | unique ) as $mb
+        | [ $ma[] | select(. as $m | $mb | index($m)) ] as $common
+        | $common
+        | map(. as $n | [($n | split("@")[0] | split("x")[0] | tonumber), ($n | split("@")[1] | tonumber), $n])
+        | sort_by(.[0], .[1])
+        | reverse
+        | .[0][2]
+    ' <<<"$json" 2>/dev/null || true
+}
+
+save_var() {
+    local name="$1"
+    local value="$2"
+    printf '%s=%q\n' "$name" "$value" >>"$SNAPSHOT_FILE"
+}
+
+save_snapshot() {
+    local json desk_line tv_line
+    local desk_connected desk_enabled desk_priority desk_pos desk_scale desk_mode
+    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
+
+    json="$(current_layout_json)"
+
+    desk_line="$(output_snapshot_tsv "$json" "$DESK_OUTPUT")"
+    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
+
+    [[ -n "$desk_line" ]] || die "Nao encontrei o monitor do escritorio ($DESK_OUTPUT)."
+    [[ -n "$tv_line" ]] || die "Nao encontrei a TV ($TV_OUTPUT)."
+
+    IFS=$'\t' read -r desk_connected desk_enabled desk_priority desk_pos desk_scale desk_mode <<<"$desk_line"
+    IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
+
+    [[ "$tv_connected" == "true" ]] || die "A TV ($TV_OUTPUT) nao esta conectada."
+
+    mkdir -p "$STATE_DIR"
+    : >"$SNAPSHOT_FILE"
+
+    save_var "DESK_OUTPUT" "$DESK_OUTPUT"
+    save_var "DESK_ENABLED" "$desk_enabled"
+    save_var "DESK_PRIORITY" "$desk_priority"
+    save_var "DESK_POS" "$desk_pos"
+    save_var "DESK_SCALE" "$desk_scale"
+    save_var "DESK_MODE" "${desk_mode:-$FALLBACK_DESK_MODE}"
+
+    save_var "TV_OUTPUT" "$TV_OUTPUT"
+    save_var "TV_ENABLED" "$tv_enabled"
+    save_var "TV_PRIORITY" "$tv_priority"
+    save_var "TV_POS" "$tv_pos"
+    save_var "TV_SCALE" "$tv_scale"
+    save_var "TV_MODE" "${tv_mode:-$FALLBACK_TV_MODE}"
+}
+
+switch_to_living_room_layout() {
+    local json tv_line
+    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
+    local -a args=()
+
+    json="$(current_layout_json)"
+    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
+
+    log "switch_to_living_room_layout: config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
+    log_layout_debug "switch_to_living_room_layout: antes" "$json"
+
+    [[ -n "$tv_line" ]] || die "Nao encontrei a TV ($TV_OUTPUT)."
+    IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
+
+    [[ "$tv_connected" == "true" ]] || die "A TV ($TV_OUTPUT) nao esta conectada."
+
+    tv_mode="$(resolve_mode "$json" "$TV_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
+
+    if [[ "${KEEP_DESK_ENABLED:-false}" == "true" ]]; then
+        if [[ "${MIRROR_DESK_TO_TV:-false}" == "true" ]]; then
+            local mirror_mode
+            mirror_mode="$(common_mirror_mode "$json" "$TV_OUTPUT" "$DESK_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
+            if [[ -z "$mirror_mode" ]]; then
+                show_error "Nao encontrei um modo comum entre ${TV_OUTPUT} e ${DESK_OUTPUT}; o espelhamento pode nao funcionar." || true
+            fi
+
+            args=("output.${TV_OUTPUT}.enable")
+            [[ -n "$mirror_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${mirror_mode}")
+            args+=(
+                "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+                "output.${TV_OUTPUT}.position.0,0"
+                "output.${TV_OUTPUT}.priority.1"
+                "output.${DESK_OUTPUT}.enable"
+            )
+            [[ -n "$mirror_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${mirror_mode}")
+            args+=(
+                "output.${DESK_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+                "output.${DESK_OUTPUT}.position.0,0"
+                "output.${DESK_OUTPUT}.priority.2"
+            )
+            log "switch_to_living_room_layout: configuracao ativa => TV principal + desktop espelhado na sala${mirror_mode:+ (modo comum: ${mirror_mode})}"
+        else
+            local desk_mode desk_x
+            desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
+            desk_x="$(logical_width "${tv_mode:-$FALLBACK_TV_MODE}" "${tv_scale:-$FALLBACK_TV_SCALE}")"
+
+            args=("output.${TV_OUTPUT}.enable")
+            [[ -n "$tv_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_mode}")
+            args+=(
+                "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+                "output.${TV_OUTPUT}.position.0,0"
+                "output.${TV_OUTPUT}.priority.1"
+                "output.${DESK_OUTPUT}.enable"
+            )
+            [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
+            args+=(
+                "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
+                "output.${DESK_OUTPUT}.position.${desk_x},0"
+                "output.${DESK_OUTPUT}.priority.2"
+            )
+            log "switch_to_living_room_layout: configuracao ativa => TV principal + desktop ao lado (desk_x=${desk_x})"
+        fi
+    else
+        args=("output.${TV_OUTPUT}.enable")
+        [[ -n "$tv_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_mode}")
+        args+=(
+            "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+            "output.${TV_OUTPUT}.position.0,0"
+            "output.${TV_OUTPUT}.priority.1"
+            "output.${DESK_OUTPUT}.disable"
+        )
+        log "switch_to_living_room_layout: configuracao ativa => TV principal e monitor do escritorio desligado"
+    fi
+
+    log "switch_to_living_room_layout: executando kscreen-doctor: ${args[*]}"
+    kscreen-doctor "${args[@]}"
+
+    local json_after
+    json_after="$(current_layout_json)"
+    log_layout_debug "switch_to_living_room_layout: depois" "$json_after"
+    verify_primary_output "switch_to_living_room_layout" "$json_after"
+}
+
+append_restore_args() {
+    local -n args_ref="$1"
+    local prefix="$2"
+    local output="$3"
+    local json="$4"
+
+    local enabled_var="${prefix}_ENABLED"
+    local mode_var="${prefix}_MODE"
+    local scale_var="${prefix}_SCALE"
+    local pos_var="${prefix}_POS"
+    local priority_var="${prefix}_PRIORITY"
+
+    if [[ "${!enabled_var:-false}" == "true" ]]; then
+        args_ref+=("output.${output}.enable")
+
+        if [[ -n "${!mode_var:-}" ]]; then
+            local resolved_mode
+            resolved_mode="$(resolve_mode "$json" "$output" "${!mode_var}")"
+            [[ -n "$resolved_mode" ]] && args_ref+=("output.${output}.mode.${resolved_mode}")
+        fi
+
+        if [[ -n "${!scale_var:-}" ]]; then
+            args_ref+=("output.${output}.scale.${!scale_var}")
+        fi
+
+        if [[ -n "${!pos_var:-}" ]]; then
+            args_ref+=("output.${output}.position.${!pos_var}")
+        fi
+
+        if [[ -n "${!priority_var:-}" ]]; then
+            args_ref+=("output.${output}.priority.${!priority_var}")
+        fi
+    else
+        args_ref+=("output.${output}.disable")
+    fi
+}
+
+restore_fallback_layout() {
+    local json tv_line
+    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
+    local desk_mode tv_resolved_mode
+
+    json="$(current_layout_json)"
+    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
+
+    if [[ -n "$tv_line" ]]; then
+        IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
+    else
+        tv_connected="false"
+    fi
+
+    desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
+
+    if [[ "$tv_connected" == "true" ]]; then
+        tv_resolved_mode="$(resolve_mode "$json" "$TV_OUTPUT" "$FALLBACK_TV_MODE")"
+
+        local -a args=("output.${DESK_OUTPUT}.enable")
+        [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
+        args+=(
+            "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
+            "output.${DESK_OUTPUT}.position.${FALLBACK_DESK_POS}"
+            "output.${DESK_OUTPUT}.priority.${FALLBACK_DESK_PRIORITY}"
+            "output.${TV_OUTPUT}.enable"
+        )
+        [[ -n "$tv_resolved_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_resolved_mode}")
+        args+=(
+            "output.${TV_OUTPUT}.scale.${FALLBACK_TV_SCALE}"
+            "output.${TV_OUTPUT}.position.${FALLBACK_TV_POS}"
+            "output.${TV_OUTPUT}.priority.${FALLBACK_TV_PRIORITY}"
+        )
+
+        kscreen-doctor "${args[@]}"
+    else
+        local -a args=("output.${DESK_OUTPUT}.enable")
+        [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
+        args+=(
+            "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
+            "output.${DESK_OUTPUT}.position.${FALLBACK_DESK_POS}"
+            "output.${DESK_OUTPUT}.priority.${FALLBACK_DESK_PRIORITY}"
+        )
+
+        kscreen-doctor "${args[@]}"
+    fi
+}
+
+restore_layout() {
+    local -a args=()
+    local json
+
+    if [[ ! -f "$SNAPSHOT_FILE" ]]; then
+        log "restore_layout: snapshot ausente; usando fallback de desktop"
+        restore_fallback_layout
+        move_steam_to_desk_monitor
+        return
+    fi
+
+    source "$SNAPSHOT_FILE"
+
+    json="$(current_layout_json)"
+    log_layout_debug "restore_layout: antes" "$json"
+
+    append_restore_args args "DESK" "$DESK_OUTPUT" "$json"
+    append_restore_args args "TV" "$TV_OUTPUT" "$json"
+
+    log "restore_layout: executando kscreen-doctor: ${args[*]}"
+    kscreen-doctor "${args[@]}"
+
+    local json_after
+    json_after="$(current_layout_json)"
+    log_layout_debug "restore_layout: depois" "$json_after"
+    rm -f "$SNAPSHOT_FILE"
+
+    move_steam_to_desk_monitor
+}
+
+close_big_picture() {
+    log "Fechando o Big Picture (mantendo a Steam aberta em modo desktop)"
+
+    if command -v wmctrl >/dev/null 2>&1; then
+        wmctrl -lx 2>/dev/null | awk 'tolower($0) ~ /big picture/ {print $1}' | xargs -r wmctrl -i -c || true
+        sleep 0.5
+    fi
+}
+
+move_steam_to_desk_monitor() {
+    command -v wmctrl >/dev/null 2>&1 || { log "move_steam: wmctrl ausente; pulando reposicionamento da Steam"; return; }
+
+    local attempt win_id pos=""
+
+    for attempt in $(seq 1 15); do
+        win_id="$(wmctrl -lx 2>/dev/null | awk '$3 ~ /\.steam$/ || $3 == "steam" { if (tolower($0) !~ /big picture/) { print $1; exit } }')"
+        [[ -n "$win_id" ]] && break
+        sleep 1
+    done
+
+    [[ -n "$win_id" ]] || { log "move_steam: janela da Steam nao encontrada; nada a reposicionar"; return; }
+
+    pos="$(current_layout_json | jq -r --arg o "$DESK_OUTPUT" '
+        [ .outputs[] | select(.name == $o and .enabled == true) ]
+        | if length > 0 then (((.[0].pos.x // 0) | tostring) + "," + ((.[0].pos.y // 0) | tostring)) else empty end
+    ' 2>/dev/null || true)"
+
+    if [[ -z "$pos" ]]; then
+        pos="${FALLBACK_DESK_POS:-0,0}"
+    fi
+
+    wmctrl -i -r "$win_id" -e "0,${pos},-1,-1" || true
+    log "move_steam: Steam reposicionada para o monitor do escritorio (${DESK_OUTPUT} @ ${pos})"
+}
+
+steam_main_pids() {
+    pgrep -u "$USER" -x steam || true
+}
+
+big_picture_window_present() {
+    command -v wmctrl >/dev/null 2>&1 || return 1
+    wmctrl -lx 2>/dev/null | grep -qi 'big picture'
+}
+
+wait_for_new_steam_pid() {
+    local existing_pids="$1"
+    local pid
+    local attempt
+
+    for attempt in $(seq 1 90); do
+        while read -r pid; do
+            [[ -n "$pid" ]] || continue
+            if [[ "$existing_pids" != *" $pid "* ]]; then
+                printf '%s\n' "$pid"
+                return 0
+            fi
+        done < <(steam_main_pids)
+
+        sleep 1
+    done
+
+    return 1
+}
+
+wait_for_big_picture_window() {
+    local attempt
+
+    for attempt in $(seq 1 60); do
+        if big_picture_window_present; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    return 1
+}
+
+wait_for_pid_exit() {
+    local pid="$1"
+
+    while kill -0 "$pid" 2>/dev/null; do
+        sleep 2
+    done
+}
+
+wait_for_steam_exit_or_bpm_exit() {
+    local steam_pid="$1"
+    local bpm_seen="$2"
+
+    while kill -0 "$steam_pid" 2>/dev/null; do
+        if [[ "$bpm_seen" == "1" ]] && ! big_picture_window_present; then
+            return 0
+        fi
+        sleep 2
+    done
+
+    return 0
+}
+
+start_session() {
+    local existing_pid
+
+    mkdir -p "$STATE_DIR"
+
+    if [[ -f "$SESSION_FILE" ]]; then
+        existing_pid="$(<"$SESSION_FILE")"
+        if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null; then
+            die "O modo sala ja esta em execucao."
+        fi
+    fi
+
+    printf '%s\n' "$$" >"$SESSION_FILE"
+}
+
+clear_session_file() {
+    if [[ -f "$SESSION_FILE" ]]; then
+        local session_pid
+        session_pid="$(<"$SESSION_FILE")"
+        if [[ "$session_pid" == "$$" ]]; then
+            rm -f "$SESSION_FILE"
+        fi
+    fi
+}
+
+cleanup() {
+    local status=$?
+
+    if [[ "$AUTO_RESTORE_ON_EXIT" == "1" ]]; then
+        restore_layout >/dev/null 2>&1 || true
+    fi
+
+    clear_session_file
+    exit "$status"
+}
+
+launch_big_picture_and_wait() {
+    local existing_pids steam_pid launcher_pid bpm_seen
+    local -a steam_launcher=()
+
+    existing_pids=" $(steam_main_pids | tr '\n' ' ') "
+
+    if command -v bazzite-steam-bpm >/dev/null 2>&1; then
+        steam_launcher=(bazzite-steam-bpm)
+        log "play: usando launcher Big Picture do Bazzite"
+    elif command -v steam >/dev/null 2>&1; then
+        steam_launcher=(steam -gamepadui)
+        log "play: usando launcher padrao da Steam (-gamepadui)"
+    else
+        die "Nao encontrei a Steam nem o launcher bazzite-steam-bpm."
+    fi
+
+    log "play: tentando iniciar o Big Picture com launcher=${steam_launcher[*]} e configuracao={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
+
+    "${steam_launcher[@]}" >/dev/null 2>&1 &
+    launcher_pid=$!
+
+    steam_pid="$(wait_for_new_steam_pid "$existing_pids" || true)"
+    if [[ -z "$steam_pid" ]]; then
+        steam_pid="$(pgrep -u "$USER" -n -x steam || true)"
+    fi
+
+    [[ -n "$steam_pid" ]] || die "Nao consegui detectar a Steam abrindo em Big Picture."
+
+    log "play: Steam detectada: PID=${steam_pid}; launcher_pid=${launcher_pid}; wmctrl presente=$(command -v wmctrl >/dev/null 2>&1 && printf '%s' 'sim' || printf '%s' 'nao')"
+
+    bpm_seen=0
+    if wait_for_big_picture_window; then
+        bpm_seen=1
+        log "play: Big Picture detectado, monitorando ate ser fechado ou a Steam sair"
+    else
+        log "play: nao foi possivel detectar a janela do Big Picture; vou aguardar a Steam fechar"
+    fi
+
+    wait_for_steam_exit_or_bpm_exit "$steam_pid" "$bpm_seen"
+
+    if kill -0 "$steam_pid" 2>/dev/null; then
+        log "play: Big Picture fechado (Steam continua aberta em modo desktop)"
+        :
+    else
+        log "play: Steam fechou"
+        wait "$launcher_pid" || true
+    fi
+}
+
+watch_big_picture() {
+    local active=0
+
+    require_commands
+    command -v wmctrl >/dev/null 2>&1 || die "Falta o comando opcional wmctrl para monitorar o Big Picture."
+    AUTO_RESTORE_ON_EXIT=1
+    trap cleanup EXIT INT TERM
+    log "watch: monitorando o Big Picture iniciado pela Steam"
+
+    while true; do
+        if [[ -f "$SESSION_FILE" ]]; then
+            sleep 2
+            continue
+        fi
+        if [[ "$active" == "0" ]] && big_picture_window_present; then
+            log "watch: Big Picture detectado externamente; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
+            save_snapshot
+            switch_to_living_room_layout
+            active=1
+            log "watch: Big Picture detectado, layout da sala aplicado"
+        elif [[ "$active" == "1" ]] && ! big_picture_window_present; then
+            restore_layout
+            active=0
+            log "watch: Big Picture fechado, layout do desktop restaurado"
+        fi
+        sleep 2
+    done
+}
+
+
+stop_active_session() {
+    local session_pid=""
+
+    if [[ -f "$SESSION_FILE" ]]; then
+        session_pid="$(<"$SESSION_FILE")"
+    fi
+
+    if [[ -n "$session_pid" ]] && [[ "$session_pid" != "$$" ]] && kill -0 "$session_pid" 2>/dev/null; then
+        kill "$session_pid" || true
+        local waited=0
+        while kill -0 "$session_pid" 2>/dev/null; do
+            sleep 0.2
+            waited=$((waited + 1))
+            if (( waited > 50 )); then
+                break
+            fi
+        done
+    fi
+
+    rm -f "$SESSION_FILE"
+}
+
+print_outputs() {
+    current_layout_json | jq -c '
+        [.outputs[]
+         | select(.connected == true)
+         | . as $out
+         | {
+             name: .name,
+             enabled: .enabled,
+             modes: ([$out.modes[].name] | unique),
+             currentMode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // ""),
+             scale: (.scale // 1),
+             pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring))
+           }
+        ]
+    '
+}
+
+print_status() {
+    current_layout_json | jq -c --arg desk "$DESK_OUTPUT" --arg tv "$TV_OUTPUT" '
+        [
+            (.outputs[] | select(.name == $desk) | . as $out | {
+                role: "desk",
+                name: .name,
+                enabled: .enabled,
+                connected: .connected,
+                priority: (.priority // null),
+                pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring)),
+                scale: (.scale // 1),
+                mode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
+            }),
+            (.outputs[] | select(.name == $tv) | . as $out | {
+                role: "tv",
+                name: .name,
+                enabled: .enabled,
+                connected: .connected,
+                priority: (.priority // null),
+                pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring)),
+                scale: (.scale // 1),
+                mode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
+            })
+        ]
+    '
+}
+
+print_log() {
+    if [[ -f "$LOG_FILE" ]]; then
+        cat "$LOG_FILE"
+    fi
+}
+
+export_log() {
+    local dest
+    dest="${HOME}/open-couch-log-$(date '+%Y%m%d-%H%M%S').txt"
+    if [[ -f "$LOG_FILE" ]]; then
+        cp "$LOG_FILE" "$dest"
+    else
+        : >"$dest"
+    fi
+    printf '%s\n' "$dest"
+}
+
+clear_log() {
+    local dest
+    dest="$(archive_log)"
+    : >"$LOG_FILE"
+    log "log limpo; conteudo anterior arquivado em $(basename "${dest}")"
+}
+
+valid_history_id() {
+    [[ "$1" =~ ^open-couch-engine-[0-9]{8}-[0-9]{6}(\.log(\.[0-9]+)?)?$ ]]
+}
+
+log_history() {
+    mkdir -p "$HISTORY_DIR"
+    find "$HISTORY_DIR" -maxdepth 1 -type f -name 'open-couch-engine-*.log*' -printf '%f\t%s\n' 2>/dev/null \
+        | LC_ALL=C sort -r \
+        | jq -Rn '
+            [inputs
+             | select(length > 0)
+             | split("\t") as $p
+             | {id: $p[0],
+                size: ($p[1] | tonumber),
+                timestamp: ($p[0] | sub("^open-couch-engine-"; "") | sub("\\.log(\\.[0-9]+)?$"; ""))}]'
+}
+
+print_history_log() {
+    local id="$1"
+    valid_history_id "$id" || die "Id de log do historico invalido."
+    local src="${HISTORY_DIR}/${id}"
+    [[ -f "$src" ]] || die "Log do historico nao encontrado: ${id}."
+    cat "$src"
+}
+
+export_history_log() {
+    local id="$1"
+    valid_history_id "$id" || die "Id de log do historico invalido."
+    local src="${HISTORY_DIR}/${id}"
+    [[ -f "$src" ]] || die "Log do historico nao encontrado: ${id}."
+    local dest="${HOME}/open-couch-log-${id}"
+    cp "$src" "$dest"
+    printf '%s\n' "$dest"
+}
+
+play_mode() {
+    log "play: iniciando modo sala"
+    require_commands
+    start_session
+    AUTO_RESTORE_ON_EXIT=1
+    trap cleanup EXIT INT TERM
+
+    log "play: config ativa => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
+    save_snapshot
+    switch_to_living_room_layout
+    log "play: layout da sala aplicado, abrindo Big Picture"
+    launch_big_picture_and_wait
+    log "play: restaurando layout do desktop"
+    restore_layout
+    AUTO_RESTORE_ON_EXIT=0
+    log "play: layout restaurado com sucesso"
+}
+
+restore_mode() {
+    log "restore: iniciando restauracao manual"
+    require_commands
+    
+    close_big_picture
+    
+    local had_session=0
+    if [[ -f "$SESSION_FILE" ]] && kill -0 "$(<"$SESSION_FILE")" 2>/dev/null; then
+        had_session=1
+    fi
+    
+    stop_active_session
+    
+    if [[ "$had_session" == "0" ]] || [[ -f "$SNAPSHOT_FILE" ]]; then
+        restore_layout
+    fi
+    
+    rm -f "$SESSION_FILE"
+    log "restore: layout restaurado com sucesso"
+}
+
+usage() {
+    cat <<'EOF'
+Uso:
+  open-couch-engine play
+  open-couch-engine restore
+  open-couch-engine status
+  open-couch-engine outputs        
+  open-couch-engine check          
+  open-couch-engine watch          
+  open-couch-engine config-path    
+  open-couch-engine log            
+  open-couch-engine clear-log      
+  open-couch-engine log-history    
+  open-couch-engine print-history-log <id>   
+  open-couch-engine export-history-log <id>  
+  open-couch-engine export-log     
+EOF
+}
+
+main() {
+    case "${1:-}" in
+        play)
+            play_mode
+            ;;
+        restore)
+            restore_mode
+            ;;
+        status)
+            require_commands
+            print_status
+            ;;
+        outputs)
+            require_commands
+            print_outputs
+            ;;
+        check)
+            require_commands
+            printf 'Dependencias do host OK\n'
+            ;;
+        watch)
+            watch_big_picture
+            ;;
+        config-path)
+            printf '%s\n' "$CONFIG_FILE"
+            ;;
+        log)
+            print_log
+            ;;
+        clear-log)
+            clear_log
+            ;;
+        log-history)
+            log_history
+            ;;
+        print-history-log)
+            print_history_log "${2:-}"
+            ;;
+        export-history-log)
+            export_history_log "${2:-}"
+            ;;
+        export-log)
+            export_log
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
