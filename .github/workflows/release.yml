@@ -26,7 +26,7 @@ jobs:
           VERSION="${TAG#v}"
           FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
           if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
-            echo "::error::app/version.txt (${FILE_VERSION}) difere da tag ${TAG}. Crie o release com ./packaging/release.sh ${VERSION}." >&2
+            echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${TAG}. Create the release with ./packaging/release.sh ${VERSION}." >&2
             exit 1
           fi
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"

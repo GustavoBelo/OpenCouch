@@ -10,22 +10,22 @@ MANIFEST="${SCRIPT_DIR}/io.github.gustavobelo.opencouch.yml"
 VERSION_FILE="${PROJECT_DIR}/app/version.txt"
 
 if [[ ! -f "${VERSION_FILE}" ]]; then
-    printf 'Erro: %s nao encontrado.\n' "${VERSION_FILE}" >&2
+    printf 'Error: %s not found.\n' "${VERSION_FILE}" >&2
     exit 1
 fi
 VERSION="$(sed -n 's/^VERSION=//p' "${VERSION_FILE}")"
 if [[ -z "${VERSION}" ]]; then
-    printf 'Erro: nao consegui ler VERSION de %s.\n' "${VERSION_FILE}" >&2
+    printf 'Error: could not read VERSION from %s.\n' "${VERSION_FILE}" >&2
     exit 1
 fi
 
 if ! command -v flatpak >/dev/null 2>&1; then
-    printf 'Erro: flatpak nao esta instalado.\n' >&2
+    printf 'Error: flatpak is not installed.\n' >&2
     exit 1
 fi
 
 if ! flatpak run org.flatpak.Builder --help >/dev/null 2>&1; then
-    printf 'Erro: instale o org.flatpak.Builder antes de compilar.\n' >&2
+    printf 'Error: install org.flatpak.Builder before building.\n' >&2
     exit 1
 fi
 
@@ -42,4 +42,4 @@ flatpak build-bundle \
     io.github.gustavobelo.opencouch \
     "v${VERSION}"
 
-printf 'Flatpak gerado em: %s (versao v%s)\n' "${BUNDLE}" "${VERSION}"
+printf 'Flatpak generated at: %s (version v%s)\n' "${BUNDLE}" "${VERSION}"

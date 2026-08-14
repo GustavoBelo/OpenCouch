@@ -1,16 +1,16 @@
-# Traduções
+# Translations
 
-As traduções usam o Qt Linguist com IDs estáveis:
+Translations use Qt Linguist with stable ids:
 
-- `opencouch_en.ts` é o catálogo em inglês e `opencouch_pt_BR.ts` é o catálogo em português.
-- As mensagens da interface usam `qsTrId("dominio.chave")` no QML e `qtTrId("dominio.chave")` no C++.
-- O texto traduzido fica somente no catálogo; não use frases como chaves no código.
-- O aplicativo escolhe automaticamente o catálogo compatível com o locale do sistema.
-- O CMake gera os arquivos `.qm` e os incorpora ao aplicativo Flatpak.
+- `opencouch_en.ts` is the English catalog and `opencouch_pt_BR.ts` is the Portuguese catalog.
+- UI messages use `qsTrId("domain.key")` in QML and `qtTrId("domain.key")` in C++.
+- Translated text lives only in the catalog; do not use phrases as keys in the code.
+- The app automatically picks the catalog matching the system locale.
+- CMake generates the `.qm` files and bundles them into the Flatpak app.
 
-Para adicionar um idioma:
+To add a language:
 
-1. Copie `opencouch_en.ts` para `opencouch_<locale>.ts`.
-2. Traduza apenas os elementos `<translation>`.
-3. Adicione o novo arquivo à lista `TS_FILES` em `app/CMakeLists.txt`.
-4. Recompile o Flatpak.
+1. Copy `opencouch_en.ts` to `opencouch_<locale>.ts`.
+2. Translate only the `<translation>` elements.
+3. Add the new file to the `TS_FILES` list in `app/CMakeLists.txt`.
+4. Rebuild the Flatpak.

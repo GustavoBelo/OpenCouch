@@ -78,7 +78,7 @@ log() {
 
 show_error() {
     local message="$1"
-    log "ERRO: $message"
+    log "ERROR: $message"
     if in_terminal; then
         printf 'open-couch-engine: %s\n' "$message" >&2
         return
@@ -98,7 +98,7 @@ die() {
 
 on_error() {
     local exit_code=$?
-    show_error "Falha inesperada (comando: '${BASH_COMMAND}', linha ${BASH_LINENO[0]:-?}, saida ${exit_code}). O layout de tela pode ter ficado incompleto; tente rodar 'open-couch-engine restore' novamente."
+    show_error "Unexpected failure (command: '${BASH_COMMAND}', line ${BASH_LINENO[0]:-?}, exit ${exit_code}). The display layout may be incomplete; try running 'open-couch-engine restore' again."
 }
 
 trap on_error ERR
@@ -111,7 +111,7 @@ require_commands() {
     done
 
     if ((${#missing[@]} > 0)); then
-        die "Dependencias ausentes: ${missing[*]}. Instale-as no host e tente novamente."
+        die "Missing dependencies: ${missing[*]}. Install them on the host and try again."
     fi
 }
 
@@ -186,9 +186,9 @@ verify_primary_output() {
     ' <<<"$json" 2>/dev/null || printf '%s\n' 'unknown')"
 
     if [[ "$actual_primary" == "$expected_primary" ]]; then
-        log "${stage}: confirmacao: a TV (${TV_OUTPUT}) e a saida principal ativa."
+        log "${stage}: confirmation: the TV (${TV_OUTPUT}) is the active primary output."
     else
-        log "${stage}: AVISO: a saida principal ativa e ${actual_primary:-unknown}, mas o esperado e ${expected_primary}. Isso pode explicar o Big Picture abrir noutra tela; verifique priority/pos do kscreen-doctor e o compositor."
+        log "${stage}: WARNING: the active primary output is ${actual_primary:-unknown}, but the expected one is ${expected_primary}. This may explain Big Picture opening on the wrong display; check kscreen-doctor priority/pos and the compositor."
     fi
 }
 
@@ -218,7 +218,7 @@ resolve_mode() {
     fi
 
     if [[ -n "$desired_mode" ]]; then
-        show_error "Aviso: o modo '${desired_mode}' nao esta mais disponivel em ${output} (provavelmente por causa da reconexao do cabo). Usando o melhor modo equivalente." || true
+        show_error "Warning: the mode '${desired_mode}' is no longer available on ${output} (probably because the cable was reconnected). Using the best equivalent mode." || true
     fi
 
     local resolution
@@ -288,13 +288,13 @@ save_snapshot() {
     desk_line="$(output_snapshot_tsv "$json" "$DESK_OUTPUT")"
     tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
 
-    [[ -n "$desk_line" ]] || die "Nao encontrei o monitor do escritorio ($DESK_OUTPUT)."
-    [[ -n "$tv_line" ]] || die "Nao encontrei a TV ($TV_OUTPUT)."
+    [[ -n "$desk_line" ]] || die "Could not find the office display ($DESK_OUTPUT)."
+    [[ -n "$tv_line" ]] || die "Could not find the TV ($TV_OUTPUT)."
 
     IFS=$'\t' read -r desk_connected desk_enabled desk_priority desk_pos desk_scale desk_mode <<<"$desk_line"
     IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
 
-    [[ "$tv_connected" == "true" ]] || die "A TV ($TV_OUTPUT) nao esta conectada."
+    [[ "$tv_connected" == "true" ]] || die "The TV ($TV_OUTPUT) is not connected."
 
     mkdir -p "$STATE_DIR"
     : >"$SNAPSHOT_FILE"
@@ -323,12 +323,12 @@ switch_to_living_room_layout() {
     tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
 
     log "switch_to_living_room_layout: config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
-    log_layout_debug "switch_to_living_room_layout: antes" "$json"
+    log_layout_debug "switch_to_living_room_layout: before" "$json"
 
-    [[ -n "$tv_line" ]] || die "Nao encontrei a TV ($TV_OUTPUT)."
+    [[ -n "$tv_line" ]] || die "Could not find the TV ($TV_OUTPUT)."
     IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
 
-    [[ "$tv_connected" == "true" ]] || die "A TV ($TV_OUTPUT) nao esta conectada."
+    [[ "$tv_connected" == "true" ]] || die "The TV ($TV_OUTPUT) is not connected."
 
     tv_mode="$(resolve_mode "$json" "$TV_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
 
@@ -337,7 +337,7 @@ switch_to_living_room_layout() {
             local mirror_mode
             mirror_mode="$(common_mirror_mode "$json" "$TV_OUTPUT" "$DESK_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
             if [[ -z "$mirror_mode" ]]; then
-                show_error "Nao encontrei um modo comum entre ${TV_OUTPUT} e ${DESK_OUTPUT}; o espelhamento pode nao funcionar." || true
+                show_error "Could not find a common mode between ${TV_OUTPUT} and ${DESK_OUTPUT}; mirroring may not work." || true
             fi
 
             args=("output.${TV_OUTPUT}.enable")
@@ -354,7 +354,7 @@ switch_to_living_room_layout() {
                 "output.${DESK_OUTPUT}.position.0,0"
                 "output.${DESK_OUTPUT}.priority.2"
             )
-            log "switch_to_living_room_layout: configuracao ativa => TV principal + desktop espelhado na sala${mirror_mode:+ (modo comum: ${mirror_mode})}"
+            log "switch_to_living_room_layout: active config => TV primary + desktop mirrored on the couch${mirror_mode:+ (common mode: ${mirror_mode})}"
         else
             local desk_mode desk_x
             desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
@@ -374,7 +374,7 @@ switch_to_living_room_layout() {
                 "output.${DESK_OUTPUT}.position.${desk_x},0"
                 "output.${DESK_OUTPUT}.priority.2"
             )
-            log "switch_to_living_room_layout: configuracao ativa => TV principal + desktop ao lado (desk_x=${desk_x})"
+            log "switch_to_living_room_layout: active config => TV primary + desktop next to it (desk_x=${desk_x})"
         fi
     else
         args=("output.${TV_OUTPUT}.enable")
@@ -385,15 +385,15 @@ switch_to_living_room_layout() {
             "output.${TV_OUTPUT}.priority.1"
             "output.${DESK_OUTPUT}.disable"
         )
-        log "switch_to_living_room_layout: configuracao ativa => TV principal e monitor do escritorio desligado"
+        log "switch_to_living_room_layout: active config => TV primary and office display turned off"
     fi
 
-    log "switch_to_living_room_layout: executando kscreen-doctor: ${args[*]}"
+    log "switch_to_living_room_layout: executing kscreen-doctor: ${args[*]}"
     kscreen-doctor "${args[@]}"
 
     local json_after
     json_after="$(current_layout_json)"
-    log_layout_debug "switch_to_living_room_layout: depois" "$json_after"
+    log_layout_debug "switch_to_living_room_layout: after" "$json_after"
     verify_primary_output "switch_to_living_room_layout" "$json_after"
 }
 
@@ -487,7 +487,7 @@ restore_layout() {
     local json
 
     if [[ ! -f "$SNAPSHOT_FILE" ]]; then
-        log "restore_layout: snapshot ausente; usando fallback de desktop"
+        log "restore_layout: snapshot missing; using desktop fallback"
         restore_fallback_layout
         move_steam_to_desk_monitor
         return
@@ -496,24 +496,24 @@ restore_layout() {
     source "$SNAPSHOT_FILE"
 
     json="$(current_layout_json)"
-    log_layout_debug "restore_layout: antes" "$json"
+    log_layout_debug "restore_layout: before" "$json"
 
     append_restore_args args "DESK" "$DESK_OUTPUT" "$json"
     append_restore_args args "TV" "$TV_OUTPUT" "$json"
 
-    log "restore_layout: executando kscreen-doctor: ${args[*]}"
+    log "restore_layout: executing kscreen-doctor: ${args[*]}"
     kscreen-doctor "${args[@]}"
 
     local json_after
     json_after="$(current_layout_json)"
-    log_layout_debug "restore_layout: depois" "$json_after"
+    log_layout_debug "restore_layout: after" "$json_after"
     rm -f "$SNAPSHOT_FILE"
 
     move_steam_to_desk_monitor
 }
 
 close_big_picture() {
-    log "Fechando o Big Picture (mantendo a Steam aberta em modo desktop)"
+    log "Closing Big Picture (keeping Steam open in desktop mode)"
 
     if command -v wmctrl >/dev/null 2>&1; then
         wmctrl -lx 2>/dev/null | awk 'tolower($0) ~ /big picture/ {print $1}' | xargs -r wmctrl -i -c || true
@@ -522,7 +522,7 @@ close_big_picture() {
 }
 
 move_steam_to_desk_monitor() {
-    command -v wmctrl >/dev/null 2>&1 || { log "move_steam: wmctrl ausente; pulando reposicionamento da Steam"; return; }
+    command -v wmctrl >/dev/null 2>&1 || { log "move_steam: wmctrl missing; skipping Steam repositioning"; return; }
 
     local attempt win_id pos=""
 
@@ -532,7 +532,7 @@ move_steam_to_desk_monitor() {
         sleep 1
     done
 
-    [[ -n "$win_id" ]] || { log "move_steam: janela da Steam nao encontrada; nada a reposicionar"; return; }
+    [[ -n "$win_id" ]] || { log "move_steam: Steam window not found; nothing to reposition"; return; }
 
     pos="$(current_layout_json | jq -r --arg o "$DESK_OUTPUT" '
         [ .outputs[] | select(.name == $o and .enabled == true) ]
@@ -544,7 +544,7 @@ move_steam_to_desk_monitor() {
     fi
 
     wmctrl -i -r "$win_id" -e "0,${pos},-1,-1" || true
-    log "move_steam: Steam reposicionada para o monitor do escritorio (${DESK_OUTPUT} @ ${pos})"
+    log "move_steam: Steam repositioned to the office display (${DESK_OUTPUT} @ ${pos})"
 }
 
 steam_main_pids() {
@@ -619,7 +619,7 @@ start_session() {
     if [[ -f "$SESSION_FILE" ]]; then
         existing_pid="$(<"$SESSION_FILE")"
         if [[ -n "$existing_pid" ]] && kill -0 "$existing_pid" 2>/dev/null; then
-            die "O modo sala ja esta em execucao."
+            die "Couch mode is already running."
         fi
     fi
 
@@ -655,15 +655,15 @@ launch_big_picture_and_wait() {
 
     if command -v bazzite-steam-bpm >/dev/null 2>&1; then
         steam_launcher=(bazzite-steam-bpm)
-        log "play: usando launcher Big Picture do Bazzite"
+        log "play: using Bazzite's Big Picture launcher"
     elif command -v steam >/dev/null 2>&1; then
         steam_launcher=(steam -gamepadui)
-        log "play: usando launcher padrao da Steam (-gamepadui)"
+        log "play: using the default Steam launcher (-gamepadui)"
     else
-        die "Nao encontrei a Steam nem o launcher bazzite-steam-bpm."
+        die "Could not find Steam or the bazzite-steam-bpm launcher."
     fi
 
-    log "play: tentando iniciar o Big Picture com launcher=${steam_launcher[*]} e configuracao={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
+    log "play: trying to start Big Picture with launcher=${steam_launcher[*]} and config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
 
     "${steam_launcher[@]}" >/dev/null 2>&1 &
     launcher_pid=$!
@@ -673,25 +673,25 @@ launch_big_picture_and_wait() {
         steam_pid="$(pgrep -u "$USER" -n -x steam || true)"
     fi
 
-    [[ -n "$steam_pid" ]] || die "Nao consegui detectar a Steam abrindo em Big Picture."
+    [[ -n "$steam_pid" ]] || die "Could not detect Steam opening in Big Picture."
 
-    log "play: Steam detectada: PID=${steam_pid}; launcher_pid=${launcher_pid}; wmctrl presente=$(command -v wmctrl >/dev/null 2>&1 && printf '%s' 'sim' || printf '%s' 'nao')"
+    log "play: Steam detected: PID=${steam_pid}; launcher_pid=${launcher_pid}; wmctrl present=$(command -v wmctrl >/dev/null 2>&1 && printf '%s' 'yes' || printf '%s' 'no')"
 
     bpm_seen=0
     if wait_for_big_picture_window; then
         bpm_seen=1
-        log "play: Big Picture detectado, monitorando ate ser fechado ou a Steam sair"
+        log "play: Big Picture detected, monitoring until it closes or Steam exits"
     else
-        log "play: nao foi possivel detectar a janela do Big Picture; vou aguardar a Steam fechar"
+        log "play: could not detect the Big Picture window; will wait for Steam to close"
     fi
 
     wait_for_steam_exit_or_bpm_exit "$steam_pid" "$bpm_seen"
 
     if kill -0 "$steam_pid" 2>/dev/null; then
-        log "play: Big Picture fechado (Steam continua aberta em modo desktop)"
+        log "play: Big Picture closed (Steam still open in desktop mode)"
         :
     else
-        log "play: Steam fechou"
+        log "play: Steam exited"
         wait "$launcher_pid" || true
     fi
 }
@@ -700,10 +700,10 @@ watch_big_picture() {
     local active=0
 
     require_commands
-    command -v wmctrl >/dev/null 2>&1 || die "Falta o comando opcional wmctrl para monitorar o Big Picture."
+    command -v wmctrl >/dev/null 2>&1 || die "The optional wmctrl command is required to monitor Big Picture."
     AUTO_RESTORE_ON_EXIT=1
     trap cleanup EXIT INT TERM
-    log "watch: monitorando o Big Picture iniciado pela Steam"
+    log "watch: monitoring Big Picture started by Steam"
 
     while true; do
         if [[ -f "$SESSION_FILE" ]]; then
@@ -711,15 +711,15 @@ watch_big_picture() {
             continue
         fi
         if [[ "$active" == "0" ]] && big_picture_window_present; then
-            log "watch: Big Picture detectado externamente; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
+            log "watch: Big Picture detected externally; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
             save_snapshot
             switch_to_living_room_layout
             active=1
-            log "watch: Big Picture detectado, layout da sala aplicado"
+            log "watch: Big Picture detected, couch layout applied"
         elif [[ "$active" == "1" ]] && ! big_picture_window_present; then
             restore_layout
             active=0
-            log "watch: Big Picture fechado, layout do desktop restaurado"
+            log "watch: Big Picture closed, desktop layout restored"
         fi
         sleep 2
     done
@@ -813,7 +813,7 @@ clear_log() {
     local dest
     dest="$(archive_log)"
     : >"$LOG_FILE"
-    log "log limpo; conteudo anterior arquivado em $(basename "${dest}")"
+    log "log cleared; previous content archived in $(basename "${dest}")"
 }
 
 valid_history_id() {
@@ -835,42 +835,42 @@ log_history() {
 
 print_history_log() {
     local id="$1"
-    valid_history_id "$id" || die "Id de log do historico invalido."
+    valid_history_id "$id" || die "Invalid history log id."
     local src="${HISTORY_DIR}/${id}"
-    [[ -f "$src" ]] || die "Log do historico nao encontrado: ${id}."
+    [[ -f "$src" ]] || die "History log not found: ${id}."
     cat "$src"
 }
 
 export_history_log() {
     local id="$1"
-    valid_history_id "$id" || die "Id de log do historico invalido."
+    valid_history_id "$id" || die "Invalid history log id."
     local src="${HISTORY_DIR}/${id}"
-    [[ -f "$src" ]] || die "Log do historico nao encontrado: ${id}."
+    [[ -f "$src" ]] || die "History log not found: ${id}."
     local dest="${HOME}/open-couch-log-${id}"
     cp "$src" "$dest"
     printf '%s\n' "$dest"
 }
 
 play_mode() {
-    log "play: iniciando modo sala"
+    log "play: starting couch mode"
     require_commands
     start_session
     AUTO_RESTORE_ON_EXIT=1
     trap cleanup EXIT INT TERM
 
-    log "play: config ativa => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
+    log "play: active config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
     save_snapshot
     switch_to_living_room_layout
-    log "play: layout da sala aplicado, abrindo Big Picture"
+    log "play: couch layout applied, opening Big Picture"
     launch_big_picture_and_wait
-    log "play: restaurando layout do desktop"
+    log "play: restoring desktop layout"
     restore_layout
     AUTO_RESTORE_ON_EXIT=0
-    log "play: layout restaurado com sucesso"
+    log "play: layout restored successfully"
 }
 
 restore_mode() {
-    log "restore: iniciando restauracao manual"
+    log "restore: starting manual restore"
     require_commands
     
     close_big_picture
@@ -887,12 +887,12 @@ restore_mode() {
     fi
     
     rm -f "$SESSION_FILE"
-    log "restore: layout restaurado com sucesso"
+    log "restore: layout restored successfully"
 }
 
 usage() {
     cat <<'EOF'
-Uso:
+Usage:
   open-couch-engine play
   open-couch-engine restore
   open-couch-engine status
@@ -927,7 +927,7 @@ main() {
             ;;
         check)
             require_commands
-            printf 'Dependencias do host OK\n'
+            printf 'Host dependencies OK\n'
             ;;
         watch)
             watch_big_picture

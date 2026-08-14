@@ -1,14 +1,14 @@
-# Receita ujust para instalar o componente "engine" do Open Couch no host.
-# Esta receita e opcional e pode ser usada em qualquer sistema com just.
-# No Bazzite, ela tambem pode ser copiada para /etc/just/ujust.d/ para que
-# "ujust install-open-couch" fique disponivel.
+# ujust recipe to install the Open Couch "engine" component on the host.
+# This recipe is optional and can be used on any system with just.
+# On Bazzite, it can also be copied to /etc/just/ujust.d/ so that
+# "ujust install-open-couch" is available.
 #
-# O app com interface grafica (Open Couch) e distribuido separadamente via
-# Flatpak/Flathub; esta receita instala apenas o script que precisa rodar
-# fora do sandbox (controle de tela via kscreen-doctor e da Steam).
+# The graphical app (Open Couch) is distributed separately via
+# Flatpak/Flathub; this recipe only installs the script that needs to run
+# outside the sandbox (display control via kscreen-doctor and Steam).
 
 [group('Open Couch')]
-[doc('Instala o script host do Open Couch (necessario para o app Flatpak funcionar)')]
+[doc('Installs the Open Couch host script (required for the Flatpak app to work)')]
 install-open-couch:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -18,13 +18,13 @@ install-open-couch:
     curl -fsSL "${REPO_URL}/open-couch-engine" -o "${DEST}/open-couch-engine"
     curl -fsSL "${REPO_URL}/open-couch-log-viewer" -o "${DEST}/open-couch-log-viewer"
     chmod +x "${DEST}/open-couch-engine" "${DEST}/open-couch-log-viewer"
-    echo "Open Couch engine instalado em ${DEST}."
-    echo "Instale o app grafico com: flatpak install flathub io.github.gustavobelo.opencouch"
+    echo "Open Couch engine installed at ${DEST}."
+    echo "Install the graphical app with: flatpak install flathub io.github.gustavobelo.opencouch"
 
 [group('Open Couch')]
-[doc('Remove o script host do Open Couch')]
+[doc('Removes the Open Couch host script')]
 remove-open-couch:
     #!/usr/bin/env bash
     set -euo pipefail
     rm -f "${HOME}/.local/bin/open-couch-engine" "${HOME}/.local/bin/open-couch-log-viewer"
-    echo "Open Couch engine removido."
+    echo "Open Couch engine removed."

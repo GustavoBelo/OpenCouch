@@ -13,23 +13,23 @@ check_dependencies() {
 
     if ((${#missing[@]} == 0)); then
         if ! command -v wmctrl >/dev/null 2>&1; then
-            echo "Aviso: wmctrl nao encontrado; a saida do Big Picture so sera detectada quando a Steam fechar."
+            echo "Warning: wmctrl not found; Big Picture exit will only be detected when Steam closes."
         fi
         return
     fi
 
-    echo "Dependencias ausentes no host: ${missing[*]}"
-    echo "Instale os pacotes equivalentes da sua distribuicao:"
+    echo "Missing dependencies on the host: ${missing[*]}"
+    echo "Install the equivalent packages from your distribution:"
     echo "  Fedora/Bazzite: jq kscreen procps-ng wmctrl"
     echo "  Debian/Ubuntu:  jq kde-cli-tools procps wmctrl"
     echo "  Arch:           jq kscreen procps-ng wmctrl"
-    echo "Depois execute este instalador novamente."
+    echo "Then run this installer again."
     exit 1
 }
 
 if [[ "${1:-}" == "--system" ]]; then
     DEST="/usr/local/bin"
-    [[ $EUID -eq 0 ]] || { echo "Use 'sudo $0 --system' para instalar para todos os usuarios." >&2; exit 1; }
+    [[ $EUID -eq 0 ]] || { echo "Use 'sudo $0 --system' to install for all users." >&2; exit 1; }
 else
     DEST="${HOME}/.local/bin"
 fi
@@ -39,12 +39,12 @@ check_dependencies
 install -m755 "${BACKEND_DIR}/open-couch-engine" "${DEST}/open-couch-engine"
 install -m755 "${BACKEND_DIR}/open-couch-log-viewer" "${DEST}/open-couch-log-viewer"
 
-echo "Instalado em ${DEST}."
+echo "Installed to ${DEST}."
 if [[ "$DEST" == "${HOME}/.local/bin" ]]; then
     case ":$PATH:" in
         *":${HOME}/.local/bin:"*) ;;
-        *) echo "Aviso: ${HOME}/.local/bin nao esta no seu PATH. Adicione-o no seu shell rc." ;;
+        *) echo "Warning: ${HOME}/.local/bin is not on your PATH. Add it to your shell rc." ;;
     esac
 fi
 
-echo "Agora instale o app Open Couch (Flatpak) para configurar e usar a interface grafica."
+echo "Now install the Open Couch app (Flatpak) to configure and use the graphical interface."
