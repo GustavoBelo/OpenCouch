@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="${SCRIPT_DIR}/../../backend"
+# Bumped automattically by release.sh, do not edit manually
+SELF_VERSION="1.1.0"
+REPO_URL="https://raw.githubusercontent.com/gustavobelo/open-couch/v${SELF_VERSION}/backend"
+
+# Resolve SCRIPT_DIR only when the script lives on disk (not piped via curl)
+if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" != "/dev/stdin" && "${BASH_SOURCE[0]}"  != "bash" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LOCAL_BACKEND="${SCRIPT_DIR}/../../backend"
+else
+    LOCAL_BACKEND=""
+fi
 
 check_dependencies() {
     local cmd
@@ -27,17 +36,68 @@ check_dependencies() {
     exit 1
 }
 
-if [[ "${1:-}" == "--system" ]]; then
-    DEST="/usr/local/bin"
-    [[ $EUID -eq 0 ]] || { echo "Use 'sudo $0 --system' to install for all users." >&2; exit 1; }
-else
-    DEST="${HOME}/.local/bin"
-fi
+install_remote() {
+    local dest="$1"
+    local tmpdir
+    tmpdir="$(mktemp -d)"
+    trap 'rm -rf "${tmpdir}"' RETURN
+
+    echo "Downloading Open Couch engine v${SELF_VERSION}..."
+    curl -fsSL "${REPO_URL}/open-couch-engine" -o "${tmpdir}/open-couch-engine"
+    curl -fsSL "${REPO_URL}/open-couch-log-viewer" -o "${tmpdir}/open-couch-log-viewer"
+    curl -fsSL "${REPO_URL}/SHA256SUMS" -o "${tmpdir}/SHA256SUMS"
+
+    (cd "${tmpdir}" && sha256sum -c SHA256SUMS --ignore-missing --quiet) \
+        || { echo "SHA256 checksum verification failed. Aborting."; exit 1; }
+
+    install -m755 "${tmpdir}/open-couch-engine" "${dest}/open-couch-engine"
+    install -m755 "${tmpdir}/open-couch-log-viewer" "${dest}/open-couch-log-viewer"
+}
+
+install_local() {
+    local dest="$1"
+    if [[ -z "${LOCAL_BACKEND}" ]]; then
+        echo "Local backend path not set. Cannot install local build."
+        exit 1
+    fi
+
+    echo "Installing Open Couch engine from local build..."
+    install -m755 "${LOCAL_BACKEND}/open-couch-engine" "${dest}/open-couch-engine"
+    install -m755 "${LOCAL_BACKEND}/open-couch-log-viewer" "${dest}/open-couch-log-viewer"
+}
+
+# --- Argunment parsing --- 
+FORCE_UPDATE=false
+DEST="${HOME}/.local/bin"
+
+for arg in "$@"; do
+    case "$arg" in
+        --system)
+            DEST="/usr/local/bin"
+            [[ $EUID -eq 0 ]] || { echo "Use 'sudo $0 --system' to install for all users." >&2; exit 1; }
+            ;;
+        --update)
+            FORCE_UPDATE=true ;;
+        *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+    esac
+done
 
 mkdir -p "$DEST"
 check_dependencies
-install -m755 "${BACKEND_DIR}/open-couch-engine" "${DEST}/open-couch-engine"
-install -m755 "${BACKEND_DIR}/open-couch-log-viewer" "${DEST}/open-couch-log-viewer"
+
+# Skip if already installed and --update was not requested
+if [[ "${FORCE_UPDATE}" == false && -x "${DEST}/open-couch-engine" ]]; then
+    echo "Open Couch engine is already installed at ${DEST}. Use --update to reinstall."
+    exit 0
+fi
+
+if [[ -n "${LOCAL_BACKEND}" && -f "${LOCAL_BACKEND}/open-couch-engine" ]]; then
+    install_local "$DEST"
+else
+    command -v curl >/dev/null 2>&1 || { echo "curl is required for remote install." >&2; exit 1; }
+    command -v sha256sum >/dev/null 2>&1 || { echo "sha256sum is required for remote install." >&2; exit 1; }
+    install_remote "$DEST"
+fi
 
 echo "Installed to ${DEST}."
 if [[ "$DEST" == "${HOME}/.local/bin" ]]; then
@@ -47,4 +107,4 @@ if [[ "$DEST" == "${HOME}/.local/bin" ]]; then
     esac
 fi
 
-echo "Now install the Open Couch app (Flatpak) to configure and use the graphical interface."
+echo "Now install the Open Couch app (Flatpak and AppImage) to configure and use the graphical interface."

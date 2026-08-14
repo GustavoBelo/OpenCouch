@@ -1,6 +1,7 @@
 #include "appinfomodel.h"
 
 #include <QCoreApplication>
+#include <QFileInfo>
 #include <QString>
 
 #include "appversion.h"
@@ -38,4 +39,22 @@ QString AppInfoModel::version() const
 QString AppInfoModel::formattedVersion() const
 {
     return version();
+}
+
+QString AppInfoModel::distributionType() const
+{
+    if (QFileInfo::exists(QStringLiteral("/.flatpak-info"))) {
+        return QStringLiteral("flatpak");
+    }
+    if (!qEnvironmentVariable("APPIMAGE").isEmpty()) {
+        return QStringLiteral("appimage");
+    }
+    return QStringLiteral("native");
+}
+
+QString AppInfoModel::installScriptUrl() const
+{
+    return QStringLiteral("https://raw.githubusercontent.com/GustavoBelo/open-couch/v")
+           + version() 
+           + QStringLiteral("/packaging/host/install.sh");
 }

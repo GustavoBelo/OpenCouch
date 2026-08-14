@@ -181,7 +181,7 @@ Controls.Popup {
                     iconName: "dialog-information"
                     titleText: qsTrId("onboarding.requirement_title")
                     descText: qsTrId("onboarding.requirement_description") + "\n\n" + qsTrId("onboarding.install_description")
-                    codeSnippet: "./packaging/host/install.sh"
+                    codeSnippet: "bash <(curl -fsSL " + appInfo.installScriptUrl + ")"
                 }
             }
         }
