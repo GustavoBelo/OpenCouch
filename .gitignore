@@ -1,6 +1,7 @@
 # Build artifacts
 app/build/
 app-build/
+appimage-build/
 build/
 *.o
 *.obj

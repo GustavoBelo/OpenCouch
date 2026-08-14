@@ -14,24 +14,17 @@ LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/co
 PLUGIN_URL="https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
 
 # --- Toolchain ---
-locale_or_download() {
-    local name ="$1" url="$2"
-    if command -v "$name" &> /dev/null 2>&1; then
-        echo "$(command -v "$name")"
-        return
-    fi
-    local cached="${BUILD_DIR}/${name}"
-    if [[ ! -f "${cached}" ]]; then
-        echo "Downloading ${name}..." >&2
-        mkdir -p "${BUILD_DIR}"
-        curl -fsSL "${url}" -o "${cached}"
-        chmod +x "${cached}"
-    fi
-    echo "${cached}"
+# Both tools must live in the same directory, so we can use the same AppImage runtime for both.
+mkdir -p "${BUILD_DIR}"
+_fetch() {
+    local dest="$1" url="$2"
+    [[ -x "$dest" ]] && return
+    echo "Downloading $(basename "$dest")..." >&2
+    curl -fsSL "$url" -o "$dest" && chmod +x "$dest"
 }
-
-LINUXDEPLOY="$(locale_or_download linuxdeploy "${LINUXDEPLOY_URL}")"
-LINUXDEPLOY_PLUGIN_QT="$(locale_or_download linuxdeploy-plugin-qt "${PLUGIN_URL}")"
+_fetch "$BUILD_DIR/linuxdeploy" "$LINUXDEPLOY_URL"
+_fetch "$BUILD_DIR/linuxdeploy-plugin-qt" "$PLUGIN_URL"
+LINUXDEPLOY="$BUILD_DIR/linuxdeploy"
 
 # --- Build ---
 
@@ -52,17 +45,18 @@ mkdir -p "${APPDIR}/usr/share/applications" \
 cp "$SCRIPT_DIR/io.github.gustavobelo.opencouch.desktop" \
    "$APPDIR/usr/share/applications/"
 
-cp "$SCRIPT_DIR/io.github.gustavobelo.opencouch.svg" \
+cp "$SCRIPT_DIR/icons/io.github.gustavobelo.opencouch.svg" \
    "$APPDIR/usr/share/icons/hicolor/scalable/apps/"
 
 # Remove X-Flatpak key - not applicable to AppImage
 sed -i '/^X-Flatpak/d' "$APPDIR/usr/share/applications/io.github.gustavobelo.opencouch.desktop"
 
 # --- Bundle Qt6 + Kirigami QML modules ---
-export QMAKE="${QMAKE:-qmake6}"
+export QMAKE="${QMAKE:-$(command -v qmake6 || command -v qmake-qt6 || command -v qmake || echo qmake6)}"
 export QML_SOURCES_PATHS="${PROJECT_DIR}/app/qml"
-# Required for linuxdeploy-plugin-qt to find the Kirigami QML imports
 export EXTRA_QT_PLUGINS="wayland-shell-integration;wayland-graphics-integration-client"
+# Suppress errors for missing option Wayland plugins, since they are not needed for AppImage
+export EXTRA_QT_PLUGINS_OPTIONAL=1
 
 "$LINUXDEPLOY" \
     --appdir "${APPDIR}" \
