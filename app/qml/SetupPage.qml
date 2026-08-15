@@ -322,6 +322,7 @@ Kirigami.ScrollablePage {
         Kirigami.Heading {
             text: qsTrId("settings.couch_behavior")
             level: 3
+            Layout.topMargin: Kirigami.Units.smallSpacing
         }
 
         Kirigami.FormLayout {
@@ -399,6 +400,7 @@ Kirigami.ScrollablePage {
         Kirigami.Heading {
             text: qsTrId("settings.startup")
             level: 3
+            Layout.topMargin: Kirigami.Units.smallSpacing
         }
 
         Kirigami.FormLayout {
