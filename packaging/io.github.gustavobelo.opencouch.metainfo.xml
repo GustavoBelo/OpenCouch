@@ -34,6 +34,10 @@
       <li>Restores your original layout when Steam closes</li>
       <li>Live status and log view</li>
     </ul>
+    <p>**Post-installation setup required:** this GUI runs sandboxed, but it controls
+    your displays through a small host engine that must be installed separately.
+    Run the one-line installer shown in the app onboarding, or see the project
+    homepage for instructions.</p>
   </description>
 
   <launchable type="desktop-id">io.github.gustavobelo.opencouch.desktop</launchable>
@@ -42,22 +46,22 @@
     <screenshot type="default">
       <caption>Open Couch dashboard with one-click layout switching and display status</caption>
       <caption xml:lang="pt-BR">Tela inicial do Open Couch com alternância de layout com um clique e status dos monitores</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/dashboard.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.2.0/packaging/screenshots/dashboard.png</image>
     </screenshot>
     <screenshot>
       <caption>Guided setup to detect and configure desktop and TV outputs</caption>
       <caption xml:lang="pt-BR">Configuracao guiada para detectar e configurar as saidas do desktop e da TV</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/onboarding.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.2.0/packaging/screenshots/onboarding.png</image>
     </screenshot>
     <screenshot>
       <caption>Display settings for the desk and TV layouts (top)</caption>
       <caption xml:lang="pt-BR">Ajustes de exibicao para os layouts da mesa e da TV (parte de cima)</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/settings-1.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.2.0/packaging/screenshots/settings-1.png</image>
     </screenshot>
     <screenshot>
       <caption>Display settings for the desk and TV layouts (bottom)</caption>
       <caption xml:lang="pt-BR">Ajustes de exibicao para os layouts da mesa e da TV (parte de baixo)</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/settings-2.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.2.0/packaging/screenshots/settings-2.png</image>
     </screenshot>
   </screenshots>
 

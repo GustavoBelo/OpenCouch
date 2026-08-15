@@ -37,7 +37,7 @@ jobs:
           bundle: OpenCouch.flatpak
           manifest-path: packaging/io.github.gustavobelo.opencouch.yml
           branch: v${{ steps.version.outputs.version }}
-          cache-key: flatpak-kde-6.10-${{ runner.arch }}
+          cache-key: flatpak-kde-6.11-${{ runner.arch }}
           upload-artifact: false
 
       - name: Upload Flatpak bundle
