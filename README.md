@@ -17,6 +17,10 @@ Whether you are running a standard KDE Plasma desktop or an immutable gaming dis
 - **Smart Restore:** Brings your original layout back exactly as it was when Steam closes.
 - **Unobtrusive:** Lives in your system tray with live status and log viewing.
 
+## 📸 Screenshots
+
+![Open Couch initial screen](packaging/screenshots/dashboard.png)
+
 ## 📦 Installation
 
 Open Couch consists of two parts: a sandboxed GUI (Flatpak) and a lightweight bash engine that runs on the host to control `kscreen-doctor` and Steam.

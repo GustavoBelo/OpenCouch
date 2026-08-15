@@ -40,12 +40,24 @@
 
   <screenshots>
     <screenshot type="default">
-      <caption>Dashboard showing the switch buttons and current display status</caption>
+      <caption>Open Couch dashboard with one-click layout switching and display status</caption>
+      <caption xml:lang="pt-BR">Tela inicial do Open Couch com alternância de layout com um clique e status dos monitores</caption>
       <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/dashboard.png</image>
     </screenshot>
     <screenshot>
-      <caption>Guided setup for detecting desktop and TV outputs</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/setup.png</image>
+      <caption>Guided setup to detect and configure desktop and TV outputs</caption>
+      <caption xml:lang="pt-BR">Configuracao guiada para detectar e configurar as saidas do desktop e da TV</caption>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/onboarding.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Display settings for the desk and TV layouts (top)</caption>
+      <caption xml:lang="pt-BR">Ajustes de exibicao para os layouts da mesa e da TV (parte de cima)</caption>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/settings-1.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Display settings for the desk and TV layouts (bottom)</caption>
+      <caption xml:lang="pt-BR">Ajustes de exibicao para os layouts da mesa e da TV (parte de baixo)</caption>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/settings-2.png</image>
     </screenshot>
   </screenshots>
 
