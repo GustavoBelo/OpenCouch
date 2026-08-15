@@ -30,6 +30,11 @@ int main(int argc, char *argv[])
     app.setOrganizationName(QStringLiteral("io.github.gustavobelo"));
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("io.github.gustavobelo.opencouch")));
 
+    QTranslator enFallback;
+    if (enFallback.load(QStringLiteral(":/i18n/opencouch_en.qm"))) {
+        app.installTranslator(&enFallback);
+    }
+
     QTranslator translator;
     const QLocale locale = QLocale::system();
     const QString catalogName = QStringLiteral("opencouch_") + locale.name() + QStringLiteral(".qm");

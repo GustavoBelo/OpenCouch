@@ -1,8 +1,8 @@
 # 🛋️ Open Couch
 
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL%20v3+-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/gustavobelo/opencouch)](https://github.com/gustavobelo/opencouch/releases)
-<!-- [![Flathub](https://img.shields.io/badge/Flathub-Open_Couch-4A90E2.svg)](https://flathub.org/apps/details/io.github.gustavobelo.opencouch) -->
+[![Release](https://img.shields.io/github/v/release/GustavoBelo/OpenCouch)](https://github.com/GustavoBelo/OpenCouch/releases)
+[![Flathub](https://img.shields.io/badge/Flathub-Open_Couch-4A90E2.svg)](https://flathub.org/apps/details/io.github.gustavobelo.opencouch)
 
 **Open Couch** is a lightweight KDE utility designed for gamers who share a single PC between a traditional desk setup and a living room TV. 
 
@@ -25,8 +25,27 @@ Whether you are running a standard KDE Plasma desktop or an immutable gaming dis
 
 Open Couch consists of two parts: a sandboxed GUI (Flatpak) and a lightweight bash engine that runs on the host to control `kscreen-doctor` and Steam.
 
-### 1. Host Engine
-The engine must run outside the sandbox to manage display layouts and system processes.
+### 1. GUI (Flatpak)
+
+Install the app from [Flathub](https://flathub.org/apps/details/io.github.gustavobelo.opencouch):
+
+```sh
+flatpak install flathub io.github.gustavobelo.opencouch
+
+```
+
+Update to new versions with `flatpak update`.
+
+### 2. Host Engine
+
+The engine must run outside the sandbox to manage display layouts and system processes. Install it with the same one-liner offered by the app onboarding:
+
+```sh
+bash <(curl -fsSL https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh)
+
+```
+
+Or, from a checkout of this repository:
 
 ```sh
 # Install for the current user (no sudo required)
@@ -35,13 +54,32 @@ The engine must run outside the sandbox to manage display layouts and system pro
 # OR install system-wide
 sudo ./packaging/host/install.sh --system
 
+# Force a reinstall (e.g. after the engine is updated)
+./packaging/host/install.sh --update
+
 ```
 
-*Note: The installer will automatically check for missing dependencies (`jq`, `kscreen-doctor`, `pgrep`) and suggest the right packages for your distribution (Fedora, Debian/Ubuntu, Arch).*
+The installer downloads the engine scripts with SHA256 checksum verification and checks for missing dependencies (`jq`, `kscreen-doctor`, `pgrep`; `wmctrl` is optional but recommended), suggesting the right packages for your distribution (Fedora, Debian/Ubuntu, Arch). When the app is already installed, it detects it and tells you to simply restart it.
 
-### 2. Flatpak GUI
+On Bazzite or other `ujust`-based systems, copy `packaging/host/open-couch.just` to `/etc/just/ujust.d/` and use:
 
-You can download the latest `.flatpak` bundle from the [Releases page](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/gustavobelo/opencouch/releases), or build it yourself:
+```sh
+ujust install-open-couch   # install the engine
+ujust update-open-couch    # update it
+ujust remove-open-couch    # remove it
+
+```
+
+### 3. Alternative: Install from a bundle
+
+Instead of Flathub, download the latest `OpenCouch.flatpak` bundle from the [Releases page](https://github.com/GustavoBelo/OpenCouch/releases) and install it directly:
+
+```sh
+flatpak install OpenCouch.flatpak
+
+```
+
+To build the bundle yourself:
 
 ```sh
 ./packaging/build-flatpak.sh
@@ -65,7 +103,7 @@ cmake --build app-build
 Versioning is driven by git tags (`vX.Y.Z`). To create a new release and trigger the GitHub Actions CI (which builds the bundle and generates release notes):
 
 ```sh
-./packaging/release.sh 1.1.0
+./packaging/release.sh 1.1.2
 
 ```
 
@@ -75,7 +113,7 @@ This script ensures the fallback `app/version.txt` stays in sync with the git ta
 
 * `app/` — Qt 6 / Kirigami GUI (C++17 sources, QML, translations).
 * `backend/` — `open-couch-engine` (display/Steam control script) + log viewer.
-* `packaging/` — Flatpak manifest, metainfo, desktop entry, icons, and host installer.
+* `packaging/` — Flatpak manifest, metainfo, desktop entry, icons, and host installer (`install.sh` + ujust recipes).
 
 ## 📄 License
 

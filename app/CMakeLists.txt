@@ -101,6 +101,11 @@ qt_add_translations(opencouch
     TS_FILES
         translations/opencouch_en.ts
         translations/opencouch_pt_BR.ts
+        translations/opencouch_en_GB.ts
+        translations/opencouch_de_DE.ts
+        translations/opencouch_es_ES.ts
+        translations/opencouch_fr_FR.ts
+        translations/opencouch_zh_CN.ts
 )
 
 target_link_libraries(opencouch PRIVATE
