@@ -9,7 +9,7 @@
 
 # Bumped automatically by release.sh
 OPEN_COUCH_VERSION := "1.1.0"
-REPO_URL := "https://raw.githubusercontent.com/GustavoBelo/open-couch/v" + OPEN_COUCH_VERSION + "/backend"
+REPO_URL := "https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v" + OPEN_COUCH_VERSION + "/backend"
 DEST := env_var('HOME') / ".local/bin"
 
 _check-deps:

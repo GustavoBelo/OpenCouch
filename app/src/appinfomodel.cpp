@@ -42,7 +42,7 @@ QString AppInfoModel::formattedVersion() const
 
 QString AppInfoModel::installScriptUrl() const
 {
-    return QStringLiteral("https://raw.githubusercontent.com/GustavoBelo/open-couch/v")
+    return QStringLiteral("https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v")
            + version() 
            + QStringLiteral("/packaging/host/install.sh");
 }

@@ -45,7 +45,7 @@
 <message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copy selected</translation></message>
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Download selected</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Could not complete the action.</translation></message>
-<message id="engine.missing"><source>engine.missing</source><translation>The host component is not ready. Download github.com/GustavoBelo/open-couch and run ./packaging/host/install.sh to install the dependencies and engine.</translation></message>
+<message id="engine.missing"><source>engine.missing</source><translation>The host component is not ready. Download github.com/GustavoBelo/OpenCouch and run ./packaging/host/install.sh to install the dependencies and engine.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Start Open Couch automatically when logging in</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>When enabled, the app opens automatically after you log in.</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Continue running in the background when the window is closed</translation></message>

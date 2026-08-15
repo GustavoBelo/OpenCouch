@@ -41,17 +41,17 @@
   <screenshots>
     <screenshot type="default">
       <caption>Dashboard showing the switch buttons and current display status</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/open-couch/main/packaging/screenshots/dashboard.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/dashboard.png</image>
     </screenshot>
     <screenshot>
       <caption>Guided setup for detecting desktop and TV outputs</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/open-couch/main/packaging/screenshots/setup.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/screenshots/setup.png</image>
     </screenshot>
   </screenshots>
 
-  <url type="homepage">https://github.com/GustavoBelo/open-couch</url>
-  <url type="bugtracker">https://github.com/GustavoBelo/open-couch/issues</url>
-  <url type="vcs-browser">https://github.com/GustavoBelo/open-couch</url>
+  <url type="homepage">https://github.com/GustavoBelo/OpenCouch</url>
+  <url type="bugtracker">https://github.com/GustavoBelo/OpenCouch/issues</url>
+  <url type="vcs-browser">https://github.com/GustavoBelo/OpenCouch</url>
 
   <developer id="io.github.gustavobelo">
     <name>Gustavo Belo</name>

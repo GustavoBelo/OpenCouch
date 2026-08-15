@@ -45,7 +45,7 @@
 <message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copiar selecionado</translation></message>
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Baixar selecionado</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Não foi possível concluir a ação.</translation></message>
-<message id="engine.missing"><source>engine.missing</source><translation>O componente do sistema não está pronto. Baixe github.com/GustavoBelo/open-couch e execute ./packaging/host/install.sh para instalar as dependências e o engine.</translation></message>
+<message id="engine.missing"><source>engine.missing</source><translation>O componente do sistema não está pronto. Baixe github.com/GustavoBelo/OpenCouch e execute ./packaging/host/install.sh para instalar as dependências e o engine.</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Bem-vindo ao Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>O Open Couch alterna o layout das telas com um clique, entre o modo desktop e o modo sala.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuração</translation></message>
