@@ -5,6 +5,7 @@ sdk: org.kde.Sdk
 command: opencouch
 
 finish-args:
+  - --share=ipc
   - --talk-name=org.freedesktop.Flatpak
   - --filesystem=xdg-config/open-couch-engine:create
   - --filesystem=xdg-config/autostart:create
