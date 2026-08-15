@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bumped automattically by release.sh, do not edit manually
+# Bumped automatically by release.sh, do not edit manually
 SELF_VERSION="1.1.0"
-REPO_URL="https://raw.githubusercontent.com/gustavobelo/open-couch/v${SELF_VERSION}/backend"
+REPO_URL="https://raw.githubusercontent.com/GustavoBelo/open-couch/v${SELF_VERSION}/backend"
 
 # Resolve SCRIPT_DIR only when the script lives on disk (not piped via curl)
 if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" != "/dev/stdin" && "${BASH_SOURCE[0]}"  != "bash" ]]; then
@@ -107,4 +107,4 @@ if [[ "$DEST" == "${HOME}/.local/bin" ]]; then
     esac
 fi
 
-echo "Now install the Open Couch app (Flatpak and AppImage) to configure and use the graphical interface."
+echo "Now install the Open Couch app (Flatpak) to configure and use the graphical interface."

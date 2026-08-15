@@ -10,7 +10,6 @@ class AppInfoModel : public QObject
     Q_PROPERTY(QString appName READ appName CONSTANT)
     Q_PROPERTY(QString displayName READ displayName CONSTANT)
     Q_PROPERTY(QString version READ version CONSTANT)
-    Q_PROPERTY(QString distributionType READ distributionType CONSTANT)
     Q_PROPERTY(QString installScriptUrl READ installScriptUrl CONSTANT)
 
 public:
@@ -19,7 +18,6 @@ public:
     QString appName() const;
     QString displayName() const;
     QString version() const;
-    QString distributionType() const;
     QString installScriptUrl() const;
 
     Q_INVOKABLE QString formattedVersion() const;

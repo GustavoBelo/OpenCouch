@@ -39,7 +39,7 @@ fi
 RELEASE_DATE="$(date -u +%Y-%m-%d)"
 printf 'VERSION=%s\nRELEASE_DATE=%s\n' "$VERSION" "$RELEASE_DATE" > "$VERSION_FILE"
 
-# Sync version into install.sh and open-couch.just
+# Sync version into host installer files
 JUST_FILE="${SCRIPT_DIR}/host/open-couch.just"
 INSTALL_FILE="${SCRIPT_DIR}/host/install.sh"
 sed -i -e "s/^OPEN_COUCH_VERSION := \"[^\"]*\"/OPEN_COUCH_VERSION := \"${VERSION}\"/" "$JUST_FILE"

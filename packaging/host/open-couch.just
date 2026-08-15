@@ -4,7 +4,7 @@
 # "ujust install-open-couch" is available.
 #
 # The graphical app (Open Couch) is distributed separately via
-# Flatpak/Flathub or AppImage; this recipe only installs the script that needs to run
+# Flatpak/Flathub; this recipe only installs the script that needs to run
 # outside the sandbox (display control via kscreen-doctor and Steam).
 
 # Bumped automatically by release.sh
@@ -17,7 +17,7 @@ _check-deps:
     set -euo pipefail
     missing=()
     for cmd in jq kscreen-doctor pgrep; do
-        command -v "$cmd" >/dev/null 2>$1 || missing+=("$cmd")
+        command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
     done
     if ((${#missing[@]} > 0 )); then
         echo "Missing dependencies on the host: ${missing[*]}"
@@ -27,12 +27,12 @@ _check-deps:
         echo "  Arch:           jq kscreen procps-ng wmctrl"
         exit 1
     fi
-    command -v wmctrl >/dev/null 2>$1 \
+    command -v wmctrl >/dev/null 2>&1 \
         || echo "Warning: wmctrl not found; Big Picture exit will only be detected when Steam closes."
 
 
 [group('Open Couch')]
-[doc('Installs the Open Couch host script (required for the Flatpak/AppImage app to work)')]
+[doc('Installs the Open Couch host script (required for the Flatpak app to work)')]
 install-open-couch: _check-deps
     #!/usr/bin/env bash
     set -euo pipefail
@@ -40,7 +40,7 @@ install-open-couch: _check-deps
     DEST="{{DEST}}"
     mkdir -p "$DEST"
     tmpdir="$(mktemp -d)"
-    trap 'rm -rf "$(tmpdir)"' EXIT
+    trap 'rm -rf "$tmpdir"' EXIT
     curl -fsSL "${REPO_URL}/open-couch-engine"     -o "${tmpdir}/open-couch-engine"
     curl -fsSL "${REPO_URL}/open-couch-log-viewer" -o "${tmpdir}/open-couch-log-viewer"
     curl -fsSL "${REPO_URL}/SHA256SUMS"            -o "${tmpdir}/SHA256SUMS"
@@ -63,7 +63,7 @@ update-open-couch:
     trap 'rm -rf "$tmpdir"' EXIT
     echo "Updating Open Couch engine to v{{OPEN_COUCH_VERSION}}..."
     curl -fsSL "${REPO_URL}/open-couch-engine"      -o "${tmpdir}/open-couch-engine"
-    curl -fsSL "${REPO_URL}/open-couch-log-viewer"  -o "${tmpdir}/open-log-viewer" 
+    curl -fsSL "${REPO_URL}/open-couch-log-viewer"  -o "${tmpdir}/open-couch-log-viewer" 
     curl -fsSL "${REPO_URL}/SHA256SUMS"             -o "${tmpdir}/SHA256SUMS" 
     (cd "$tmpdir" && sha256sum -c SHA256SUMS --ignore-missing --quiet) \
         || { echo "SHA256 verification failed - aborting." >&2; exit 1; }
