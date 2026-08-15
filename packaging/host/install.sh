@@ -87,7 +87,9 @@ check_dependencies
 
 # Skip if already installed and --update was not requested
 if [[ "${FORCE_UPDATE}" == false && -x "${DEST}/open-couch-engine" ]]; then
-    echo "Open Couch engine is already installed at ${DEST}. Use --update to reinstall."
+    echo "Open Couch engine is already installed at ${DEST}."
+    echo "If you came from the Open Couch app onboarding, just restart the app to continue."
+    echo "Run with --update to force a reinstall."
     exit 0
 fi
 
@@ -107,4 +109,10 @@ if [[ "$DEST" == "${HOME}/.local/bin" ]]; then
     esac
 fi
 
-echo "Now install the Open Couch app (Flatpak) to configure and use the graphical interface."
+if command -v flatpak >/dev/null 2>&1 \
+   && flatpak list --app --columns=application 2>/dev/null | grep -qx 'io.github.gustavobelo.opencouch'; then
+    echo "The Open Couch app is already installed. Restart it (or reopen the onboarding) to use the engine."
+else
+    echo "Now install the Open Couch app (Flatpak) to use the engine:"
+    echo "  flatpak install flathub io.github.gustavobelo.opencouch"
+fi
