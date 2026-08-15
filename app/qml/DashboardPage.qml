@@ -91,12 +91,55 @@ Kirigami.ScrollablePage {
             showCloseButton: true
         }
 
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: Kirigami.Units.gridUnit * 4
+            visible: backend.running
+            radius: Kirigami.Units.smallSpacing
+            color: Kirigami.Theme.positiveBackgroundColor
+            border.color: Kirigami.Theme.positiveTextColor
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.smallSpacing
+                spacing: Kirigami.Units.largeSpacing
+
+                Kirigami.Icon {
+                    source: "video-display"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    spacing: 2
+
+                    Kirigami.Heading {
+                        level: 3
+                        text: qsTrId("status.couch")
+                        color: Kirigami.Theme.positiveTextColor
+                    }
+
+                    Controls.Label {
+                        text: qsTrId("dashboard.couch_active")
+                        opacity: 0.85
+                        font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        color: Kirigami.Theme.positiveTextColor
+                    }
+                }
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true
             spacing: Kirigami.Units.largeSpacing
 
             Controls.Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Kirigami.Units.gridUnit * 3
                 text: qsTrId("dashboard.enter_couch")
                 icon.name: "media-playback-start"
                 highlighted: !backend.running
@@ -109,6 +152,7 @@ Kirigami.ScrollablePage {
 
             Controls.Button {
                 Layout.fillWidth: true
+                Layout.preferredHeight: Kirigami.Units.gridUnit * 3
                 text: qsTrId("dashboard.return_desktop")
                 icon.name: "go-home"
                 enabled: backend.running
@@ -120,26 +164,18 @@ Kirigami.ScrollablePage {
             }
         }
 
-        Kirigami.InlineMessage {
-            Layout.fillWidth: true
-            visible: backend.running
-            type: Kirigami.MessageType.Information
-            text: qsTrId("dashboard.couch_active")
-            showCloseButton: false
-        }
-
         Kirigami.Heading {
             text: qsTrId("dashboard.display_status")
             level: 3
+            Layout.topMargin: Kirigami.Units.smallSpacing
         }
 
-        Controls.TextArea {
+        Controls.Label {
             id: statusArea
             Layout.fillWidth: true
-            Layout.minimumHeight: implicitHeight
-            readOnly: true
-            wrapMode: Controls.TextArea.Wrap
+            wrapMode: Text.Wrap
             text: qsTrId("common.loading")
+            opacity: 0.85
         }
 
         Controls.Button {
@@ -157,9 +193,10 @@ Kirigami.ScrollablePage {
         Kirigami.Heading {
             text: qsTrId("common.log")
             level: 3
+            Layout.topMargin: Kirigami.Units.smallSpacing
         }
 
-        Flow {
+        RowLayout {
             Layout.fillWidth: true
             spacing: Kirigami.Units.smallSpacing
 
@@ -176,40 +213,51 @@ Kirigami.ScrollablePage {
             }
 
             Controls.Button {
-                text: qsTrId("dashboard.download_log")
-                enabled: page.viewingHistoryId === ""
-                icon.name: "document-save"
-                onClicked: {
-                    const path = backend.exportLogToHome();
-                    if (path.length > 0) {
-                        banner.type = Kirigami.MessageType.Positive;
-                        banner.text = qsTrId("dashboard.log_saved").arg(path);
-                    } else {
-                        banner.type = Kirigami.MessageType.Error;
-                        banner.text = qsTrId("dashboard.log_save_failed");
-                    }
-                    banner.visible = true;
-                }
-            }
-
-            Controls.Button {
-                text: qsTrId("dashboard.clear_log")
-                icon.name: "edit-clear"
-                enabled: page.viewingHistoryId === ""
-                onClicked: {
-                    logArea.clear();
-                    backend.clearLog();
-                    banner.type = Kirigami.MessageType.Positive;
-                    banner.text = qsTrId("dashboard.log_cleared");
-                    banner.visible = true;
-                }
-            }
-
-            Controls.Button {
                 text: qsTrId("dashboard.log_history")
                 icon.name: "document-open-recent"
                 onClicked: historyDialog.open()
             }
+
+            Controls.ToolButton {
+                id: logOverflowButton
+                icon.name: "overflow-menu"
+                enabled: page.viewingHistoryId === ""
+                onClicked: logOptionsMenu.popup(logOverflowButton)
+                
+                Controls.Menu {
+                    id: logOptionsMenu
+
+                    Controls.MenuItem {
+                        text: qsTrId("dashboard.download_log")
+                        icon.name: "document-save"
+                        onTriggered: {
+                            const path = backend.exportLogToHome();
+                            if (path.length > 0) {
+                                banner.type = Kirigami.MessageType.Positive;
+                                banner.text = qsTrId("dashboard.log_saved").arg(path);
+                            } else {
+                                banner.type = Kirigami.MessageType.Error;
+                                banner.text = qsTrId("dashboard.log_save_failed");
+                            }
+                            banner.visible = true;
+                        }
+                    }
+
+                    Controls.MenuItem {
+                        text: qsTrId("dashboard.clear_log")
+                        icon.name: "edit-clear"
+                        onTriggered: {
+                            logArea.clear();
+                            backend.clearLog();
+                            banner.type = Kirigami.MessageType.Positive;
+                            banner.text = qsTrId("dashboard.log_cleared");
+                            banner.visible = true;
+                        }
+                    }
+                }
+            }
+
+            Item { Layout.fillWidth: true }
         }
 
         Kirigami.InlineMessage {
