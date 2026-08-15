@@ -125,18 +125,23 @@ Controls.Popup {
                                 anchors.margins: Kirigami.Units.smallSpacing
                                 spacing: Kirigami.Units.smallSpacing
 
-                                Controls.TextField {
+                                Controls.TextArea {
                                     id: codeField
                                     Layout.fillWidth: true
                                     text: codeSnippet
                                     font.family: "monospace"
                                     readOnly: true
+                                    wrapMode: Text.WrapAnywhere
+                                    selectByMouse: true
                                     background: null
                                     color: Kirigami.Theme.textColor
+                                    topPadding: 0
+                                    bottomPadding: 0
                                 }
 
                                 Controls.ToolButton {
                                     icon.name: "edit-copy"
+                                    Layout.alignment: Qt.AlignTop
                                     Controls.ToolTip.text: qsTrId("common.copy_command")
                                     Controls.ToolTip.visible: hovered
                                     onClicked: {
