@@ -52,7 +52,7 @@
 <message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Escolha as telas do PC e da TV, além da resolução e do zoom (escala). O valor padrão 1 equivale a 100%.</translation></message>
 <message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Monitor do PC no Modo Sala</translation></message>
 <message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>Por padrão, a tela do PC apaga quando você vai pra sala, isso evita o jogo abrir no monitor errado... mas dá pra deixar as duas ligadas se preferir.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. Como usar</translation></message>
+<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. Como usar?</translation></message>
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Clique em "Ir para a TV" para ligar a TV e abrir a Steam em tela cheia, ou em "Voltar para o PC" para deixar tudo como estava.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permissão necessária</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Para conseguir trocar de tela e abrir a Steam, o Open Couch precisa de um ajudante instalado direto no sistema operacional.</translation></message>

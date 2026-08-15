@@ -52,7 +52,7 @@
 <message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Select your Desktop and TV displays, plus their resolution and zoom (scaling). Default 1 means 100%.</translation></message>
 <message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Desktop Monitor in Couch Mode</translation></message>
 <message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>By default, your desk monitor turns off when you head to the couch so games don't launch on the wrong screen... but you can keep both on if you prefer.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. How to Use</translation></message>
+<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. How to Use?</translation></message>
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Click "Go to TV" to turn on your TV and launch Steam in full screen, or "Back to Desktop" to put everything back the way it was.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permission Needed</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>To switch displays and launch Steam properly, Open Couch needs a helper installed directly on your OS.</translation></message>
