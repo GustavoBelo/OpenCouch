@@ -65,7 +65,7 @@ configure_file(
 find_package(ECM REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Qml Quick QuickControls2)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Qml Quick QuickControls2 DBus)
 find_package(KF6Kirigami REQUIRED)
 
 qt_add_executable(opencouch
@@ -115,6 +115,7 @@ target_link_libraries(opencouch PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::QuickControls2
+    Qt6::DBus
 )
 
 target_include_directories(opencouch PRIVATE

@@ -1,10 +1,12 @@
 #include "configstore.h"
 
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDBusPendingCall>
+#include <QDBusPendingReply>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QSettings>
-#include <QStandardPaths>
 #include <QTextStream>
 
 namespace {
@@ -31,11 +33,6 @@ QString ConfigStore::configFilePath()
     return base + QStringLiteral("/open-couch-engine/config.env");
 }
 
-QString ConfigStore::autostartDesktopFilePath()
-{
-    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
-        + QStringLiteral("/autostart/io.github.gustavobelo.opencouch.desktop");
-}
 
 QVariantMap ConfigStore::loadConfig() const
 {
@@ -86,31 +83,46 @@ bool ConfigStore::saveConfig(const QVariantMap &config) const
 
 bool ConfigStore::autostartEnabled() const
 {
-    return QFileInfo::exists(autostartDesktopFilePath());
+    return QSettings().value(QStringLiteral("autostartEnabled"), false).toBool();
 }
 
 bool ConfigStore::setAutostart(bool enabled) const
 {
-    const QString path = autostartDesktopFilePath();
-    if (!enabled) {
-        return !QFileInfo::exists(path) || QFile::remove(path);
-    }
+    return requestBackgroundPortal(enabled);
+}
 
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+bool ConfigStore::requestBackgroundPortal(bool enabled) const
+{
+    QDBusInterface portal (
+        QStringLiteral("org.freedesktop.portal.Desktop"),
+        QStringLiteral("/org/freedesktop/portal/desktop"),
+        QStringLiteral("org.freedesktop.portal.Background"),
+        QDBusConnection::sessionBus()
+    );
+
+    if (!portal.isValid()) {
         return false;
     }
 
-    QTextStream stream(&file);
-    stream << "[Desktop Entry]\n"
-           << "Type=Application\n"
-           << "Name=Open Couch\n"
-           << "Comment=Switch the display layout between desktop and couch mode\n"
-           << "Exec=flatpak run io.github.gustavobelo.opencouch\n"
-           << "Icon=io.github.gustavobelo.opencouch\n"
-           << "X-GNOME-Autostart-enabled=true\n";
-    return true;
+    QVariantMap options;
+    options[QStringLiteral("reason")] =
+        QStringLiteral("Used to monitor Steam and automatically switch displays.");
+    options[QStringLiteral("autostart")] = enabled;
+    options[QStringLiteral("commandLine")] = QStringList{QStringLiteral("opencouch")};
+    options[QStringLiteral("dbus-activatable")] = false;
+
+    QDBusPendingCall pending = portal.asyncCall(
+        QStringLiteral("RequestBackground"),
+        QStringLiteral(""),
+        options
+    );
+
+    // Store the intended preference immediately; portal dialog is shown asunchronously
+    QSettings().setValue(QStringLiteral("autostartEnabled"), enabled);
+
+    QDBusPendingReply<QDBusObjectPath> reply(pending);
+    reply.waitForFinished();
+    return !reply.isError();
 }
 
 bool ConfigStore::backgroundOnClose() const

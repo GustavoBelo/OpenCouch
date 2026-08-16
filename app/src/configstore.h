@@ -23,5 +23,7 @@ public:
     void setOnboardingSeen(bool seen) const;
 
     static QString configFilePath();
-    static QString autostartDesktopFilePath();
+    
+private:
+    bool requestBackgroundPortal(bool enabled) const;
 };
