@@ -45,7 +45,8 @@
 <message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>复制所选项</translation></message>
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>下载所选项</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>操作失败，无法完成。</translation></message>
-<message id="engine.missing"><source>engine.missing</source><translation>系统缺少必要组件。请前往 github.com/GustavoBelo/OpenCouch 下载，并运行 ./packaging/host/install.sh 进行安装。</translation></message>
+<message id="engine.missing"><source>engine.missing</source><translation>缺少使用客厅模式的系统组件。</translation></message>
+<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>查看安装方法</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>欢迎使用 Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch 让你一键切换屏幕：去客厅瘫着打游戏，还是在书桌前用电脑，轻松搞定不折腾。</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. 基础配置</translation></message>

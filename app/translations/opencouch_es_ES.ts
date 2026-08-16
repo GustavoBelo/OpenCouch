@@ -45,7 +45,8 @@
 <message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copiar seleccionado</translation></message>
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Descargar seleccionado</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>No se ha podido completar la acción.</translation></message>
-<message id="engine.missing"><source>engine.missing</source><translation>Falta un componente en el sistema. Descárgalo desde github.com/GustavoBelo/OpenCouch y ejecuta ./packaging/host/install.sh para dejarlo todo listo.</translation></message>
+<message id="engine.missing"><source>engine.missing</source><translation>Falta un componente del sistema para usar el Modo Sala.</translation></message>
+<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>Ver cómo instalar</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Te damos la bienvenida a Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch cambia de pantalla en un solo clic: juega en el salón o usa el PC en el escritorio sin líos.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuración</translation></message>

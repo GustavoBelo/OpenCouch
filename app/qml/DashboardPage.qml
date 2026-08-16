@@ -18,6 +18,18 @@ Kirigami.ScrollablePage {
     property string viewingHistoryId: ""
     property string viewingHistoryName: ""
     property string liveLogCache: ""
+    property bool bannerIsEngineWarning: false
+
+    function showBanner(type, text, autoHide, isEngineWarning) {
+        banner.type = type;
+        banner.text = text;
+        banner.visible = true;
+        bannerIsEngineWarning = !!isEngineWarning;
+        statusFeedbackTimer.stop();
+        if (autoHide) {
+            statusFeedbackTimer.restart();
+        }
+    }
 
     actions: [
         Kirigami.Action {
@@ -52,9 +64,7 @@ Kirigami.ScrollablePage {
         }
         
         if (!backend.engineAvailable()) {
-            banner.type = Kirigami.MessageType.Warning;
-            banner.text = qsTrId("engine.missing")
-            banner.visible = true;
+            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true);
         }
     }
 
@@ -70,9 +80,7 @@ Kirigami.ScrollablePage {
             logArea.append(line);
         }
         function onActionFinished(success, message) {
-            banner.type = success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
-            banner.text = message;
-            banner.visible = true;
+            page.showBanner(success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error, message, false, false);
             backend.refreshStatus();
         }
         function onStatusUpdated(text) {
@@ -89,6 +97,15 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             visible: false
             showCloseButton: true
+            actions: [
+                Kirigami.Action {
+                    id: bannerInstallAction
+                    text: qsTrId("dashboard.install_action")
+                    icon.name: "system-run"
+                    visible: page.bannerIsEngineWarning
+                    onTriggered: permissionPopup.open()
+                }
+            ]
         }
 
         Rectangle {
@@ -187,10 +204,11 @@ Kirigami.ScrollablePage {
             icon.name: "view-refresh"
             onClicked: {
                 backend.refreshStatus();
-                banner.type = Kirigami.MessageType.Positive;
-                banner.text = qsTrId("dashboard.status_updated");
-                banner.visible = true;
-                statusFeedbackTimer.restart();
+                if (!backend.engineAvailable()) {
+                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true);
+                } else {
+                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false);
+                }
             }
         }
 
@@ -210,9 +228,7 @@ Kirigami.ScrollablePage {
                 enabled: page.viewingHistoryId === ""
                 onClicked: {
                     backend.copyLogToClipboard();
-                    banner.type = Kirigami.MessageType.Positive;
-                    banner.text = qsTrId("dashboard.log_copied");
-                    banner.visible = true;
+                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_copied"), false, false);
                 }
             }
 
@@ -237,13 +253,10 @@ Kirigami.ScrollablePage {
                         onTriggered: {
                             const path = backend.exportLogToHome();
                             if (path.length > 0) {
-                                banner.type = Kirigami.MessageType.Positive;
-                                banner.text = qsTrId("dashboard.log_saved").arg(path);
+                                page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_saved").arg(path), false, false);
                             } else {
-                                banner.type = Kirigami.MessageType.Error;
-                                banner.text = qsTrId("dashboard.log_save_failed");
+                                page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.log_save_failed"), false, false);
                             }
-                            banner.visible = true;
                         }
                     }
 
@@ -253,9 +266,7 @@ Kirigami.ScrollablePage {
                         onTriggered: {
                             logArea.clear();
                             backend.clearLog();
-                            banner.type = Kirigami.MessageType.Positive;
-                            banner.text = qsTrId("dashboard.log_cleared");
-                            banner.visible = true;
+                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_cleared"), false, false);
                         }
                     }
                 }
@@ -729,9 +740,7 @@ Kirigami.ScrollablePage {
                             logArea.text = formattedLines.join("<br/>");
                             historyDialog.close();
                         } else {
-                            banner.type = Kirigami.MessageType.Error;
-                            banner.text = qsTrId("dashboard.read_log_failed");
-                            banner.visible = true;
+                            page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.read_log_failed"), false, false);
                         }
                     }
                 }
@@ -743,9 +752,9 @@ Kirigami.ScrollablePage {
                     onClicked: {
                         const ok = backend.copyHistoryLogToClipboard(historyDialog.selectedId);
                         historyDialog.close();
-                        banner.type = ok ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error;
-                        banner.text = ok ? qsTrId("dashboard.log_copied") : qsTrId("dashboard.history_action_failed");
-                        banner.visible = true;
+                        page.showBanner(ok ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error,
+                                       ok ? qsTrId("dashboard.log_copied") : qsTrId("dashboard.history_action_failed"),
+                                       false, false);
                     }
                 }
 
@@ -757,13 +766,10 @@ Kirigami.ScrollablePage {
                         const path = backend.exportHistoryLog(historyDialog.selectedId);
                         historyDialog.close();
                         if (path.length > 0) {
-                            banner.type = Kirigami.MessageType.Positive;
-                            banner.text = qsTrId("dashboard.log_saved").arg(path);
+                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_saved").arg(path), false, false);
                         } else {
-                            banner.type = Kirigami.MessageType.Error;
-                            banner.text = qsTrId("dashboard.history_action_failed");
+                            page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.history_action_failed"), false, false);
                         }
-                        banner.visible = true;
                     }
                 }
 

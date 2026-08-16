@@ -45,7 +45,8 @@
 <message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copy selected</translation></message>
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Download selected</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Couldn't complete the action.</translation></message>
-<message id="engine.missing"><source>engine.missing</source><translation>A system component is missing. Download it at github.com/GustavoBelo/OpenCouch and run ./packaging/host/install.sh to get everything set up.</translation></message>
+<message id="engine.missing"><source>engine.missing</source><translation>A system component is missing to use Couch Mode.</translation></message>
+<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>See how to install</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Welcome to Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch switches your displays with a single click: game from the couch or work at your desk with zero hassle.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Setup</translation></message>
