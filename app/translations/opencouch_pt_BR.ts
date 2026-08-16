@@ -105,11 +105,13 @@
 <message id="settings.couch_environment"><source>settings.couch_environment</source><translation>Configurações da TV / Sala</translation></message>
 <message id="settings.mirroring"><source>settings.mirroring</source><translation>Espelhamento</translation></message>
 <message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Espelhar a tela do PC na TV quando estiver na sala</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Se marcado, o monitor do PC vai mostrar a mesma coisa da TV da sala.</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Se marcado, o monitor do PC vai mostrar a mesma coisa da TV da sala. Como as duas telas precisam ter a mesma resolução, a tela maior vai ser reduzida para igualar a menor das duas.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>Sistema</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Segundo plano</translation></message>
 <message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Telas reconhecidas novamente!</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>Configurações salvas com sucesso!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
+<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permissão necessária para usar o Modo Sala</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Se você já rodou o comando acima, encerre o app completamente antes de abrir novamente. Fechar a janela não é suficiente - o app pode continuar rodando em segundo plano. Use o ícone na bandeja do sistema (perto do relógio) e clique em "Sair".</translation></message>
 </context>
 </TS>

@@ -105,11 +105,13 @@
 <message id="settings.couch_environment"><source>settings.couch_environment</source><translation>Paramètres du Salon / TV</translation></message>
 <message id="settings.mirroring"><source>settings.mirroring</source><translation>Duplication d'écran</translation></message>
 <message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Dupliquer l'écran du PC sur la TV en Mode Salon</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Si cette case est cochée, l'écran du PC affichera la même chose que la TV du salon.</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Si cette case est cochée, l'écran du PC affichera la même chose que la TV du salon. Comme les deux écrans doivent avoir la même résolution, l'écran le plus grand sera réduit pour correspondre à l'écran le plus petit.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>Système</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Arrière-plan</translation></message>
 <message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Écrans détectés à nouveau !</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>Paramètres enregistrés avec succès !</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copier la commande</translation></message>
+<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission requise pour utiliser le Mode Salon</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Si vous avez déjà exécuté la commande ci-dessus, fermez complètement l'application avant de l'ouvrir à nouveau. Fermer la fenêtre ne suffit pas - l'application peut continuer à s'exécuter en arrière-plan. Utilisez l'icône dans la barre d'état système (près de l'horloge) et cliquez sur "Quitter".</translation></message>
 </context>
 </TS>

@@ -105,11 +105,13 @@
 <message id="settings.couch_environment"><source>settings.couch_environment</source><translation>Configuración de la tele / Salón</translation></message>
 <message id="settings.mirroring"><source>settings.mirroring</source><translation>Duplicación de pantalla</translation></message>
 <message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Duplicar la pantalla del PC en la tele al estar en el salón</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Si está marcado, el monitor del PC mostrará lo mismo que la tele del salón.</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Si está marcado, el monitor del PC mostrará lo mismo que la tele del salón. Como las dos pantallas deben tener la misma resolución, la pantalla más grande se reducirá para igualar a la más pequeña.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>Sistema</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Segundo plano</translation></message>
 <message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>¡Pantallas detectadas de nuevo!</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>¡Ajustes guardados correctamente!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
+<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permiso necesario para usar el Modo Salón</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Si ya ha ejecutado el comando anterior, cierre completamente la aplicación antes de abrirla de nuevo. Cerrar la ventana no es suficiente: la aplicación puede seguir ejecutándose en segundo plano. Use el icono en la bandeja del sistema (cerca del reloj) y haga clic en "Salir".</translation></message>
 </context>
 </TS>

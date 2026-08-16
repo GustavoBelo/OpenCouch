@@ -105,11 +105,13 @@
 <message id="settings.couch_environment"><source>settings.couch_environment</source><translation>TV- / Wohnzimmer-Einstellungen</translation></message>
 <message id="settings.mirroring"><source>settings.mirroring</source><translation>Bildschirmspiegelung</translation></message>
 <message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>PC-Bildschirm im TV-Modus auf den Fernseher spiegeln</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Wenn aktiviert, zeigt der PC-Monitor genau dasselbe Bild wie der Wohnzimmer-TV.</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Wenn aktiviert, zeigt der PC-Monitor denselben Inhalt wie der Fernseher im Wohnzimmer. Da beide Bildschirme die gleiche Auflösung haben müssen, wird der größere Bildschirm verkleinert, um dem kleineren zu entsprechen.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>System</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Hintergrund</translation></message>
 <message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Bildschirme erfolgreich neu erkannt!</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>Einstellungen erfolgreich gespeichert!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Befehl kopieren</translation></message>
+<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Berechtigung erforderlich, um den Couch-Modus zu verwenden</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Wenn Sie den obigen Befehl bereits ausgeführt haben, schließen Sie die App vollständig, bevor Sie sie erneut öffnen. Das Schließen des Fensters reicht nicht aus - die App kann weiterhin im Hintergrund ausgeführt werden. Verwenden Sie das Symbol im Systemtray (in der Nähe der Uhr) und klicken Sie auf "Beenden".</translation></message>
 </context>
 </TS>

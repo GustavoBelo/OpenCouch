@@ -105,11 +105,13 @@
 <message id="settings.couch_environment"><source>settings.couch_environment</source><translation>TV / Couch Settings</translation></message>
 <message id="settings.mirroring"><source>settings.mirroring</source><translation>Mirroring</translation></message>
 <message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Mirror desktop display to the TV in Couch Mode</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>When checked, your desktop monitor will duplicate the living room TV display.</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>When checked, your desktop monitor will show the same content as the living room TV. Since both screens must have the same resolution, the larger screen will be scaled down to match the smaller one.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>System</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Background</translation></message>
 <message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Displays detected successfully!</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>Settings saved successfully!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copy command</translation></message>
+<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission required to use Couch Mode</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>If you have already run the above command, completely close the app before reopening it. Closing the window is not enough - the app may continue running in the background. Use the icon in the system tray (near the clock) and click "Quit".</translation></message>
 </context>
 </TS>

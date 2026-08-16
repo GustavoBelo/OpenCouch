@@ -329,6 +329,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
 
             ColumnLayout {
+                Layout.fillWidth: true
                 Kirigami.FormData.label: qsTrId("settings.desktop_display_label")
                 spacing: 0
 
@@ -350,8 +351,12 @@ Kirigami.ScrollablePage {
             }
 
             ColumnLayout {
+                Layout.fillWidth: true
+                Layout.maximumHeight: keepDeskEnabledCheck.checked ? -1 : 0
                 Kirigami.FormData.label: qsTrId("settings.mirroring")
-                visible: keepDeskEnabledCheck.checked
+                opacity: keepDeskEnabledCheck.checked ? 1 : 0
+                enabled: keepDeskEnabledCheck.checked
+                clip: true
                 spacing: 0
 
                 Controls.CheckBox {
@@ -372,6 +377,7 @@ Kirigami.ScrollablePage {
             }
 
             ColumnLayout {
+                Layout.fillWidth: true
                 Kirigami.FormData.label: qsTrId("settings.big_picture_label")
                 spacing: 0
 
@@ -407,6 +413,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
 
             ColumnLayout {
+                Layout.fillWidth: true
                 Kirigami.FormData.label: qsTrId("settings.system")
                 spacing: 0
 
@@ -428,6 +435,7 @@ Kirigami.ScrollablePage {
             }
 
             ColumnLayout {
+                Layout.fillWidth: true
                 Kirigami.FormData.label: qsTrId("settings.background")
                 spacing: 0
 

@@ -145,6 +145,10 @@ Kirigami.ScrollablePage {
                 highlighted: !backend.running
                 enabled: !backend.running
                 onClicked: {
+                    if(!backend.engineAvailable()) {
+                        permissionPopup.open();
+                        return;
+                    }
                     banner.visible = false;
                     backend.play();
                 }
@@ -281,47 +285,64 @@ Kirigami.ScrollablePage {
             ]
         }
 
-        Controls.ScrollView {
-            id: logScroll
+        Item {
             Layout.fillWidth: true
             Layout.preferredHeight: page.logPanelHeight
-            clip: true
 
-            Controls.TextArea {
-                id: logArea
-                width: parent.width
-                readOnly: true
-                wrapMode: Controls.TextArea.Wrap
-                textFormat: TextEdit.RichText
+            Controls.ScrollView {
+                id: logScroll
+                anchors.fill: parent
+                clip: true
+                Controls.ScrollBar.vertical.policy: Controls.ScrollBar.AsNeeded
 
-                function escapeHtml(value) {
-                    return value
-                        .replace(/&/g, "&amp;")
-                        .replace(/</g, "&lt;")
-                        .replace(/>/g, "&gt;")
-                        .replace(/"/g, "&quot;");
+                Controls.TextArea {
+                    id: logArea
+                    width: logScroll.availableWidth
+                    readOnly: true
+                    wrapMode: Controls.TextArea.Wrap
+                    textFormat: TextEdit.RichText
+
+                    function escapeHtml(value) {
+                        return value
+                            .replace(/&/g, "&amp;")
+                            .replace(/</g, "&lt;")
+                            .replace(/>/g, "&gt;")
+                            .replace(/"/g, "&quot;");
+                    }
+
+                    function getFormattedLine(line) {
+                        const safeLine = escapeHtml(line);
+                        return /(ERRO|ERROR|error)/.test(line)
+                            ? "<font color=\"#ef5350\">" + safeLine + "</font>"
+                            : safeLine;
+                    }
+
+                    function clear() {
+                        text = "";
+                        page.liveLogCache = "";
+                    }
+
+                    function append(line) {
+                        const formatted = getFormattedLine(line);
+
+                        if (page.viewingHistoryId === "") {
+                            text += (text.length > 0 ? "<br/>" : "") + formatted;
+                            cursorPosition = length;
+                        } else {
+                            page.liveLogCache += (page.liveLogCache.length > 0 ? "<br/>" : "") + formatted;
+                        }
+                    }
                 }
 
-                function getFormattedLine(line) {
-                    const safeLine = escapeHtml(line);
-                    return /(ERRO|ERROR|error)/.test(line)
-                        ? "<font color=\"#ef5350\">" + safeLine + "</font>"
-                        : safeLine;
-                }
-
-                function clear() {
-                    text = "";
-                    page.liveLogCache = "";
-                }
-
-                function append(line) {
-                    const formatted = getFormattedLine(line);
-                    
-                    if (page.viewingHistoryId === "") {
-                        text += (text.length > 0 ? "<br/>" : "") + formatted;
-                        cursorPosition = length;
-                    } else {
-                        page.liveLogCache += (page.liveLogCache.length > 0 ? "<br/>" : "") + formatted;
+                WheelHandler {
+                    target: parent
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: (event) => {
+                        event.accepted = true
+                        const bar = logScroll.ScrollBar.vertical
+                        if (bar.size >= 1) return
+                        const step = event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3
+                        bar.position = Math.max(0, Math.min(1 - bar.size, bar.position - step / logArea.implicitHeight))
                     }
                 }
             }
@@ -409,6 +430,177 @@ Kirigami.ScrollablePage {
             opacity: 0.7
         }
     }
+
+        Controls.Popup {
+            id: permissionPopup
+            parent: Controls.Overlay.overlay
+            modal: true
+            focus: true
+            dim: true
+            closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
+            anchors.centerIn: parent
+            implicitWidth: Math.min(parent ? parent.width * 0.9 : 500, Kirigami.Units.gridUnit * 35)
+            implicitHeight: Math.min(parent ? parent.height * 0.9 : 600, permLayout.implicitHeight + padding * 2)
+            padding: Kirigami.Units.largeSpacing
+
+            background: Rectangle {
+                radius: Kirigami.Units.largeSpacing
+                color: Kirigami.Theme.backgroundColor
+                border.color: Kirigami.Theme.focusColor
+                border.width: 1
+                opacity: 0.95
+            }
+
+            contentItem: ColumnLayout {
+                id: permLayout
+                spacing: Kirigami.Units.largeSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Kirigami.Icon {
+                        source: "dialog-warning"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("dashboard.permission_popup_title")
+                        level: 2
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
+
+                Controls.ScrollView {
+                    id: permScrollView
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
+
+                    ColumnLayout {
+                        width: permScrollView.availableWidth
+                        spacing: Kirigami.Units.largeSpacing
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTrId("onboarding.requirement_description")
+                            font.pointSize: Kirigami.Theme.defaultFont.pointSize + 1
+                            opacity: 0.9
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTrId("onboarding.install_description")
+                            opacity: 0.85
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: permInstallRow.implicitHeight + Kirigami.Units.smallSpacing * 2
+                            color: Kirigami.Theme.alternateBackgroundColor
+                            radius: Kirigami.Units.smallSpacing
+                            border.color: Kirigami.Theme.focusColor
+                            border.width: 1
+                            opacity: 0.9
+
+                            RowLayout {
+                                id: permInstallRow
+                                anchors.fill: parent
+                                anchors.margins: Kirigami.Units.smallSpacing
+                                spacing: Kirigami.Units.smallSpacing
+
+                                Controls.TextArea {
+                                    id: permCmdField
+                                    Layout.fillWidth: true
+                                    text: "bash <(curl -fsSL " + appInfo.installScriptUrl + ")"
+                                    font.family: "monospace"
+                                    readOnly: true
+                                    wrapMode: Text.WrapAnywhere
+                                    selectByMouse: true
+                                    background: null
+                                    color: Kirigami.Theme.textColor
+                                    topPadding: 0
+                                    bottomPadding: 0
+                                }
+
+                                Controls.ToolButton {
+                                    icon.name: "edit-copy"
+                                    Layout.alignment: Qt.AlignTop
+                                    Controls.ToolTip.text: qsTrId("common.copy_command")
+                                    Controls.ToolTip.visible: hovered
+                                    onClicked: {
+                                        permCmdField.selectAll();
+                                        permCmdField.copy();
+                                        permCmdField.deselect();
+                                        icon.name = "dialog-ok";
+                                        permCopyTimer.start();
+                                    }
+
+                                    Timer {
+                                        id: permCopyTimer
+                                        interval: 2000
+                                        onTriggered: parent.icon.name = "edit-copy"
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: permWarnLabel.implicitHeight + Kirigami.Units.smallSpacing * 2
+                            color: Kirigami.Theme.neutralBackgroundColor
+                            border.color: Kirigami.Theme.neutralTextColor
+                            border.width: 1
+                            radius: Kirigami.Units.smallSpacing
+                            opacity: 0.9
+
+                            Controls.Label {
+                                id: permWarnLabel
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    top: parent.top
+                                    margins: Kirigami.Units.smallSpacing
+                                }
+                                wrapMode: Text.Wrap
+                                text: qsTrId("dashboard.permission_reopen_warning")
+                                opacity: 0.9
+                            }
+                        }
+                    }
+                }
+
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+
+                    Item { Layout.fillWidth: true }
+
+                    Controls.Button {
+                        text: qsTrId("common.got_it")
+                        icon.name: "dialog-ok"
+                        highlighted: true
+                        onClicked: permissionPopup.close()
+
+                        Component.onCompleted: forceActiveFocus()
+                    }
+                }
+            }
+        }
 
     Controls.Dialog {
         id: historyDialog

@@ -105,11 +105,13 @@
 <message id="settings.couch_environment"><source>settings.couch_environment</source><translation>电视 / 客厅环境设置</translation></message>
 <message id="settings.mirroring"><source>settings.mirroring</source><translation>屏幕镜像</translation></message>
 <message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>在客厅模式下将电脑画面镜像到电视</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>勾选后，电脑显示器将与客厅电视显示完全相同的内容。</translation></message>
+<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>勾选后，电脑显示器将与客厅电视显示完全相同的内容。由于两块屏幕需要具有相同的分辨率，较大的屏幕将被缩小以匹配较小的屏幕。</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>系统</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>后台运行</translation></message>
 <message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>已重新识别到屏幕！</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>设置已成功保存！</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>复制命令</translation></message>
+<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>使用客厅模式需要的权限</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>如果您已经运行了上述命令，请完全退出应用程序后再重新打开。仅关闭窗口是不够的 - 应用程序可能会继续在后台运行。请使用系统托盘中的图标（靠近时钟）并点击“退出”。</translation></message>
 </context>
 </TS>
