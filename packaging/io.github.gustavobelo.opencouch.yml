@@ -8,6 +8,7 @@ finish-args:
   - --share=ipc
   - --filesystem=xdg-config/open-couch-engine:create
   - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.freedesktop.Flatpak
   - --talk-name=org.freedesktop.portal.Desktop
   - --socket=wayland
   - --socket=fallback-x11
