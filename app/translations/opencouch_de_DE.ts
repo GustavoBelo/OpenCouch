@@ -46,7 +46,9 @@
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Auswahl herunterladen</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Aktion konnte nicht abgeschlossen werden.</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>Für den Couch-Modus fehlt eine Systemkomponente.</translation></message>
+<message id="engine.outdated"><source>engine.outdated</source><translation>Die Systemkomponente ist veraltet. Bitte aktualisiere sie, damit der Couch-Modus einwandfrei funktioniert.</translation></message>
 <message id="dashboard.install_action"><source>dashboard.install_action</source><translation>So installieren</translation></message>
+<message id="dashboard.update_action"><source>dashboard.update_action</source><translation>So aktualisieren</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Willkommen bei Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch wechselt deine Bildschirme mit nur einem Klick: Zocke gemütlich im Wohnzimmer oder nutze den Schreibtisch-PC – ganz ohne Stress.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Einrichtung</translation></message>

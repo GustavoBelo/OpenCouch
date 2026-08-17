@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Bumped automatilcally by release.sh, do not edit manually
+ENGINE_VERSION="1.5.1"
+
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-couch-engine"
 CONFIG_FILE="${CONFIG_DIR}/config.env"
@@ -898,6 +901,7 @@ Usage:
   open-couch-engine status
   open-couch-engine outputs        
   open-couch-engine check          
+  open-couch-engine version        
   open-couch-engine watch          
   open-couch-engine config-path    
   open-couch-engine log            
@@ -929,6 +933,9 @@ main() {
             require_commands
             printf 'Host dependencies OK\n'
             ;;
+        version)
+            printf '%s\n' "$ENGINE_VERSION"
+            ;;        
         watch)
             watch_big_picture
             ;;

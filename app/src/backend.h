@@ -38,6 +38,7 @@ public:
     Q_INVOKABLE void startWatcher();
 
     Q_INVOKABLE bool engineAvailable();
+    Q_INVOKABLE bool engineNeedsUpdate();
 
     Q_INVOKABLE void copyLogToClipboard();
     Q_INVOKABLE QString exportLogToHome();

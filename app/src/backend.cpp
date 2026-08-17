@@ -197,6 +197,11 @@ bool Backend::engineAvailable()
     return m_engineClient->engineAvailable();
 }
 
+bool Backend::engineNeedsUpdate()
+{
+    return m_engineClient->engineNeedsUpdate();
+}
+
 QVariantList Backend::listOutputs()
 {
     bool ok = false;

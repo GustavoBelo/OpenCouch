@@ -46,7 +46,9 @@
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Download selected</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Couldn't complete the action.</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>A system component is missing to use Couch Mode.</translation></message>
+<message id="engine.outdated"><source>engine.outdated</source><translation>The system component is outdated. Please update it to ensure Couch Mode works properly.</translation></message>
 <message id="dashboard.install_action"><source>dashboard.install_action</source><translation>See how to install</translation></message>
+<message id="dashboard.update_action"><source>dashboard.update_action</source><translation>See how to update</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Welcome to Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch switches your displays with a single click: game from the sofa or use your desktop PC without any fuss.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Setup</translation></message>

@@ -46,7 +46,9 @@
 <message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Télécharger la sélection</translation></message>
 <message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Impossible de terminer l'opération.</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>Un composant système manque pour utiliser le Mode Canapé.</translation></message>
+<message id="engine.outdated"><source>engine.outdated</source><translation>Le composant système est obsolète. Veuillez le mettre à jour pour garantir le bon fonctionnement du Mode Canapé.</translation></message>
 <message id="dashboard.install_action"><source>dashboard.install_action</source><translation>Voir comment installer</translation></message>
+<message id="dashboard.update_action"><source>dashboard.update_action</source><translation>Voir comment mettre à jour</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Bienvenue sur Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch bascule vos écrans en un clic : jouez dans le salon ou travaillez au bureau sans prise de tête.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuration</translation></message>

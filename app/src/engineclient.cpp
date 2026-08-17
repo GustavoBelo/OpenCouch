@@ -4,7 +4,25 @@
 #include <QProcess>
 
 namespace {
-constexpr const char *kEngineName = "open-couch-engine";
+    constexpr const char *kEngineName = "open-couch-engine";
+
+    // Bump this when the engine script changes in a way that requires users to reinstall
+    // Leave it alone for app-only releases (UI, settings, translations, etc.)
+    constexpr const char *kMinEngineVersion = "1.0.1";
+
+    // Returns true if version string `a` is semantically less than `b` (X.Y.Z).
+    bool versionLessThan(const QString &a, const QString &b)
+    {
+        const auto ap = a.split(QLatin1Char('.'));
+        const auto bp = b.split(QLatin1Char('.'));
+        for (int i = 0; i < 3; ++i) {
+            const int av = i < ap.size() ? ap.at(i).toInt() : 0;
+            const int bv = i < bp.size() ? bp.at(i).toInt() : 0;
+            if (av != bv)
+                return av < bv;
+        }
+        return false;
+    }
 }
 
 EngineClient::EngineClient(QObject *parent)
@@ -49,6 +67,25 @@ bool EngineClient::engineAvailable() const
     bool ok = false;
     runSync({QStringLiteral("check")}, &ok);
     return ok;
+}
+
+QString EngineClient::engineVersion() const
+{
+    bool ok = false;
+    const QString output = runSync({QStringLiteral("version")}, &ok);
+    return ok ? output.trimmed() : QString();
+}
+
+bool EngineClient::engineNeedsUpdate() const
+{
+    bool ok = false;
+    const QString output = runSync({QStringLiteral("version")}, &ok);
+    if (!ok)
+        return false; // engine not found or failed - engineAvailable() handles this
+    const QString engineVer = output.trimmed();
+    if (engineVer.isEmpty())
+        return true; // engine ran but couldn't report version - it's broken/stripped
+    return versionLessThan(engineVer, QString::fromLatin1(kMinEngineVersion));
 }
 
 bool EngineClient::runningInFlatpakSandbox()
