@@ -47,6 +47,13 @@ sed -i -e "s/^SELF_VERSION=\"[^\"]*\"/SELF_VERSION=\"${VERSION}\"/" "$INSTALL_FI
 sed -i -e "s/^ENGINE_VERSION=\"[^\"]*\"/ENGINE_VERSION=\"${VERSION}\"/" \
     "${PROJECT_DIR}/backend/open-couch-engine"
 
+# Sync MIN_VERSION in engine from the app's kMinEngineVersion
+MIN_VERSION="$(sed -n 's/.*kMinEngineVersion\s*=\s*"\([^"]*\)".*/\1/p' \
+    "${PROJECT_DIR}/app/src/engineclient.cpp")"
+sed -i "/^MIN_VERSION=/d" "${PROJECT_DIR}/backend/open-couch-engine"
+sed -i "/^ENGINE_VERSION=/a MIN_VERSION=\"${MIN_VERSION}\"" \
+    "${PROJECT_DIR}/backend/open-couch-engine"
+
 # Generate SHA256SUMS for the host engine scripts
 BACKEND_DIR="${PROJECT_DIR}/backend"
 (cd "$BACKEND_DIR" && sha256sum open-couch-engine open-couch-log-viewer > SHA256SUMS)
