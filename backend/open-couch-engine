@@ -772,6 +772,11 @@ print_outputs() {
 print_status() {
     log "Status refresh requested"
     log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE"
+    if version_gte "${ENGINE_VERSION:-0.0.0}" "$MIN_VERSION"; then
+        log "Engine version: ${ENGINE_VERSION:-unknown} (meets minimum requirement: $MIN_VERSION)"
+    else
+        log "Engine version: ${ENGINE_VERSION:-unknown} (below minimum requirement: $MIN_VERSION)"
+    fi
     current_layout_json | jq -c --arg desk "$DESK_OUTPUT" --arg tv "$TV_OUTPUT" '
         [
             (.outputs[] | select(.name == $desk) | . as $out | {
