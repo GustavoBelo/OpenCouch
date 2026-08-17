@@ -50,7 +50,7 @@ install-open-couch: _check-deps
     install -m755 "${tmpdir}/open-couch-log-viewer"     "${DEST}/open-couch-log-viewer"
     echo "Open Couch engine v{{OPEN_COUCH_VERSION}} installed at ${DEST}."
     if command -v flatpak >/dev/null 2>&1 && flatpak list --app --columns=application 2>/dev/null | grep -qx 'io.github.gustavobelo.opencouch'; then
-        echo "The Open Couch app is already installed. Restart it (or reopen the onboarding) to use the engine."
+        echo "The Open Couch app is already installed. Click Refresh Status on the dashboard to use the engine."
     else
         echo "Now install the Open Couch app (Flatpak) to use the engine:"
         echo "  flatpak install flathub io.github.gustavobelo.opencouch"
@@ -76,7 +76,7 @@ update-open-couch:
     install -m755 "${tmpdir}/open-couch-log-viewer"     "${DEST}/open-couch-log-viewer"
     echo "Open Couch engine updated to v{{OPEN_COUCH_VERSION}} at ${DEST}."
     if command -v flatpak >/dev/null 2>&1 && flatpak list --app --columns=application 2>/dev/null | grep -qx 'io.github.gustavobelo.opencouch'; then
-        echo "The Open Couch app is already installed. Restart it (or reopen the onboarding) to use the engine."
+        echo "The Open Couch app is already installed. Click Refresh Status on the dashboard to use the engine."
     else
         echo "Now install the Open Couch app (Flatpak) to use the engine:"
         echo "  flatpak install flathub io.github.gustavobelo.opencouch"

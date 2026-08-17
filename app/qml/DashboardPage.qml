@@ -213,6 +213,17 @@ Kirigami.ScrollablePage {
             icon.name: "view-refresh"
             onClicked: {
                 backend.refreshStatus();
+                let rawContent = backend.readLog();
+                if (rawContent !== undefined && rawContent !== "") {
+                    let lines = rawContent.split('\n');
+                    let formattedLines = [];
+                    for (let i = 0; i < lines.length; i++) {
+                        if (i === lines.length - 1 && lines[i] === "") continue;
+                        formattedLines.push(logArea.getFormattedLine(lines[i]));
+                    }
+                    logArea.text = formattedLines.join("<br/>");
+                    logArea.cursorPosition = logArea.length;
+                }
                 if (!backend.engineAvailable()) {
                     page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
                 } else if (backend.engineNeedsUpdate()) {

@@ -81,7 +81,7 @@ bool EngineClient::engineNeedsUpdate() const
     bool ok = false;
     const QString output = runSync({QStringLiteral("version")}, &ok);
     if (!ok)
-        return false; // engine not found or failed - engineAvailable() handles this
+        return true; // engine exists but is too old to report version
     const QString engineVer = output.trimmed();
     if (engineVer.isEmpty())
         return true; // engine ran but couldn't report version - it's broken/stripped

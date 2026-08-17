@@ -59,7 +59,7 @@
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Klicke auf „Ab zum TV“, um den Fernseher einzuschalten und Steam im Vollbildmodus zu öffnen, oder auf „Zurück zum PC“, um alles wieder wie gewohnt einzustellen.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Erforderliche Berechtigung</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Damit Open Couch die Bildschirme wechseln und Steam steuern kann, wird ein kleiner Helfer-Dienst direkt im Betriebssystem benötigt.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Öffne das Terminal im Projektordner, füge folgenden Befehl ein und drücke Enter. Danach einfach die App neu starten:</translation></message>
+<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Öffne das Terminal im Projektordner, füge folgenden Befehl ein und drücke Enter:</translation></message>
 <message id="settings.desktop_display"><source>settings.desktop_display</source><translation>PC-Monitor:</translation></message>
 <message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>PC-Monitor:</translation></message>
 <message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Auflösung und Bildwiederholrate (PC):</translation></message>
@@ -115,6 +115,6 @@
 <message id="settings.saved"><source>settings.saved</source><translation>Einstellungen erfolgreich gespeichert!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Befehl kopieren</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Berechtigung erforderlich, um den Couch-Modus zu verwenden</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Wenn Sie den obigen Befehl bereits ausgeführt haben, schließen Sie die App vollständig, bevor Sie sie erneut öffnen. Das Schließen des Fensters reicht nicht aus - die App kann weiterhin im Hintergrund ausgeführt werden. Verwenden Sie das Symbol im Systemtray (in der Nähe der Uhr) und klicken Sie auf "Beenden".</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Nach dem Ausführen des Befehls klicken Sie im Dashboard auf Status aktualisieren, um die Änderungen zu übernehmen.</translation></message>
 </context>
 </TS>

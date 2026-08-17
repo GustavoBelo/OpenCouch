@@ -59,7 +59,7 @@
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>点击“切到电视”点亮电视并全屏打开 Steam；点击“切回电脑”即可恢复原状。</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>需要系统权限</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>为了能顺利切换屏幕并启动 Steam，Open Couch 需要在操作系统中安装一个小助手组件。</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>在项目文件夹中打开终端，粘贴下面的命令并回车。完成后，只需重启应用即可：</translation></message>
+<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>在项目文件夹中打开终端，粘贴下面的命令并回车：</translation></message>
 <message id="settings.desktop_display"><source>settings.desktop_display</source><translation>电脑显示器：</translation></message>
 <message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>电脑显示器：</translation></message>
 <message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>分辨率与刷新率（电脑）：</translation></message>
@@ -115,6 +115,6 @@
 <message id="settings.saved"><source>settings.saved</source><translation>设置已成功保存！</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>复制命令</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>使用客厅模式需要的权限</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>如果您已经运行了上述命令，请完全退出应用程序后再重新打开。仅关闭窗口是不够的 - 应用程序可能会继续在后台运行。请使用系统托盘中的图标（靠近时钟）并点击“退出”。</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>运行命令后，点击仪表盘上的刷新状态以应用更改。</translation></message>
 </context>
 </TS>

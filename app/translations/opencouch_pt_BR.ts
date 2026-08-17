@@ -59,7 +59,7 @@
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Clique em "Ir para a TV" para ligar a TV e abrir a Steam em tela cheia, ou em "Voltar para o PC" para deixar tudo como estava.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permissão necessária</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Para conseguir trocar de tela e abrir a Steam, o Open Couch precisa de um ajudante instalado direto no sistema operacional.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Abra o terminal na pasta do projeto, cole o comando abaixo e aperte Enter. Depois, é só encerrar o app e abrir novamente:</translation></message>
+<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Abra o terminal na pasta do projeto, cole o comando abaixo e aperte Enter:</translation></message>
 <message id="settings.desktop_display"><source>settings.desktop_display</source><translation>Monitor do PC:</translation></message>
 <message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>Monitor do PC:</translation></message>
 <message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Resolução e taxa de Hz (PC):</translation></message>
@@ -115,6 +115,6 @@
 <message id="settings.saved"><source>settings.saved</source><translation>Configurações salvas com sucesso!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permissão necessária para usar o Modo Sala</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Se você já rodou o comando acima, encerre o app completamente antes de abrir novamente. Fechar a janela não é suficiente - o app pode continuar rodando em segundo plano. Use o ícone na bandeja do sistema (perto do relógio) e clique em "Sair".</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Depois de rodar o comando, clique em Atualizar Status no painel para aplicar as alterações.</translation></message>
 </context>
 </TS>

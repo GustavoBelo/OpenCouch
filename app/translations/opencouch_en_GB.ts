@@ -59,7 +59,7 @@
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Click "Switch to TV" to turn on the TV and launch Steam in full screen, or "Back to PC" to return everything to how it was.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permission required</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>To switch displays and launch Steam, Open Couch needs a helper installed directly onto your operating system.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Open a terminal in the project folder, paste the command below and hit Enter. Afterwards, simply restart the app:</translation></message>
+<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Open a terminal in the project folder, paste the command below and hit Enter:</translation></message>
 <message id="settings.desktop_display"><source>settings.desktop_display</source><translation>PC Monitor:</translation></message>
 <message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>PC Monitor:</translation></message>
 <message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Resolution &amp; refresh rate (PC):</translation></message>
@@ -115,6 +115,6 @@
 <message id="settings.saved"><source>settings.saved</source><translation>Settings saved successfully!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copy command</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission required to use Couch Mode</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>If you have already run the above command, completely close the app before reopening it. Closing the window is not enough - the app may continue running in the background. Use the icon in the system tray (near the clock) and click "Quit".</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>If you have already run the above command, click Refresh Status on the dashboard to apply changes.</translation></message>
 </context>
 </TS>

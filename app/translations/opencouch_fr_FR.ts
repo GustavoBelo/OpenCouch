@@ -59,7 +59,7 @@
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Cliquez sur « Basculer sur la TV » pour allumer la TV et lancer Steam en plein écran, ou sur « Revenir au PC » pour tout remettre comme avant.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Autorisation requise</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Pour pouvoir basculer l'affichage et lancer Steam, Open Couch a besoin d'un utilitaire installé directement sur le système.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Ouvrez un terminal dans le dossier du projet, collez la commande ci-dessous et appuyez sur Entrée. Ensuite, relancez simplement l'application :</translation></message>
+<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Ouvrez un terminal dans le dossier du projet, collez la commande ci-dessous et appuyez sur Entrée :</translation></message>
 <message id="settings.desktop_display"><source>settings.desktop_display</source><translation>Écran du PC :</translation></message>
 <message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>Écran du PC :</translation></message>
 <message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Résolution et fréquence (PC) :</translation></message>
@@ -115,6 +115,6 @@
 <message id="settings.saved"><source>settings.saved</source><translation>Paramètres enregistrés avec succès !</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copier la commande</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission requise pour utiliser le Mode Salon</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Si vous avez déjà exécuté la commande ci-dessus, fermez complètement l'application avant de l'ouvrir à nouveau. Fermer la fenêtre ne suffit pas - l'application peut continuer à s'exécuter en arrière-plan. Utilisez l'icône dans la barre d'état système (près de l'horloge) et cliquez sur "Quitter".</translation></message>
+<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Après avoir exécuté la commande, cliquez sur Actualiser l'état dans le tableau de bord pour appliquer les modifications.</translation></message>
 </context>
 </TS>
