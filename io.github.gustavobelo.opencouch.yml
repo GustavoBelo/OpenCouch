@@ -26,4 +26,3 @@ modules:
       - type: git
         url: https://github.com/GustavoBelo/OpenCouch.git
         tag: v1.6.0
-        commit: d1645394147b4c8e729f2d1316e51a4a3c2df37f
