@@ -1,7 +1,6 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include <QIcon>
 #include <QTranslator>
 #include <QLocale>
 #include <QLocalServer>
@@ -9,6 +8,7 @@
 
 #include "appinfomodel.h"
 #include "appversion.h"
+#include "applicationicon.h"
 #include "backend.h"
 #include "displaysettingsmodel.h"
 
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("OpenCouch"));
     app.setApplicationVersion(QStringLiteral(OPENCOUCH_VERSION_STRING));
     app.setOrganizationName(QStringLiteral("io.github.gustavobelo"));
-    app.setWindowIcon(QIcon::fromTheme(QStringLiteral("io.github.gustavobelo.opencouch")));
+    app.setWindowIcon(applicationIcon());
 
     QTranslator enFallback;
     if (enFallback.load(QStringLiteral(":/i18n/opencouch_en.qm"))) {

@@ -83,6 +83,10 @@ jobs:
             cp -a /usr/lib64/qt6/plugins/iconengines/* AppDir/usr/plugins/iconengines/ || true
             cp -a /usr/lib64/qt6/plugins/imageformats/* AppDir/usr/plugins/imageformats/ || true
 
+            test -f AppDir/usr/bin/opencouch
+            test -f AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+            test -f AppDir/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
+
             mkdir -p AppDir/usr/qml
             cp -a /usr/lib64/qt6/qml/* AppDir/usr/qml/
 
@@ -107,6 +111,15 @@ jobs:
               exit 1
             fi
             mv "${APPIMAGE_FILE}" OpenCouch-x86_64.AppImage
+
+            mkdir appimage-check
+            (
+              cd appimage-check
+              ../OpenCouch-x86_64.AppImage --appimage-extract
+              test -f squashfs-root/usr/bin/opencouch
+              test -f squashfs-root/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+              test -f squashfs-root/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
+            )
 
         - name: Upload AppImage
           uses: actions/upload-artifact@v4

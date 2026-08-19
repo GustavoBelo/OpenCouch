@@ -1,0 +1,5 @@
+<!DOCTYPE RCC><RCC version="1.0">
+    <qresource prefix="/">
+        <file alias="io.github.gustavobelo.opencouch.svg">../packaging/icons/io.github.gustavobelo.opencouch.svg</file>
+    </qresource>
+</RCC>

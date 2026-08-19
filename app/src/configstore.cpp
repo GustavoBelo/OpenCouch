@@ -6,7 +6,9 @@
 #include <QDBusPendingReply>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QTextStream>
 
 namespace {
@@ -17,6 +19,69 @@ QString normalizeValue(const QString &raw)
         value = value.mid(1, value.length() - 2);
     }
     return value;
+}
+
+QString autostartCommand()
+{
+    const QString appImagePath = qEnvironmentVariable("APPIMAGE");
+    return appImagePath.isEmpty() ? QStringLiteral("opencouch") : appImagePath;
+}
+
+QString desktopEntryArgument(const QString &argument)
+{
+    QString escaped = argument;
+    escaped.replace(QStringLiteral("\\"), QStringLiteral("\\\\"));
+    escaped.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    escaped.replace(QLatin1Char('`'), QStringLiteral("\\`"));
+    escaped.replace(QLatin1Char('$'), QStringLiteral("\\$"));
+    return QStringLiteral("\"") + escaped + QStringLiteral("\"");
+}
+
+QString autostartEntryPath()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::ConfigLocation)
+        + QStringLiteral("/autostart/io.github.gustavobelo.opencouch.desktop");
+}
+
+bool updateAutostartEntry(bool enabled)
+{
+    const QString path = autostartEntryPath();
+    QFile entry(path);
+    if (!enabled) {
+        if (!entry.exists()) {
+            return true;
+        }
+        if (!entry.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            return false;
+        }
+        const bool managedByOpenCouch = QTextStream(&entry).readAll()
+            .contains(QStringLiteral("X-Open-Couch-Autostart=true"));
+        entry.close();
+        return !managedByOpenCouch || entry.remove();
+    }
+
+    if (!QDir().mkpath(QFileInfo(path).absolutePath())) {
+        return false;
+    }
+    if (!entry.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        return false;
+    }
+
+    QTextStream stream(&entry);
+    stream << "[Desktop Entry]\n"
+           << "Type=Application\n"
+           << "Name=Open Couch\n"
+           << "Exec=" << desktopEntryArgument(autostartCommand()) << "\n"
+           << "Icon=io.github.gustavobelo.opencouch\n"
+           << "Terminal=false\n"
+           << "X-GNOME-Autostart-enabled=true\n"
+           << "X-Open-Couch-Autostart=true\n";
+    return stream.status() == QTextStream::Ok;
+}
+
+bool runningInFlatpak()
+{
+    return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
 }
 }
 
@@ -88,7 +153,17 @@ bool ConfigStore::autostartEnabled() const
 
 bool ConfigStore::setAutostart(bool enabled) const
 {
-    return requestBackgroundPortal(enabled);
+    bool success = requestBackgroundPortal(enabled);
+    if (!success && !runningInFlatpak()) {
+        success = updateAutostartEntry(enabled);
+    } else if (success && !enabled) {
+        updateAutostartEntry(false);
+    }
+
+    if (success) {
+        QSettings().setValue(QStringLiteral("autostartEnabled"), enabled);
+    }
+    return success;
 }
 
 bool ConfigStore::requestBackgroundPortal(bool enabled) const
@@ -108,7 +183,7 @@ bool ConfigStore::requestBackgroundPortal(bool enabled) const
     options[QStringLiteral("reason")] =
         QStringLiteral("Used to monitor Steam and automatically switch displays.");
     options[QStringLiteral("autostart")] = enabled;
-    options[QStringLiteral("commandLine")] = QStringList{QStringLiteral("opencouch")};
+    options[QStringLiteral("commandline")] = QStringList{autostartCommand()};
     options[QStringLiteral("dbus-activatable")] = false;
 
     QDBusPendingCall pending = portal.asyncCall(
@@ -116,9 +191,6 @@ bool ConfigStore::requestBackgroundPortal(bool enabled) const
         QStringLiteral(""),
         options
     );
-
-    // Store the intended preference immediately; portal dialog is shown asunchronously
-    QSettings().setValue(QStringLiteral("autostartEnabled"), enabled);
 
     QDBusPendingReply<QDBusObjectPath> reply(pending);
     reply.waitForFinished();

@@ -70,6 +70,8 @@ find_package(KF6Kirigami REQUIRED)
 
 qt_add_executable(opencouch
     src/main.cpp
+    src/applicationicon.cpp
+    src/applicationicon.h
     src/backend.cpp
     src/backend.h
     src/configstore.cpp
@@ -94,6 +96,9 @@ qt_add_qml_module(opencouch
         qml/OnboardingSheet.qml
     RESOURCES
 )
+
+qt_add_resources(OPENCOUCH_ICON_RESOURCES applicationicon.qrc)
+target_sources(opencouch PRIVATE ${OPENCOUCH_ICON_RESOURCES})
 
 qt_add_translations(opencouch
     RESOURCE_PREFIX "/i18n"

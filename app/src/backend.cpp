@@ -1,5 +1,6 @@
 #include "backend.h"
 
+#include "applicationicon.h"
 #include "configstore.h"
 #include "displaysettingsvalidator.h"
 #include "engineclient.h"
@@ -24,33 +25,7 @@
 namespace {
 QIcon trayIcon()
 {
-    const QStringList themeCandidates = {
-        QStringLiteral("io.github.gustavobelo.opencouch"),
-        QStringLiteral("applications-graphics"),
-        QStringLiteral("preferences-desktop-display"),
-        QStringLiteral("preferences-system-windows")
-    };
-
-    for (const QString &name : themeCandidates) {
-        const QIcon icon = QIcon::fromTheme(name);
-        if (!icon.isNull()) {
-            return icon;
-        }
-    }
-
-    const QStringList iconPaths = {
-        QCoreApplication::applicationDirPath() + QStringLiteral("/../share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg"),
-        QStringLiteral("/app/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg"),
-        QStringLiteral("/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg")
-    };
-
-    for (const QString &path : iconPaths) {
-        if (QFileInfo(path).exists()) {
-            return QIcon(path);
-        }
-    }
-
-    return QIcon();
+    return applicationIcon();
 }
 
 QString formatOutputLine(const QJsonObject &out)
