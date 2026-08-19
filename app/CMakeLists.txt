@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-# Version source of truth: git tags when available (Flathub uses type: git),
-# falling back to app/version.txt for builds without .git (local flatpak).
+# Version source of truth: git tags when available, falling back to
+# app/version.txt for builds without .git.
 set(OPENCOUCH_VERSION "")
 set(OPENCOUCH_RELEASE_DATE "")
 find_package(Git QUIET)

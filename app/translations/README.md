@@ -7,11 +7,11 @@ Translations use Qt Linguist with stable ids:
 - UI messages use `qsTrId("domain.key")` in QML and `qtTrId("domain.key")` in C++.
 - Translated text lives only in the catalog; do not use phrases as keys in the code.
 - The app automatically picks the catalog matching the system locale and falls back to the English catalog for messages that are not translated yet.
-- CMake generates the `.qm` files from the `TS_FILES` list in `app/CMakeLists.txt` and bundles them into the Flatpak app.
+- CMake generates the `.qm` files from the `TS_FILES` list in `app/CMakeLists.txt` and bundles them into the application package.
 
 To add a language:
 
 1. Copy `opencouch_en.ts` to `opencouch_<locale>.ts`.
 2. Translate only the `<translation>` elements.
 3. Add the new file to the `TS_FILES` list in `app/CMakeLists.txt`.
-4. Rebuild the Flatpak.
+4. Rebuild the application package.
