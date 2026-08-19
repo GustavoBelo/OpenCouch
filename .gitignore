@@ -22,6 +22,8 @@ repo/
 # AppImage build/state
 AppDir/
 *.AppImage
+build-fedora/
+test-appdir/
 
 # IDE / editor
 .vscode/

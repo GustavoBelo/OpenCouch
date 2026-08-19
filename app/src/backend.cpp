@@ -216,6 +216,28 @@ QString Backend::tryAutoInstallEngine()
     return QString();
 }
 
+QString Backend::ensureEngine()
+{
+    if (m_engineClient->engineAvailable() && !m_engineClient->engineNeedsUpdate()) {
+        return QString();
+    }
+
+    if (!EngineClient::canAutoInstall()) {
+        return QStringLiteral("No bundled engine is available");
+    }
+
+    const QString error = tryAutoInstallEngine();
+    if (!error.isEmpty()) {
+        return error;
+    }
+
+    if (!m_engineClient->engineAvailable() || m_engineClient->engineNeedsUpdate()) {
+        return QStringLiteral("The bundled engine is unavailable or outdated");
+    }
+
+    return QString();
+}
+
 QVariantList Backend::listOutputs()
 {
     bool ok = false;

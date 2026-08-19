@@ -57,6 +57,11 @@ chmod +x OpenCouch-x86_64.AppImage
 ./OpenCouch-x86_64.AppImage
 ```
 
+When the AppImage starts, it checks the installed engine version. If it is
+missing or below the minimum required version, Open Couch installs the engine
+bundled in the AppImage to `~/.local/bin` before opening the dashboard. If the
+bundled engine is also too old, download a newer AppImage release.
+
 #### Alternative: Flatpak via Flathub
 
 The Flatpak is available through [Flathub](https://flathub.org/apps/details/io.github.gustavobelo.opencouch). It is more sandboxed, but still requires the same system helper below:

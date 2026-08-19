@@ -41,6 +41,7 @@ public:
     Q_INVOKABLE bool engineNeedsUpdate();
     Q_INVOKABLE bool canAutoInstallEngine();
     Q_INVOKABLE QString tryAutoInstallEngine();
+    Q_INVOKABLE QString ensureEngine();
 
     Q_INVOKABLE void copyLogToClipboard();
     Q_INVOKABLE QString exportLogToHome();

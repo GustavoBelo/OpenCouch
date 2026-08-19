@@ -68,16 +68,7 @@ Kirigami.ScrollablePage {
         var engineMissing = !backend.engineAvailable();
         var engineOutdated = !engineMissing && backend.engineNeedsUpdate();
         if (engineMissing || engineOutdated) {
-            if (backend.canAutoInstallEngine()) {
-                var installError = backend.tryAutoInstallEngine();
-                if (installError.length > 0) {
-                    backend.refreshStatus();
-                } else if (engineMissing) {
-                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                } else {
-                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-                }
-            } else if (engineMissing) {
+            if (engineMissing) {
                 page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
             } else {
                 page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);

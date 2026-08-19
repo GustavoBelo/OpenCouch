@@ -42,6 +42,8 @@ Kirigami.ApplicationWindow {
         backend.attachWindow(root);
 
         Qt.callLater(function() {
+            backend.ensureEngine();
+
             var config = backend.loadConfig();
             var configured = !!(config.DESK_OUTPUT && config.TV_OUTPUT);
             
