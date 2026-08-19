@@ -46,33 +46,28 @@ Kirigami.ApplicationWindow {
 
             var config = backend.loadConfig();
             var configured = !!(config.DESK_OUTPUT && config.TV_OUTPUT);
-            
-            pageStack.push(dashboardComponent);
-            
+
+            var setupPage;
+            var dashboard = Qt.createComponent(Qt.resolvedUrl("DashboardPage.qml")).createObject(null);
+            dashboard.reconfigureRequested.connect(function() {
+                if (pageStack.currentItem !== setupPage) {
+                    setupPage = Qt.createComponent(Qt.resolvedUrl("SetupPage.qml")).createObject(null);
+                    pageStack.push(setupPage);
+                }
+            });
+            dashboard.helpRequested.connect(function() {
+                onboardingSheet.open();
+            });
+            pageStack.push(dashboard);
+
             if (!configured) {
-                pageStack.push(setupComponent);
+                setupPage = Qt.createComponent(Qt.resolvedUrl("SetupPage.qml")).createObject(null);
+                pageStack.push(setupPage);
             }
 
             if (!backend.onboardingSeen()) {
                 onboardingSheet.open();
             }
         });
-    }
-
-    Component {
-        id: setupComponent
-        SetupPage {}
-    }
-
-    Component {
-        id: dashboardComponent
-        DashboardPage { 
-            onReconfigureRequested: {
-                if (pageStack.currentItem !== setupComponent) {
-                    pageStack.push(setupComponent);
-                }
-            }
-            onHelpRequested: onboardingSheet.open()
-        }
     }
 }
