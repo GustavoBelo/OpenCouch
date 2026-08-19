@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kdeneon/all:user
+      options: --user root
     steps:
         - uses: actions/checkout@v5
 
@@ -68,16 +69,11 @@ jobs:
             fi
             echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
-        - name: Add KDE PPA
-          run: |
-            sudo add-apt-repository ppa:kubuntu-ppa/backports-extra -y
-            sudo add-apt-repository ppa:kubuntu-ppa/backports -y
-            sudo apt-get update -q
-
         - name: Install build dependencies
           run: |
-            sudo apt-get install -y --no-install-recommends \
-              cmake ninja-build \
+            apt-get update -q
+            apt-get install -y --no-install-recommends \
+              cmake ninja-build wget \
               qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-tools-dev-tools \
               qt6-wayland \
               libqt6dbus6 qml6-module-qtquick qml6-module-qtquick-controls \
@@ -107,6 +103,7 @@ jobs:
             QMAKE: qmake6
             QML_SOURCES_PATHS: ${{ github.workspace }}/app/qml
             EXTRA_QT_PLUGINS: wayland
+            APPIMAGE_EXTRACT_AND_RUN: 1
           run: |
             ./linuxdeploy-x86_64.AppImage \
               --appdir AppDir \
