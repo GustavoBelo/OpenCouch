@@ -40,9 +40,7 @@ RELEASE_DATE="$(date -u +%Y-%m-%d)"
 printf 'VERSION=%s\nRELEASE_DATE=%s\n' "$VERSION" "$RELEASE_DATE" > "$VERSION_FILE"
 
 # Sync version into host installer files
-JUST_FILE="${SCRIPT_DIR}/host/open-couch.just"
 INSTALL_FILE="${SCRIPT_DIR}/host/install.sh"
-sed -i -e "s/^OPEN_COUCH_VERSION := \"[^\"]*\"/OPEN_COUCH_VERSION := \"${VERSION}\"/" "$JUST_FILE"
 sed -i -e "s/^SELF_VERSION=\"[^\"]*\"/SELF_VERSION=\"${VERSION}\"/" "$INSTALL_FILE"
 sed -i -e "s/^ENGINE_VERSION=\"[^\"]*\"/ENGINE_VERSION=\"${VERSION}\"/" \
     "${PROJECT_DIR}/backend/open-couch-engine"
@@ -62,7 +60,7 @@ sed -i "/^ENGINE_VERSION=/a MIN_VERSION=\"${MIN_VERSION}\"" \
 BACKEND_DIR="${PROJECT_DIR}/backend"
 (cd "$BACKEND_DIR" && sha256sum open-couch-engine open-couch-log-viewer > SHA256SUMS)
 
-git -C "$PROJECT_DIR" add "$VERSION_FILE" "$JUST_FILE" "$INSTALL_FILE" \
+git -C "$PROJECT_DIR" add "$VERSION_FILE" "$INSTALL_FILE" \
     "${BACKEND_DIR}/open-couch-engine" "${BACKEND_DIR}/SHA256SUMS" \
     "$FLATPAK_MANIFEST"
 git -C "$PROJECT_DIR" commit -m "Release ${TAG}"
