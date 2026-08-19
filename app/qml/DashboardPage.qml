@@ -390,7 +390,7 @@ Kirigami.ScrollablePage {
                     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
                     onWheel: (event) => {
                         event.accepted = true
-                        const bar = logScroll.ScrollBar.vertical
+                        const bar = logScroll.Controls.ScrollBar.vertical
                         if (bar.size >= 1) return
                         const step = event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3
                         bar.position = Math.max(0, Math.min(1 - bar.size, bar.position - step / logArea.implicitHeight))
