@@ -36,7 +36,7 @@ jobs:
         with:
           bundle: OpenCouch.flatpak
           manifest-path: packaging/io.github.gustavobelo.opencouch.yml
-          branch: v${{ steps.version.outputs.version }}
+          branch: main
           cache-key: flatpak-kde-6.11-${{ runner.arch }}
           upload-artifact: false
 
@@ -94,6 +94,16 @@ jobs:
             wget --no-verbose https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
             chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
 
+            ./linuxdeploy-x86_64.AppImage --appimage-extract
+            mv squashfs-root linuxdeploy-ext
+            ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract
+            mv squashfs-root qt-plugin-ext
+
+            cp /usr/bin/patchelf linuxdeploy-ext/usr/bin/patchelf
+            cp /usr/bin/patchelf qt-plugin-ext/usr/bin/patchelf
+
+            ln -s $GITHUB_WORKSPACE/qt-plugin-ext/AppRun linuxdeploy-ext/usr/bin/linuxdeploy-plugin-qt
+
         - name: Build AppImage
           env:
             VERSION: ${{ steps.version.outputs.version }}
@@ -107,26 +117,19 @@ jobs:
             cp /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
             cp -r /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
 
-            ./linuxdeploy-x86_64.AppImage \
+            ./linuxdeploy-ext/AppRun \
               --appdir AppDir \
               --plugin qt \
               --output appimage \
               --icon-file packaging/icons/io.github.gustavobelo.opencouch.svg \
               --desktop-file AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
-            
+
             APPIMAGE_FILE=$(ls Open_Couch-*-x86_64.AppImage 2>/dev/null | head -1)
             if [[ -z "${APPIMAGE_FILE}" ]]; then
               echo "::error::No AppImage file found after build" >&2
               exit 1
             fi
             mv "${APPIMAGE_FILE}" OpenCouch-x86_64.AppImage
-
-        - name: Upload AppImage artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: OpenCouch-x86_64.AppImage
-            path: OpenCouch-x86_64.AppImage
-            if-no-files-found: error
 
   release:
     name: Create GitHub Release
