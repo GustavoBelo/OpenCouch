@@ -83,6 +83,11 @@ bool runningInFlatpak()
 {
     return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
 }
+
+bool runningInAppImage()
+{
+    return !qEnvironmentVariable("APPIMAGE").isEmpty();
+}
 }
 
 ConfigStore::ConfigStore(QObject *parent)
@@ -153,6 +158,14 @@ bool ConfigStore::autostartEnabled() const
 
 bool ConfigStore::setAutostart(bool enabled) const
 {
+    if (runningInAppImage()) {
+        const bool success = updateAutostartEntry(enabled);
+        if (success) {
+            QSettings().setValue(QStringLiteral("autostartEnabled"), enabled);
+        }
+        return success;
+    }
+
     bool success = requestBackgroundPortal(enabled);
     if (!success && !runningInFlatpak()) {
         success = updateAutostartEntry(enabled);
