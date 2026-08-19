@@ -78,6 +78,7 @@ jobs:
           run: |
             mkdir -p AppDir/usr/plugins/{platforms,styles,iconengines,imageformats}
             cp -a /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
+            test -f AppDir/usr/plugins/platforms/libqwayland.so
             cp -a /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
             cp -a /usr/lib64/qt6/plugins/styles/* AppDir/usr/plugins/styles/ || true
             cp -a /usr/lib64/qt6/plugins/iconengines/* AppDir/usr/plugins/iconengines/ || true
@@ -95,6 +96,8 @@ jobs:
             cp -a /usr/share/icons/breeze-dark AppDir/usr/share/icons/
 
             echo "export XDG_DATA_DIRS=\"\${APPDIR}/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}\"" \
+              >> "${GITHUB_WORKSPACE}/AppDir/AppRun.env" || true
+            echo "export QT_PLUGIN_PATH=\"\${APPDIR}/usr/plugins:\${QT_PLUGIN_PATH:-}\"" \
               >> "${GITHUB_WORKSPACE}/AppDir/AppRun.env" || true
 
             # Roda o linuxdeploy extraído (ele agora vai rastrear e empacotar TUDO isso)
@@ -117,6 +120,7 @@ jobs:
               cd appimage-check
               ../OpenCouch-x86_64.AppImage --appimage-extract
               test -f squashfs-root/usr/bin/opencouch
+              test -f squashfs-root/usr/plugins/platforms/libqwayland.so
               test -f squashfs-root/usr/share/applications/io.github.gustavobelo.opencouch.desktop
               test -f squashfs-root/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
             )
