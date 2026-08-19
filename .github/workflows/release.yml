@@ -114,17 +114,24 @@ jobs:
             APPIMAGE_EXTRACT_AND_RUN: 1
             NO_STRIP: 1
           run: |
-            mkdir -p AppDir/usr/plugins/platforms
-            cp /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
-            cp -r /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
+            mkdir -p AppDir/usr/plugins/{platforms,styles,iconengines,imageformats}
+            cp -a /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
+            cp -a /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
+            cp -a /usr/lib64/qt6/plugins/styles/* AppDir/usr/plugins/styles/ || true
+            cp -a /usr/lib64/qt6/plugins/iconengines/* AppDir/usr/plugins/iconengines/ || true
+            cp -a /usr/lib64/qt6/plugins/imageformats/* AppDir/usr/plugins/imageformats/ || true
 
-            mkdir -p AppDir/usr/qml/org/
-            cp -a /usr/lib64/qt6/qml/org/kde AppDir/usr/qml/org/
-            
-            mkdir -p AppDir/usr/share/icons/
+            mkdir -p AppDir/usr/qml
+            cp -a /usr/lib64/qt6/qml/* AppDir/usr/qml/
+
+            mkdir -p AppDir/usr/share/icons
             cp -a /usr/share/icons/breeze AppDir/usr/share/icons/
             cp -a /usr/share/icons/breeze-dark AppDir/usr/share/icons/
 
+            echo "export XDG_DATA_DIRS=\"\${APPDIR}/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}\"" \
+              >> "${GITHUB_WORKSPACE}/AppDir/AppRun.env" || true
+
+            # Roda o linuxdeploy extraído (ele agora vai rastrear e empacotar TUDO isso)
             ./linuxdeploy-ext/AppRun \
               --appdir AppDir \
               --plugin qt \
