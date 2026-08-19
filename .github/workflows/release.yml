@@ -131,6 +131,13 @@ jobs:
             fi
             mv "${APPIMAGE_FILE}" OpenCouch-x86_64.AppImage
 
+        - name: Upload AppImage
+          uses: actions/upload-artifact@v4
+          with:
+            name: OpenCouch-x86_64.AppImage
+            path: OpenCouch-x86_64.AppImage
+            if-no-files-found: error
+
   release:
     name: Create GitHub Release
     needs: [flatpak, appimage]
