@@ -51,8 +51,7 @@ jobs:
     name: Build AppImage
     runs-on: ubuntu-latest
     container:
-      image: kdeneon/all:user
-      options: --user root
+      image: fedora:40
     steps:
         - uses: actions/checkout@v5
 
@@ -71,16 +70,14 @@ jobs:
 
         - name: Install build dependencies
           run: |
-            apt-get update -q
-            apt-get install -y --no-install-recommends \
-              cmake ninja-build wget \
-              qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-tools-dev-tools \
-              qt6-wayland \
-              libqt6dbus6 qml6-module-qtquick qml6-module-qtquick-controls \
-              qml6-module-qtquick-layouts \
-              libkf6kirigami-dev libkf6coreaddons-dev libkf6i18n-dev \
+            dnf update -y
+            dnf install -y \
+              gcc-c++ cmake ninja-build wget patchelf \
+              qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
+              qt6-qtwayland \
+              kf6-kirigami-devel kf6-kcoreaddons-devel kf6-ki18n-devel \
               extra-cmake-modules \
-              fuse libfuse2 file
+              fuse file
 
         - name: Build app
           run: |
@@ -104,6 +101,7 @@ jobs:
             QML_SOURCES_PATHS: ${{ github.workspace }}/app/qml
             EXTRA_QT_PLUGINS: wayland
             APPIMAGE_EXTRACT_AND_RUN: 1
+            NO_STRIP: 1
           run: |
             ./linuxdeploy-x86_64.AppImage \
               --appdir AppDir \
