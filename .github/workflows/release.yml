@@ -118,12 +118,12 @@ jobs:
             cp /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
             cp -r /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
 
-            mkdir -p AppDir/usr/qml/org/kde
-            cp -r /usr/lib64/qt6/qml/org/kde/desktop AppDir/usr/qml/org/kde/
+            mkdir -p AppDir/usr/qml/org/
+            cp -a /usr/lib64/qt6/qml/org/kde AppDir/usr/qml/org/
             
-            mkdir -p AppDir/usr/share/icons
-            cp -r /usr/share/icons/breeze AppDir/usr/share/icons/
-            cp -r /usr/share/icons/breeze-dark AppDir/usr/share/icons/
+            mkdir -p AppDir/usr/share/icons/
+            cp -a /usr/share/icons/breeze AppDir/usr/share/icons/
+            cp -a /usr/share/icons/breeze-dark AppDir/usr/share/icons/
 
             ./linuxdeploy-ext/AppRun \
               --appdir AppDir \
