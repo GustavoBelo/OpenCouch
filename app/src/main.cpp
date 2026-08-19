@@ -46,11 +46,12 @@ int main(int argc, char *argv[])
         app.installTranslator(&translator);
     }
 
-    QQmlApplicationEngine engine;
-
     Backend backend;
     DisplaySettingsModel displaySettingsModel;
     AppInfoModel appInfoModel;
+
+    QQmlApplicationEngine engine;
+
     engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
     engine.rootContext()->setContextProperty(QStringLiteral("displaySettingsModel"), &displaySettingsModel);
     engine.rootContext()->setContextProperty(QStringLiteral("appInfo"), &appInfoModel);
