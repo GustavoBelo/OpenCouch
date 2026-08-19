@@ -109,7 +109,7 @@ jobs:
               --output appimage \
               --icon-file packaging/icons/io.github.gustavobelo.opencouch.svg \
               --desktop-file AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
-            APPIMAGE_FILE=$(ls OpenCouch-*-x86_64.AppImage 2>/dev/null | head -1)
+            APPIMAGE_FILE=$(ls Open_Couch-*-x86_64.AppImage 2>/dev/null | head -1)
             if [[ -z "${APPIMAGE_FILE}" ]]; then
               echo "::error::No AppImage file found after build" >&2
               exit 1
