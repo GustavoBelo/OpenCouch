@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Bumped automatically by release.sh, do not edit manually
-SELF_VERSION="1.6.4"
+SELF_VERSION="1.6.5"
 REPO_URL="https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v${SELF_VERSION}/backend"
 
 # Resolve SCRIPT_DIR only when the script lives on disk (not piped via curl)

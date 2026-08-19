@@ -8,7 +8,7 @@
 # outside the sandbox (display control via kscreen-doctor and Steam).
 
 # Bumped automatically by release.sh
-OPEN_COUCH_VERSION := "1.6.4"
+OPEN_COUCH_VERSION := "1.6.5"
 REPO_URL := "https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v" + OPEN_COUCH_VERSION + "/backend"
 DEST := env_var('HOME') / ".local/bin"
 
