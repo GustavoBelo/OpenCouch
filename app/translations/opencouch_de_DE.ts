@@ -116,5 +116,8 @@
 <message id="common.copy_command"><source>common.copy_command</source><translation>Befehl kopieren</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Berechtigung erforderlich, um den Couch-Modus zu verwenden</translation></message>
 <message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Nach dem Ausführen des Befehls klicken Sie im Dashboard auf Status aktualisieren, um die Änderungen zu übernehmen.</translation></message>
+<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine erfolgreich installiert!</translation></message>
+<message id="engine.install_button"><source>engine.install_button</source><translation>Engine installieren</translation></message>
+<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>Die Engine ist bereits in dieser App enthalten und wird beim ersten Gebrauch automatisch installiert.</translation></message>
 </context>
 </TS>

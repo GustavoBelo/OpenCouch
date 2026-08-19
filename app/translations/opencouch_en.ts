@@ -116,5 +116,8 @@
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copy command</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission required to use Couch Mode</translation></message>
 <message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>If you have already run the above command, click Refresh Status on the dashboard to apply changes.</translation></message>
+<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine installed successfully!</translation></message>
+<message id="engine.install_button"><source>engine.install_button</source><translation>Install Engine</translation></message>
+<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>The engine is already included in this app and will be installed automatically on first use.</translation></message>
 </context>
 </TS>

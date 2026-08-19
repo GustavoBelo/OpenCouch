@@ -65,10 +65,23 @@ Kirigami.ScrollablePage {
             backend.startWatcher();
         }
         
-        if (!backend.engineAvailable()) {
-            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-        } else if (backend.engineNeedsUpdate()) {
-            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+        var engineMissing = !backend.engineAvailable();
+        var engineOutdated = !engineMissing && backend.engineNeedsUpdate();
+        if (engineMissing || engineOutdated) {
+            if (backend.canAutoInstallEngine()) {
+                var installError = backend.tryAutoInstallEngine();
+                if (installError.length > 0) {
+                    backend.refreshStatus();
+                } else if (engineMissing) {
+                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+                } else {
+                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                }
+            } else if (engineMissing) {
+                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+            } else {
+                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+            }
         }
     }
 
@@ -224,10 +237,24 @@ Kirigami.ScrollablePage {
                     logArea.text = formattedLines.join("<br/>");
                     logArea.cursorPosition = logArea.length;
                 }
-                if (!backend.engineAvailable()) {
-                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                } else if (backend.engineNeedsUpdate()) {
-                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                var rMissing = !backend.engineAvailable();
+                var rOutdated = !rMissing && backend.engineNeedsUpdate();
+                if (rMissing || rOutdated) {
+                    if (backend.canAutoInstallEngine()) {
+                        var installError = backend.tryAutoInstallEngine();
+                        if (installError.length > 0) {
+                            backend.refreshStatus();
+                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
+                        } else if (rMissing) {
+                            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+                        } else {
+                            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                        }
+                    } else if (rMissing) {
+                        page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+                    } else {
+                        page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                    }
                 } else {
                     page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
                 }
@@ -476,6 +503,14 @@ Kirigami.ScrollablePage {
             implicitHeight: Math.min(parent ? parent.height * 0.9 : 600, permLayout.implicitHeight + padding * 2)
             padding: Kirigami.Units.largeSpacing
 
+            property bool installing: false
+            property string installResult: ""
+
+            onAboutToShow: {
+                installing = false;
+                installResult = "";
+            }
+
             background: Rectangle {
                 radius: Kirigami.Units.largeSpacing
                 color: Kirigami.Theme.backgroundColor
@@ -493,7 +528,7 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.smallSpacing
 
                     Kirigami.Icon {
-                        source: "dialog-warning"
+                        source: permissionPopup.installResult === "ok" ? "dialog-ok" : "dialog-warning"
                         Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                         Layout.preferredHeight: Kirigami.Units.iconSizes.medium
                         Kirigami.Theme.colorSet: Kirigami.Theme.Button
@@ -501,7 +536,9 @@ Kirigami.ScrollablePage {
                     }
 
                     Kirigami.Heading {
-                        text: qsTrId("dashboard.permission_popup_title")
+                        text: permissionPopup.installResult === "ok" 
+                            ? qsTrId("engine.installed_ok")
+                            : qsTrId("dashboard.permission_popup_title")
                         level: 2
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
@@ -518,6 +555,7 @@ Kirigami.ScrollablePage {
                     Layout.fillHeight: true
                     clip: true
                     Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
+                    visible: permissionPopup.installResult !== "ok"
 
                     ColumnLayout {
                         width: permScrollView.availableWidth
@@ -536,6 +574,7 @@ Kirigami.ScrollablePage {
                             wrapMode: Text.Wrap
                             text: qsTrId("onboarding.install_description")
                             opacity: 0.85
+                            visible: !backend.canAutoInstallEngine()
                         }
 
                         Rectangle {
@@ -546,6 +585,7 @@ Kirigami.ScrollablePage {
                             border.color: Kirigami.Theme.focusColor
                             border.width: 1
                             opacity: 0.9
+                            visible: !backend.canAutoInstallEngine()
 
                             RowLayout {
                                 id: permInstallRow
@@ -597,6 +637,7 @@ Kirigami.ScrollablePage {
                             border.width: 1
                             radius: Kirigami.Units.smallSpacing
                             opacity: 0.9
+                            visible: !backend.canAutoInstallEngine()
 
                             Controls.Label {
                                 id: permWarnLabel
@@ -611,6 +652,15 @@ Kirigami.ScrollablePage {
                                 opacity: 0.9
                             }
                         }
+
+                        Controls.Lable {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            visible: permissionPopup.installResult !== "" && permissionPopup.installResult !== "ok"
+                            text: permissionPopup.installResult
+                            color: Kirigami.Theme.negativeTextColor
+                            opacity: 0.9 
+                        }
                     }
                 }
 
@@ -624,9 +674,29 @@ Kirigami.ScrollablePage {
                     Item { Layout.fillWidth: true }
 
                     Controls.Button {
+                        text: qsTrId("engine.install_button")
+                        icon.name: permissionPopup.installing ? "view-refresh" : "system-run"
+                        highlighted: true
+                        enabled: !permissionPopup.installing
+                        visible: backend.canAutoInstallEngine() && permissionPopup.installResult !== "ok"
+                        onClicked: {
+                            permissionPopup.installing = true;
+                            var err = backend.tryAutoInstallEngine();
+                            permissionPopup.installing = false;
+                            if (err === "") {
+                                permissionPopup.installResult = "ok";
+                                banner.visible = false;
+                                backend.refreshStatus();
+                            } else {
+                                permissionPopup.installResult = err;
+                            }
+                        }
+                    }
+
+                    Controls.Button {
                         text: qsTrId("common.got_it")
                         icon.name: "dialog-ok"
-                        highlighted: true
+                        highlighted: !backend.canAutoInstallEngine() || permissionPopup.installResult === "ok"
                         onClicked: permissionPopup.close()
 
                         Component.onCompleted: forceActiveFocus()

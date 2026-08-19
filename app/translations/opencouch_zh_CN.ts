@@ -116,5 +116,8 @@
 <message id="common.copy_command"><source>common.copy_command</source><translation>复制命令</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>使用客厅模式需要的权限</translation></message>
 <message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>运行命令后，点击仪表盘上的刷新状态以应用更改。</translation></message>
+<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>引擎安装成功！</translation></message>
+<message id="engine.install_button"><source>engine.install_button</source><translation>安装引擎</translation></message>
+<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>该引擎已包含在此应用中，并将在首次使用时自动安装。</translation></message>
 </context>
 </TS>

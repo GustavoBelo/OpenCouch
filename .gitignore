@@ -19,6 +19,10 @@ flatpak-repo/
 repo/
 *.flatpak
 
+# AppImage build/state
+AppDir/
+*.AppImage
+
 # IDE / editor
 .vscode/
 .idea/

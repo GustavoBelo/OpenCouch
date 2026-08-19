@@ -39,12 +39,11 @@
       <li xml:lang="pt-BR">Status em tempo real e visualização de logs</li>
     </ul>
     <p>Note: this app runs sandboxed, but controls your displays through a small
-    system helper that must be installed separately. A one-line installer is shown
-    in the app on first launch - see the project homepage for details.</p>
+    system helper. It is set up on first launch - automatically when bundled with
+    the app, or via a one-line installer command shown on screen.</p>
     <p xml:lang="pt-BR">Nota: este app roda em sandbox, mas controla seus monitores
-    por meio de um pequeno assistente que precisa ser instalado separadamente. Um
-    comando de instalação é exibido no app no primeiro uso - veja a página do
-    projeto para mais detalhes.</p>
+    por meio de um pequeno assistente. Ele é configurado no primeiro uso - automaticamente 
+    quando incluído no app, ou via um comando de instalação exibido na tela.</p>
   </description>
 
   <launchable type="desktop-id">io.github.gustavobelo.opencouch.desktop</launchable>
@@ -53,22 +52,22 @@
     <screenshot type="default">
       <caption>Open Couch dashboard with one-click layout switching and display status</caption>
       <caption xml:lang="pt-BR">Tela inicial do Open Couch com alternância de layout com um clique e status dos monitores</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.6.2/packaging/screenshots/dashboard.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v@PROJECT_VERSION/packaging/screenshots/dashboard.png</image>
     </screenshot>
     <screenshot>
       <caption>Guided setup to detect and configure desktop and TV outputs</caption>
       <caption xml:lang="pt-BR">Configuracao guiada para detectar e configurar as saidas do desktop e da TV</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.6.2/packaging/screenshots/onboarding.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v@PROJECT_VERSION@/packaging/screenshots/onboarding.png</image>
     </screenshot>
     <screenshot>
       <caption>Display settings for the desk and TV layouts (top)</caption>
       <caption xml:lang="pt-BR">Ajustes de exibicao para os layouts da mesa e da TV (parte de cima)</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.6.2/packaging/screenshots/settings-1.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v@PROJECT_VERSION@/packaging/screenshots/settings-1.png</image>
     </screenshot>
     <screenshot>
       <caption>Display settings for the desk and TV layouts (bottom)</caption>
       <caption xml:lang="pt-BR">Ajustes de exibicao para os layouts da mesa e da TV (parte de baixo)</caption>
-      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v1.6.2/packaging/screenshots/settings-2.png</image>
+      <image>https://raw.githubusercontent.com/GustavoBelo/OpenCouch/v@PROJECT_VERSION@/packaging/screenshots/settings-2.png</image>
     </screenshot>
   </screenshots>
 

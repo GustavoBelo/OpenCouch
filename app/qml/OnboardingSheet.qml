@@ -183,10 +183,12 @@ Controls.Popup {
                 }
 
                 FeatureBlock {
-                    iconName: "dialog-information"
+                    iconName: backend.canAutoInstallEngine() ? "dialog-ok" : "dialog-information"
                     titleText: qsTrId("onboarding.requirement_title")
-                    descText: qsTrId("onboarding.requirement_description") + "\n\n" + qsTrId("onboarding.install_description")
-                    codeSnippet: "bash <(curl -fsSL " + appInfo.installScriptUrl + ")"
+                    descText: backend.canAutoInstallEngine() 
+                        ? qsTrId("onboarding.requirement_description") + "\n\n" + qsTrId("onboarding.auto_install_description")
+                        : qsTrId("onboarding.requirement_description") + "\n\n" + qsTrId("onboarding.install_description")
+                    codeSnippet: backend.canAutoInstallEngine() ? "" : "bash <(curl -fsSL " + appInfo.installScriptUrl + ")"
                 }
             }
         }

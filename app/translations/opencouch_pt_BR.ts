@@ -116,5 +116,8 @@
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permissão necessária para usar o Modo Sala</translation></message>
 <message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Depois de rodar o comando, clique em Atualizar Status no painel para aplicar as alterações.</translation></message>
+<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine foi instalado com sucesso!</translation></message>
+<message id="engine.install_button"><source>engine.install_button</source><translation>Instalar Engine</translation></message>
+<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>O engine já vem incluído neste app e será instalado automaticamente no primeiro uso.</translation></message>
 </context>
 </TS>

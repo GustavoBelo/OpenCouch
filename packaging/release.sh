@@ -47,14 +47,9 @@ sed -i -e "s/^SELF_VERSION=\"[^\"]*\"/SELF_VERSION=\"${VERSION}\"/" "$INSTALL_FI
 sed -i -e "s/^ENGINE_VERSION=\"[^\"]*\"/ENGINE_VERSION=\"${VERSION}\"/" \
     "${PROJECT_DIR}/backend/open-couch-engine"
 
-# Sync tag in Flatpak manifests
-FLATPAK_MANIFESTS=(
-    "${PROJECT_DIR}/io.github.gustavobelo.opencouch.yml"
-    "${SCRIPT_DIR}/io.github.gustavobelo.opencouch.yml"
-)
-for manifest in "${FLATPAK_MANIFESTS[@]}"; do
-    sed -i -e "s/^        tag: v.*/        tag: ${TAG}/" "$manifest"
-done
+# Sync tag in Flatpak manifest
+FLATPAK_MANIFEST="${PROJECT_DIR}/io.github.gustavobelo.opencouch.yml"
+sed -i -e "s/^  *tag: v.*/    tag: ${TAG}/"    "${FLATPAK_MANIFEST}"
 
 # Sync MIN_VERSION in engine from the app's kMinEngineVersion
 MIN_VERSION="$(sed -n 's/.*kMinEngineVersion\s*=\s*"\([^"]*\)".*/\1/p' \
@@ -69,7 +64,7 @@ BACKEND_DIR="${PROJECT_DIR}/backend"
 
 git -C "$PROJECT_DIR" add "$VERSION_FILE" "$JUST_FILE" "$INSTALL_FILE" \
     "${BACKEND_DIR}/open-couch-engine" "${BACKEND_DIR}/SHA256SUMS" \
-    "${FLATPAK_MANIFESTS[@]}"
+    "$FLATPAK_MANIFEST"
 git -C "$PROJECT_DIR" commit -m "Release ${TAG}"
 
 if command -v appstreamcli >/dev/null 2>&1; then

@@ -1,5 +1,7 @@
 #include "engineclient.h"
 
+#include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QProcess>
 
@@ -91,4 +93,66 @@ bool EngineClient::engineNeedsUpdate() const
 bool EngineClient::runningInFlatpakSandbox()
 {
     return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
+}
+
+static QString bundledEngineDir()
+{
+    const QString appDir = QString::fromLocal8Bit(qgetenv("APPDIR"));
+    if (!appDir.isEmpty()) {
+        const QString candidate = appDir + QStringLiteral("/usr/share/open-couch");
+        if (QFileInfo::exists(candidate + QStringLiteral("/open-couch-engine"))) {
+            return candidate;
+        }
+        // Flatpak: scripts ar under /app/share/open-couch, not /usr/share/open-couch
+        return QStringLiteral("/app/share/open-couch");
+    }
+    
+    return QString(); 
+}
+
+bool EngineClient::canAutoInstall()
+{
+    const QString dir = bundledEngineDir();
+    return QFileInfo::exists(dir + QStringLiteral("/open-couch-engine"));
+}
+
+bool EngineClient::installBundledEngine(QString *errorMessage) const
+{
+    const QString destDir = QDir::homePath() + QStringLiteral("/.local/bin");
+    QDir dir;
+    if (!dir.mkpath(destDir)) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("Could not create ~/.local/bin directory");
+        return false;
+    }
+
+    const QString srcDir = bundledEngineDir();
+    const QStringList scripts = {
+        QStringLiteral("open-couch-engine"),
+        QStringLiteral("open-couch-log")
+    };
+    
+    for (const QString &script : scripts) {
+        const QString src = srcDir + QLatin1Char('/') + script;
+        const QString dest = destDir + QLatin1Char('/') + script;
+
+        QFile::remove(dest);
+        if(!QFile::copy(src, dest)) {
+            if (errorMessage)
+                    *errorMessage = QStringLiteral("Could not copy %1").arg(script);
+            return false;
+        }
+
+        const bool chmodOk = QFile(dest).setPermissions(
+            QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
+            QFile::ReadGroup | QFile::ExeGroup |
+            QFile::ReadOther | QFile::ExeOther
+        );
+        if (!chmodOk) {
+            if (errorMessage)
+                *errorMessage = QStringLiteral("Could not set permissions on %1").arg(script);
+            return false;
+        }
+    }
+    return true;
 }

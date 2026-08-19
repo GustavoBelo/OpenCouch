@@ -47,9 +47,88 @@ jobs:
           path: OpenCouch.flatpak
           if-no-files-found: error
 
+  appimage:
+      name: Build AppImage
+      runs-on: ubuntu-22.04
+      steps:
+        - uses: actions/checkout@v5
+
+        - name: Check version vs tag
+          id: version
+          env:
+            TAG: ${{ github.ref_name }}
+          run: |
+            VERSION="${TAG#v}"
+            FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
+            if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
+              echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${TAG}." >&2
+              exit 1
+            fi
+            echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+        - name: Add KDE PPA
+          run: |
+            sudo add-apt-repository ppa:kubuntu-ppa/backports-extra -y
+            sudo add-apt-repository ppa:kubuntu-ppa/backports -y
+            sudo apt-get update -q
+
+        - name: Install build dependencies
+          run: |
+            sudo apt-get install -y --no-install-recommends \
+              cmake ninja-build \
+              qt6-base-dev qt6-declarative-dev qt6-tools-dev qt6-tools-dev-tools \
+              qt6-wayland \
+              libqt6dbus6 qml6-module-qtquick qml6-module-qtquick-controls \
+              qml6-module-qtquick-layouts \
+              libkf6kirigami-dev libkf6coreaddons-dev libkf6i18n-dev \
+              extra-cmake-modules \
+              fuse libfuse2 file
+
+        - name: Build app
+          run: |
+            cmake -S app -B app-build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DINSTALL_ENGINE_BUNDLE=ON \
+              -DCMAKE_INSTALL_PREFIX=/usr
+            cmake --build app-build --parallel $(nproc)
+            DESTDIR="${GITHUB_WORKSPACE}/AppDir" cmake --install app-build
+
+        - name: Download linuxdeploy
+          run: |
+            wget --no-verbose https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+            wget --no-verbose https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+            chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+        - name: Build AppImage
+          env:
+            VERSION: ${{ steps.version.outputs.version }}
+            QMAKE: qmake6
+            QML_SOURCES_PATHS: ${{ github.workspace }}/app/qml
+            EXTRA_QT_PLUGINS: wayland
+          run: |
+            ./linuxdeploy-x86_64.AppImage \
+              --appdir AppDir \
+              --plugin qt \
+              --output appimage \
+              --icon-file packaging/icons/io.github.gustavobelo.opencouch.svg \
+              --desktop-file AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+            APPIMAGE_FILE=$(ls OpenCouch-*-x86_64.AppImage 2>/dev/null | head -1)
+            if [[ -z "${APPIMAGE_FILE}" ]]; then
+              echo "::error::No AppImage file found after build" >&2
+              exit 1
+            fi
+            mv "${APPIMAGE_FILE}" OpenCouch-x86_64.AppImage
+
+        - name: Upload AppImage artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: OpenCouch-x86_64.AppImage
+            path: OpenCouch-x86_64.AppImage
+            if-no-files-found: error
+
   release:
     name: Create GitHub Release
-    needs: flatpak
+    needs: [flatpak, appimage]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -58,11 +137,16 @@ jobs:
         with:
           name: OpenCouch.flatpak
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: OpenCouch-x86_64.AppImage
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
             "OpenCouch.flatpak" \
+            "OpenCouch-x86_64.AppImage" \
             --title "Open Couch ${{ github.ref_name }}" \
             --generate-notes

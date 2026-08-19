@@ -116,5 +116,8 @@
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copier la commande</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission requise pour utiliser le Mode Salon</translation></message>
 <message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Après avoir exécuté la commande, cliquez sur Actualiser l'état dans le tableau de bord pour appliquer les modifications.</translation></message>
+<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine installé avec succès !</translation></message>
+<message id="engine.install_button"><source>engine.install_button</source><translation>Installer Engine</translation></message>
+<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>Le engine est déjà inclus dans cette application et sera installé automatiquement lors de la première utilisation.</translation></message>
 </context>
 </TS>

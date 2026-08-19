@@ -202,6 +202,20 @@ bool Backend::engineNeedsUpdate()
     return m_engineClient->engineNeedsUpdate();
 }
 
+bool Backend::canAutoInstallEngine()
+{
+    return EngineClient::canAutoInstall();
+}
+
+QString Backend::tryAutoInstallEngine()
+{
+    QString error;
+    if (!m_engineClient->installBundledEngine(&error)) {
+        return error.isEmpty() ? QString("Unknown error") : error;
+    }
+    return QString();
+}
+
 QVariantList Backend::listOutputs()
 {
     bool ok = false;

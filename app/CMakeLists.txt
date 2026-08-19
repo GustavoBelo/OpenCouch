@@ -131,3 +131,12 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/io.github.gustavobelo.openco
         DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
 install(FILES ${OPENCOUCH_PACKAGING_DIR}/icons/io.github.gustavobelo.opencouch.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+
+option(INSTALL_ENGINE_BUNDLE "Bundle engine scripts for Flatpak/AppImage distribution" OFF)
+if(INSTALL_ENGINE_BUNDLE)
+    install(PROGRAMS
+        "${CMAKE_SOURCE_DIR}/../backend/open-couch-engine"
+        "${CMAKE_SOURCE_DIR}/../backend/open-couch-log-viewer"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/open-couch"
+    )
+endif()
