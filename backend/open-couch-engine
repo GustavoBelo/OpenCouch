@@ -42,6 +42,28 @@ load_config() {
 
 load_config
 
+version_gte() {
+    local current="$1"
+    local minimum="$2"
+    local current_major current_minor current_patch
+    local minimum_major minimum_minor minimum_patch
+
+    [[ "$current" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return 1
+    current_major=$((10#${BASH_REMATCH[1]}))
+    current_minor=$((10#${BASH_REMATCH[2]}))
+    current_patch=$((10#${BASH_REMATCH[3]}))
+
+    [[ "$minimum" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]] || return 1
+    minimum_major=$((10#${BASH_REMATCH[1]}))
+    minimum_minor=$((10#${BASH_REMATCH[2]}))
+    minimum_patch=$((10#${BASH_REMATCH[3]}))
+
+    (( current_major > minimum_major ||
+       (current_major == minimum_major && current_minor > minimum_minor) ||
+       (current_major == minimum_major && current_minor == minimum_minor &&
+        current_patch >= minimum_patch) ))
+}
+
 in_terminal() {
     [[ -t 1 || -t 2 ]]
 }
