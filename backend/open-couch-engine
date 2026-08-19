@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Bumped automatilcally by release.sh, do not edit manually
-ENGINE_VERSION="1.6.11"
+ENGINE_VERSION="1.6.12"
 MIN_VERSION="1.6.1"
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
