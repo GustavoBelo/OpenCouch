@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kdeneon/all:user
+      options: --user root
     steps:
         - uses: actions/checkout@v5
 
