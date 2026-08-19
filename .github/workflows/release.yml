@@ -9,44 +9,6 @@ permissions:
   contents: write
 
 jobs:
-  flatpak:
-    name: Build Flatpak
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
-      options: --privileged
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Check version vs tag
-        id: version
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          VERSION="${TAG#v}"
-          FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
-          if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
-            echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${TAG}. Create the release with ./packaging/release.sh ${VERSION}." >&2
-            exit 1
-          fi
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-
-      - name: Build Flatpak bundle
-        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          bundle: OpenCouch.flatpak
-          manifest-path: packaging/io.github.gustavobelo.opencouch.yml
-          branch: main
-          cache-key: flatpak-kde-6.11-${{ runner.arch }}
-          upload-artifact: false
-
-      - name: Upload Flatpak bundle
-        uses: actions/upload-artifact@v4
-        with:
-          name: OpenCouch.flatpak
-          path: OpenCouch.flatpak
-          if-no-files-found: error
-
   appimage:
     name: Build AppImage
     runs-on: ubuntu-latest
@@ -155,14 +117,10 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [flatpak, appimage]
+    needs: appimage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: OpenCouch.flatpak
 
       - uses: actions/download-artifact@v4
         with:
@@ -173,7 +131,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
-            "OpenCouch.flatpak" \
             "OpenCouch-x86_64.AppImage" \
             --title "Open Couch ${{ github.ref_name }}" \
             --generate-notes

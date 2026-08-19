@@ -103,10 +103,14 @@ static QString bundledEngineDir()
         if (QFileInfo::exists(candidate + QStringLiteral("/open-couch-engine"))) {
             return candidate;
         }
-        // Flatpak: scripts ar under /app/share/open-couch, not /usr/share/open-couch
-        return QStringLiteral("/app/share/open-couch");
     }
-    
+
+    // Flatpak installs bundled scripts below /app, while AppImage uses APPDIR.
+    const QString flatpakDir = QStringLiteral("/app/share/open-couch");
+    if (QFileInfo::exists(flatpakDir + QStringLiteral("/open-couch-engine"))) {
+        return flatpakDir;
+    }
+
     return QString(); 
 }
 
@@ -129,7 +133,7 @@ bool EngineClient::installBundledEngine(QString *errorMessage) const
     const QString srcDir = bundledEngineDir();
     const QStringList scripts = {
         QStringLiteral("open-couch-engine"),
-        QStringLiteral("open-couch-log")
+        QStringLiteral("open-couch-log-viewer")
     };
     
     for (const QString &script : scripts) {

@@ -39,32 +39,45 @@ If you have a PC at your desk but sometimes want to kick back on the couch with 
 
 ## 📦 Installation
 
-Open Couch has two parts that need to be installed:
+Open Couch has two parts that need to be installed: the app and a small system helper.
 
 > **Why two parts?**
 > The app runs inside a secure sandbox so it can't access your system unnecessarily. But to actually control your displays and Steam, it needs a small helper that runs outside that sandbox. Think of it like a banking app that needs a separate card reader.
 
 ---
 
-### Step 1 - Install the app (GUI)
+### Step 1 - Install the app (AppImage recommended)
 
-Install via [Flathub](https://flathub.org/apps/details/io.github.gustavobelo.opencouch):
+The AppImage is the recommended option for Open Couch because it works more directly
+with the system helper that controls your displays and Steam. Download
+`OpenCouch-x86_64.AppImage` from the [GitHub Releases page](https://github.com/GustavoBelo/OpenCouch/releases), make it executable, and run it:
+
+```sh
+chmod +x OpenCouch-x86_64.AppImage
+./OpenCouch-x86_64.AppImage
+```
+
+#### Alternative: Flatpak via Flathub
+
+The Flatpak is available through [Flathub](https://flathub.org/apps/details/io.github.gustavobelo.opencouch). It is more sandboxed, but still requires the same system helper below:
 
 ```sh
 flatpak install flathub io.github.gustavobelo.opencouch
 
 ```
 
-To update later: `flatpak update`
+To update later: `flatpak update`.
 
 ---
 
-### Step 2 - Install the system helper (Engine)
+### Step 2 - Install the system helper (required)
 
-Open a terminal and paste the command below. The app also shows this command on the welcome screen:
+Both the AppImage and Flatpak require this helper because it runs outside the app sandbox
+and controls your displays and Steam. Open a terminal and paste the command below. The app
+also shows this command on the welcome screen:
 
 ```sh
-bash <(curl -fsSL [https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh](https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh))
+bash <(curl -fsSL https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh)
 
 ```
 
@@ -86,17 +99,6 @@ Copy `packaging/host/open-couch.just` to `/etc/just/ujust.d/` and use:
 ujust install-open-couch   # install
 ujust update-open-couch    # update
 ujust remove-open-couch    # remove
-
-```
-
----
-
-### Alternative: Install from a .flatpak file
-
-If you prefer not to use Flathub, download `OpenCouch.flatpak` from the [Releases page](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/GustavoBelo/OpenCouch/releases) and install it directly:
-
-```sh
-flatpak install OpenCouch.flatpak
 
 ```
 
@@ -133,7 +135,7 @@ Make sure the TV is on and connected before opening the app. On the settings pag
 Run in a terminal:
 
 ```sh
-bash <(curl -fsSL [https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh](https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh)) --remove
+bash <(curl -fsSL https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh) --remove
 
 ```
 
@@ -176,4 +178,4 @@ Versioning is done via git tags (`vX.Y.Z`). To create a new release and trigger 
 
 ```
 
-This script syncs `app/version.txt` with the git tag, validates the AppStream metainfo, and creates the commit/tag. Pushing the tag automatically publishes the GitHub Release with the Flatpak bundle attached.
+This script syncs `app/version.txt` with the git tag, validates the AppStream metainfo, and creates the commit/tag. Pushing the tag automatically publishes a GitHub Release with the AppImage attached. Flatpak releases are distributed through Flathub.
