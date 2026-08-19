@@ -48,7 +48,7 @@ sed -i -e "s/^ENGINE_VERSION=\"[^\"]*\"/ENGINE_VERSION=\"${VERSION}\"/" \
     "${PROJECT_DIR}/backend/open-couch-engine"
 
 # Sync tag in Flatpak manifest
-FLATPAK_MANIFEST="${PROJECT_DIR}/io.github.gustavobelo.opencouch.yml"
+FLATPAK_MANIFEST="${PROJECT_DIR}/packaging/io.github.gustavobelo.opencouch.yml"
 sed -i -e "s/^  *tag: v.*/    tag: ${TAG}/"    "${FLATPAK_MANIFEST}"
 
 # Sync MIN_VERSION in engine from the app's kMinEngineVersion
