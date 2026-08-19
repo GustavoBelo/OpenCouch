@@ -653,7 +653,7 @@ Kirigami.ScrollablePage {
                             }
                         }
 
-                        Controls.Lable {
+                        Controls.Label {
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
                             visible: permissionPopup.installResult !== "" && permissionPopup.installResult !== "ok"
