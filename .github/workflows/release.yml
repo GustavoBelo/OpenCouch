@@ -76,6 +76,7 @@ jobs:
               qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
               qt6-qtwayland \
               kf6-kirigami-devel kf6-kcoreaddons-devel kf6-ki18n-devel \
+              kf6-qqc2-desktop-style breeze-icon-theme \
               extra-cmake-modules \
               fuse file
 
@@ -116,6 +117,13 @@ jobs:
             mkdir -p AppDir/usr/plugins/platforms
             cp /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
             cp -r /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
+
+            mkdir -p AppDir/usr/qml/org/kde
+            cp -r /usr/lib64/qt6/qml/org/kde/desktop AppDir/usr/qml/org/kde/
+            
+            mkdir -p AppDir/usr/share/icons
+            cp -r /usr/share/icons/breeze AppDir/usr/share/icons/
+            cp -r /usr/share/icons/breeze-dark AppDir/usr/share/icons/
 
             ./linuxdeploy-ext/AppRun \
               --appdir AppDir \
