@@ -47,6 +47,7 @@ Kirigami.ScrollablePage {
     ]
 
     Component.onCompleted: {
+        backend.clearLog();
         backend.refreshStatus();
 
         let rawContent = backend.readLog();
@@ -363,7 +364,7 @@ Kirigami.ScrollablePage {
 
                     function getFormattedLine(line) {
                         const safeLine = escapeHtml(line);
-                        return /(ERRO|ERROR|error)/.test(line)
+                        return /(ERRO|ERROR|error|WARN|warning)/.test(line)
                             ? "<font color=\"#ef5350\">" + safeLine + "</font>"
                             : safeLine;
                     }

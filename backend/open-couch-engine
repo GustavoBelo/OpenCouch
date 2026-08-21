@@ -18,6 +18,9 @@ MAX_HISTORY_LOGS=50
 CONTROLLER_DEBOUNCE_SECS=10
 CONTROLLER_MIN_USAGE_SECS=60
 
+REQUIRED_HOST_COMMANDS=(jq kscreen-doctor pgrep)
+OPTIONAL_HOST_COMMANDS=(wmctrl)
+
 DESK_OUTPUT="DP-1"
 TV_OUTPUT="HDMI-A-1"
 
@@ -140,12 +143,34 @@ trap on_error ERR
 require_commands() {
     local cmd
     local -a missing=()
-    for cmd in jq kscreen-doctor pgrep; do
+    for cmd in "${REQUIRED_HOST_COMMANDS[@]}"; do
         command -v "$cmd" >/dev/null 2>&1 || missing+=("$cmd")
     done
 
     if ((${#missing[@]} > 0)); then
         die "Missing dependencies: ${missing[*]}. Install them on the host and try again."
+    fi
+}
+
+log_missing_host_components() {
+    local cmd
+    local -a missing_required=()
+    local -a missing_optional=()
+
+    for cmd in "${REQUIRED_HOST_COMMANDS[@]}"; do
+        command -v "$cmd" >/dev/null 2>&1 || missing_required+=("$cmd")
+    done
+
+    for cmd in "${OPTIONAL_HOST_COMMANDS[@]}"; do
+        command -v "$cmd" >/dev/null 2>&1 || missing_optional+=("$cmd")
+    done
+
+    if ((${#missing_required[@]} > 0)); then
+        log "ERROR: Missing required host components: ${missing_required[*]}. Couch Mode will not work until they are installed."
+    fi
+
+    if ((${#missing_optional[@]} > 0)); then
+        log "WARNING: Missing optional host component(s): ${missing_optional[*]} — Big Picture monitoring and automatic return when controllers turn off are disabled."
     fi
 }
 
@@ -886,6 +911,7 @@ print_outputs() {
 print_status() {
     log "Status refresh requested"
     log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE EXIT_ON_ALL_CONTROLLERS_OFF=$EXIT_ON_ALL_CONTROLLERS_OFF"
+    log_missing_host_components
     if version_gte "${ENGINE_VERSION:-0.0.0}" "$MIN_VERSION"; then
         log "Engine version: ${ENGINE_VERSION:-unknown} (meets minimum requirement: $MIN_VERSION)"
     else
@@ -941,6 +967,19 @@ clear_log() {
     log "log cleared; previous content archived in $(basename "${dest}")"
 }
 
+append_log_message() {
+    local raw="${1:-}"
+    local message
+
+    message="$(printf '%s' "$raw" | tr -d '\000-\037\177')"
+    message="${message:0:500}"
+    message="${message#"${message%%[![:space:]]*}"}"
+    message="${message%"${message##*[![:space:]]}"}"
+
+    [[ -n "$message" ]] || return 0
+    log "$message"
+}
+
 valid_history_id() {
     [[ "$1" =~ ^open-couch-engine-[0-9]{8}-[0-9]{6}(\.log(\.[0-9]+)?)?$ ]]
 }
@@ -985,6 +1024,12 @@ play_mode() {
     controller_session_reset
 
     log "play: active config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}"
+
+    if [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] \
+        && ! command -v wmctrl >/dev/null 2>&1; then
+        log "WARNING: wmctrl is missing; the automatic return when controllers turn off cannot close Big Picture."
+    fi
+
     save_snapshot
     switch_to_living_room_layout
     log "play: couch layout applied, opening Big Picture"
@@ -1028,6 +1073,7 @@ Usage:
   open-couch-engine watch          
   open-couch-engine config-path    
   open-couch-engine log            
+  open-couch-engine append-log <message>   
   open-couch-engine clear-log      
   open-couch-engine log-history    
   open-couch-engine print-history-log <id>   
@@ -1067,6 +1113,9 @@ main() {
             ;;
         log)
             print_log
+            ;;
+        append-log)
+            append_log_message "${2:-}"
             ;;
         clear-log)
             clear_log

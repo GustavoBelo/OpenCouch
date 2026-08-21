@@ -32,7 +32,7 @@ A GUI é apenas uma camada: toda a lógica de exibição vive no engine bash (`b
 
 ### backend/ — engine
 
-- `open-couch-engine` — script bash (com `set -euo pipefail`). Comandos: `play`, `restore`, `status`, `outputs`, `check`, `version`, `watch`, `config-path`, `log`, `clear-log`, `log-history`, `print-history-log`, `export-history-log`, `export-log`. Dependências de host: `jq`, `kscreen-doctor`, `pgrep`; opcional: `wmctrl`. Opção de config `EXIT_ON_ALL_CONTROLLERS_OFF`: quando habilitada, o modo sala encerra o Big Picture e restaura o desktop quando todos os controles são desligados (após 10s de debounce e mínimo de 1 minuto de uso de controle na sessão; detecção via `/dev/input/js*`).
+- `open-couch-engine` — script bash (com `set -euo pipefail`). Comandos: `play`, `restore`, `status`, `outputs`, `check`, `version`, `watch`, `config-path`, `log`, `append-log`, `clear-log`, `log-history`, `print-history-log`, `export-history-log`, `export-log`. Dependências de host: `jq`, `kscreen-doctor`, `pgrep`; opcional: `wmctrl`. O `status` registra no log os componentes ausentes (obrigatórios como `ERROR`, opcionais como `WARNING`); o app usa `append-log` para persistir eventos próprios no arquivo (ex.: falha do watcher). Opção de config `EXIT_ON_ALL_CONTROLLERS_OFF`: quando habilitada, o modo sala encerra o Big Picture e restaura o desktop quando todos os controles são desligados (após 10s de debounce e mínimo de 1 minuto de uso de controle na sessão; detecção via `/dev/input/js*`).
 - `open-couch-log-viewer` — abre `konsole` com status + log em modo live.
 - `SHA256SUMS` — checksums usados pelo instalador remoto.
 

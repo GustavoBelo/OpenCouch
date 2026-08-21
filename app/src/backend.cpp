@@ -158,7 +158,9 @@ void Backend::startWatcher()
     });
     connect(m_watcherProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
             this, [this](int exitCode, QProcess::ExitStatus status) {
-        if (status == QProcess::NormalExit && exitCode != 0) {
+        if (status == QProcess::CrashExit || (status == QProcess::NormalExit && exitCode != 0)) {
+            runEngineSync({QStringLiteral("append-log"),
+                           QStringLiteral("ERROR: Big Picture watcher exited unexpectedly (code %1)").arg(exitCode)});
             emit logLine(qtTrId("watcher.failed").arg(exitCode));
         }
     });
