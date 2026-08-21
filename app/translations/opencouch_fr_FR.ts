@@ -81,6 +81,9 @@
 <message id="settings.detect_again"><source>settings.detect_again</source><translation>Détecter les écrans à nouveau</translation></message>
 <message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>Garder l'écran du PC allumé en mode TV</translation></message>
 <message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Activer à l'ouverture de Steam via la manette</translation></message>
+<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Manettes de jeu</translation></message>
+<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Revenir au bureau lorsque toutes les manettes sont éteintes</translation></message>
+<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>Lorsque activé, si vous éteignez toutes vos manettes en mode salon, Open Couch ferme Big Picture et restaure le bureau. Ne s'active qu'après au moins une minute d'utilisation de la manette.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Lancer au démarrage du système</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Réduire dans la zone de notification à la fermeture</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Offrir un café au dév</translation></message>

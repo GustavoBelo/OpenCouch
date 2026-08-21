@@ -81,6 +81,9 @@
 <message id="settings.detect_again"><source>settings.detect_again</source><translation>Bildschirme neu erkennen</translation></message>
 <message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>PC-Monitor im TV-Modus eingeschaltet lassen</translation></message>
 <message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Aktivieren, wenn Steam per Controller gestartet wird</translation></message>
+<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Gamecontroller</translation></message>
+<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Zum Desktop zurückkehren, wenn alle Controller ausgeschaltet werden</translation></message>
+<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>Wenn aktiviert, schließt Open Couch Big Picture und stellt das Desktop-Layout wieder her, sobald alle Controller ausgeschaltet sind. Greift erst nach mindestens einer Minute Controller-Nutzung.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Mit dem System starten</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Beim Schließen in den Infobereich (Tray) minimieren</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Dem Dev einen Kaffee spendieren</translation></message>

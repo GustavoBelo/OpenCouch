@@ -397,6 +397,28 @@ Kirigami.ScrollablePage {
                     font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
                 }
             }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Kirigami.FormData.label: qsTrId("settings.controllers_label")
+                spacing: 0
+
+                Controls.CheckBox {
+                    id: exitOnControllersOffCheck
+                    Layout.fillWidth: true
+                    text: qsTrId("settings.exit_on_controllers_off")
+                    checked: displaySettingsModel.exitOnControllersOff
+                    onToggled: displaySettingsModel.exitOnControllersOff = checked
+                }
+                Controls.Label {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                    wrapMode: Text.Wrap
+                    text: qsTrId("settings.exit_on_controllers_off_description")
+                    opacity: 0.7
+                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                }
+            }
         }
 
         Kirigami.Separator {

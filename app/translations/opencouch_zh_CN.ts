@@ -81,6 +81,9 @@
 <message id="settings.detect_again"><source>settings.detect_again</source><translation>重新检测屏幕</translation></message>
 <message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>电视模式下保持电脑屏幕点亮</translation></message>
 <message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>用手柄启动 Steam 时自动切换</translation></message>
+<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>游戏手柄</translation></message>
+<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>所有手柄关闭时返回桌面</translation></message>
+<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>启用后，如果在客厅模式中关闭所有手柄，Open Couch 将关闭 Big Picture 并恢复桌面布局。仅在至少使用手柄一分钟后生效。</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>开机自启动</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>关闭窗口时最小化到系统托盘</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ 请开发者喝杯咖啡</translation></message>

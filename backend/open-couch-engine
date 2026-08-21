@@ -15,6 +15,9 @@ HISTORY_DIR="${STATE_DIR}/history"
 LOG_MAX_BYTES=524288
 MAX_HISTORY_LOGS=50
 
+CONTROLLER_DEBOUNCE_SECS=10
+CONTROLLER_MIN_USAGE_SECS=60
+
 DESK_OUTPUT="DP-1"
 TV_OUTPUT="HDMI-A-1"
 
@@ -33,6 +36,11 @@ MIRROR_DESK_TO_TV="false"
 
 AUTO_RESTORE_ON_EXIT=0
 WATCH_BIG_PICTURE="${WATCH_BIG_PICTURE:-false}"
+EXIT_ON_ALL_CONTROLLERS_OFF="${EXIT_ON_ALL_CONTROLLERS_OFF:-false}"
+
+controller_usage_secs=0
+controllers_off_since=""
+controllers_last_poll=""
 
 load_config() {
     if [[ -f "$CONFIG_FILE" ]]; then
@@ -197,7 +205,7 @@ log_layout_debug() {
     desk_summary="$(output_debug_line "$json" "$DESK_OUTPUT")"
     tv_summary="$(output_debug_line "$json" "$TV_OUTPUT")"
 
-    log "${stage}: primary_output=${primary_output}; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}; desk={${desk_summary}}; tv={${tv_summary}}"
+    log "${stage}: primary_output=${primary_output}; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}; desk={${desk_summary}}; tv={${tv_summary}}"
 }
 
 verify_primary_output() {
@@ -582,6 +590,67 @@ big_picture_window_present() {
     wmctrl -lx 2>/dev/null | grep -qi 'big picture'
 }
 
+controllers_connected() {
+    local -a devices=(/dev/input/js*)
+    if [[ -e "${devices[0]:-}" ]]; then
+        printf '%s\n' "${#devices[@]}"
+    else
+        printf '%s\n' "0"
+    fi
+}
+
+controller_session_reset() {
+    controller_usage_secs=0
+    controllers_off_since=""
+    controllers_last_poll=""
+}
+
+controllers_all_off() {
+    local count now delta
+    count="$(controllers_connected)"
+    now="$(date +%s)"
+
+    if [[ -n "$controllers_last_poll" ]]; then
+        delta=$(( now - controllers_last_poll ))
+        if (( delta > 0 )) && (( count > 0 )); then
+            controller_usage_secs=$(( controller_usage_secs + delta ))
+        fi
+    fi
+    controllers_last_poll="$now"
+
+    if (( count > 0 )); then
+        controllers_off_since=""
+        return 1
+    fi
+
+    if (( controller_usage_secs < CONTROLLER_MIN_USAGE_SECS )); then
+        controllers_off_since=""
+        return 1
+    fi
+
+    if [[ -z "$controllers_off_since" ]]; then
+        controllers_off_since="$now"
+        return 1
+    fi
+
+    if (( now - controllers_off_since >= CONTROLLER_DEBOUNCE_SECS )); then
+        return 0
+    fi
+    return 1
+}
+
+wait_for_big_picture_close() {
+    local attempt
+
+    for attempt in $(seq 1 30); do
+        if ! big_picture_window_present; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 0
+}
+
 wait_for_new_steam_pid() {
     local existing_pids="$1"
     local pid
@@ -631,6 +700,18 @@ wait_for_steam_exit_or_bpm_exit() {
         if [[ "$bpm_seen" == "1" ]] && ! big_picture_window_present; then
             return 0
         fi
+
+        if [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] && controllers_all_off; then
+            controller_session_reset
+            if command -v wmctrl >/dev/null 2>&1; then
+                log "controllers: all controllers turned off; closing Big Picture and returning to desktop"
+                close_big_picture
+            else
+                log "controllers: all controllers turned off; wmctrl is missing, Big Picture will stay open"
+            fi
+            return 0
+        fi
+
         sleep 2
     done
 
@@ -689,7 +770,7 @@ launch_big_picture_and_wait() {
         die "Could not find Steam or the bazzite-steam-bpm launcher."
     fi
 
-    log "play: trying to start Big Picture with launcher=${steam_launcher[*]} and config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
+    log "play: trying to start Big Picture with launcher=${steam_launcher[*]} and config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}"
 
     "${steam_launcher[@]}" >/dev/null 2>&1 &
     launcher_pid=$!
@@ -737,15 +818,26 @@ watch_big_picture() {
             continue
         fi
         if [[ "$active" == "0" ]] && big_picture_window_present; then
-            log "watch: Big Picture detected externally; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}}"
+            log "watch: Big Picture detected externally; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}"
             save_snapshot
             switch_to_living_room_layout
+            controller_session_reset
             active=1
             log "watch: Big Picture detected, couch layout applied"
         elif [[ "$active" == "1" ]] && ! big_picture_window_present; then
             restore_layout
             active=0
             log "watch: Big Picture closed, desktop layout restored"
+        elif [[ "$active" == "1" ]] \
+            && [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] \
+            && controllers_all_off; then
+            log "watch: all controllers turned off; closing Big Picture and restoring desktop"
+            close_big_picture
+            wait_for_big_picture_close
+            restore_layout
+            controller_session_reset
+            active=0
+            log "watch: desktop layout restored after all controllers turned off"
         fi
         sleep 2
     done
@@ -793,7 +885,7 @@ print_outputs() {
 
 print_status() {
     log "Status refresh requested"
-    log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE"
+    log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE EXIT_ON_ALL_CONTROLLERS_OFF=$EXIT_ON_ALL_CONTROLLERS_OFF"
     if version_gte "${ENGINE_VERSION:-0.0.0}" "$MIN_VERSION"; then
         log "Engine version: ${ENGINE_VERSION:-unknown} (meets minimum requirement: $MIN_VERSION)"
     else
@@ -890,8 +982,9 @@ play_mode() {
     start_session
     AUTO_RESTORE_ON_EXIT=1
     trap cleanup EXIT INT TERM
+    controller_session_reset
 
-    log "play: active config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
+    log "play: active config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}"
     save_snapshot
     switch_to_living_room_layout
     log "play: couch layout applied, opening Big Picture"

@@ -107,6 +107,11 @@ bool DisplaySettingsModel::watchBigPicture() const
     return m_watchBigPicture;
 }
 
+bool DisplaySettingsModel::exitOnControllersOff() const
+{
+    return m_exitOnControllersOff;
+}
+
 bool DisplaySettingsModel::autostart() const
 {
     return m_autostart;
@@ -212,6 +217,15 @@ void DisplaySettingsModel::setWatchBigPicture(bool value)
     emit watchBigPictureChanged();
 }
 
+void DisplaySettingsModel::setExitOnControllersOff(bool value)
+{
+    if (m_exitOnControllersOff == value) {
+        return;
+    }
+    m_exitOnControllersOff = value;
+    emit exitOnControllersOffChanged();
+}
+
 void DisplaySettingsModel::setAutostart(bool value)
 {
     if (m_autostart == value) {
@@ -266,6 +280,7 @@ void DisplaySettingsModel::load()
     setKeepDeskEnabled(config.value(QStringLiteral("KEEP_DESK_ENABLED")).toString() == QLatin1String("true"));
     setMirrorDeskToTv(config.value(QStringLiteral("MIRROR_DESK_TO_TV")).toString() == QLatin1String("true"));
     setWatchBigPicture(config.value(QStringLiteral("WATCH_BIG_PICTURE")).toString() == QLatin1String("true"));
+    setExitOnControllersOff(config.value(QStringLiteral("EXIT_ON_ALL_CONTROLLERS_OFF")).toString() == QLatin1String("true"));
     setAutostart(backendBool(m_backend, "autostartEnabled"));
     setBackgroundOnClose(backendBool(m_backend, "backgroundOnClose"));
 }
@@ -370,6 +385,7 @@ QVariantMap DisplaySettingsModel::toConfigMap() const
     config.insert(QStringLiteral("KEEP_DESK_ENABLED"), m_keepDeskEnabled ? QStringLiteral("true") : QStringLiteral("false"));
     config.insert(QStringLiteral("MIRROR_DESK_TO_TV"), m_mirrorDeskToTv ? QStringLiteral("true") : QStringLiteral("false"));
     config.insert(QStringLiteral("WATCH_BIG_PICTURE"), m_watchBigPicture ? QStringLiteral("true") : QStringLiteral("false"));
+    config.insert(QStringLiteral("EXIT_ON_ALL_CONTROLLERS_OFF"), m_exitOnControllersOff ? QStringLiteral("true") : QStringLiteral("false"));
     config.insert(QStringLiteral("AUTOSTART"), m_autostart ? QStringLiteral("true") : QStringLiteral("false"));
     return config;
 }

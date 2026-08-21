@@ -10,7 +10,7 @@ namespace {
 
     // Bump this when the engine script changes in a way that requires users to reinstall
     // Leave it alone for app-only releases (UI, settings, translations, etc.)
-    constexpr const char *kMinEngineVersion = "1.6.1";
+    constexpr const char *kMinEngineVersion = "1.7.0";
 
     // Returns true if version string `a` is semantically less than `b` (X.Y.Z).
     bool versionLessThan(const QString &a, const QString &b)

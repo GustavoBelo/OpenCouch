@@ -81,6 +81,9 @@
 <message id="settings.detect_again"><source>settings.detect_again</source><translation>Detect displays again</translation></message>
 <message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>Keep PC monitor on in TV mode</translation></message>
 <message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Activate when launching Steam with a controller</translation></message>
+<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Game Controllers</translation></message>
+<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Return to desktop when all controllers are turned off</translation></message>
+<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>When enabled, if you turn off all your controllers while in Couch Mode, Open Couch closes Big Picture and restores the desktop layout. It only kicks in after at least one minute of controller use.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Start automatically on login</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimise to system tray on close</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Buy the dev a coffee</translation></message>

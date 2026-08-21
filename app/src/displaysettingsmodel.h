@@ -18,6 +18,7 @@ class DisplaySettingsModel : public QObject
     Q_PROPERTY(bool keepDeskEnabled READ keepDeskEnabled WRITE setKeepDeskEnabled NOTIFY keepDeskEnabledChanged)
     Q_PROPERTY(bool mirrorDeskToTv READ mirrorDeskToTv WRITE setMirrorDeskToTv NOTIFY mirrorDeskToTvChanged)
     Q_PROPERTY(bool watchBigPicture READ watchBigPicture WRITE setWatchBigPicture NOTIFY watchBigPictureChanged)
+    Q_PROPERTY(bool exitOnControllersOff READ exitOnControllersOff WRITE setExitOnControllersOff NOTIFY exitOnControllersOffChanged)
     Q_PROPERTY(bool autostart READ autostart WRITE setAutostart NOTIFY autostartChanged)
     Q_PROPERTY(bool backgroundOnClose READ backgroundOnClose WRITE setBackgroundOnClose NOTIFY backgroundOnCloseChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY lastErrorChanged)
@@ -36,6 +37,7 @@ public:
     bool keepDeskEnabled() const;
     bool mirrorDeskToTv() const;
     bool watchBigPicture() const;
+    bool exitOnControllersOff() const;
     bool autostart() const;
     bool backgroundOnClose() const;
     QString lastError() const;
@@ -50,6 +52,7 @@ public:
     void setKeepDeskEnabled(bool value);
     void setMirrorDeskToTv(bool value);
     void setWatchBigPicture(bool value);
+    void setExitOnControllersOff(bool value);
     void setAutostart(bool value);
     void setBackgroundOnClose(bool value);
 
@@ -72,6 +75,7 @@ signals:
     void keepDeskEnabledChanged();
     void mirrorDeskToTvChanged();
     void watchBigPictureChanged();
+    void exitOnControllersOffChanged();
     void autostartChanged();
     void backgroundOnCloseChanged();
     void lastErrorChanged();
@@ -95,6 +99,7 @@ private:
     bool m_keepDeskEnabled = false;
     bool m_mirrorDeskToTv = false;
     bool m_watchBigPicture = false;
+    bool m_exitOnControllersOff = false;
     bool m_autostart = false;
     bool m_backgroundOnClose = true;
     QString m_lastError;

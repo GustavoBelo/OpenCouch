@@ -81,6 +81,9 @@
 <message id="settings.detect_again"><source>settings.detect_again</source><translation>Buscar telas novamente</translation></message>
 <message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>Manter monitor do PC ligado no modo TV</translation></message>
 <message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Ativar ao abrir a Steam pelo controle</translation></message>
+<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Controles de Jogo</translation></message>
+<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Voltar ao desktop quando todos os controles forem desligados</translation></message>
+<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>Quando ativado, se você desligar todos os controles durante o modo sala, o Open Couch fecha o Big Picture e restaura o layout do desktop. Só age após pelo menos um minuto de uso do controle.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar junto com o sistema</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimizar para a barra do sistema ao fechar</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Pagar um café pro dev</translation></message>

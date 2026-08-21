@@ -81,6 +81,9 @@
 <message id="settings.detect_again"><source>settings.detect_again</source><translation>Buscar pantallas de nuevo</translation></message>
 <message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>Mantener encendido el monitor del PC en modo tele</translation></message>
 <message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Activar al abrir Steam desde el mando</translation></message>
+<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Mandos de juego</translation></message>
+<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Volver al escritorio cuando todos los mandos estén apagados</translation></message>
+<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>Cuando está activado, si apagas todos los mandos durante el modo salón, Open Couch cierra Big Picture y restaura el escritorio. Solo actúa tras al menos un minuto de uso del mando.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar con el sistema</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimizar a la bandeja del sistema al cerrar</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Invitar a un café al dev</translation></message>
