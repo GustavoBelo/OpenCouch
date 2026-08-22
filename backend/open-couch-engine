@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Bumped automatilcally by release.sh, do not edit manually
-ENGINE_VERSION="1.6.20"
-MIN_VERSION="1.6.1"
+ENGINE_VERSION="1.7.0"
+MIN_VERSION="1.7.0"
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-couch-engine"
@@ -20,6 +20,7 @@ CONTROLLER_MIN_USAGE_SECS=60
 
 REQUIRED_HOST_COMMANDS=(jq kscreen-doctor pgrep)
 OPTIONAL_HOST_COMMANDS=(wmctrl)
+PROTECTED_PROCESSES=(plasmashell kwin_wayland kwin_x11 kwin_wayland_wrapper ksmserver systemsettings steam steamwebhelper open-couch opencouch open-couch-engine Xwayland)
 
 DESK_OUTPUT="DP-1"
 TV_OUTPUT="HDMI-A-1"
@@ -40,6 +41,9 @@ MIRROR_DESK_TO_TV="false"
 AUTO_RESTORE_ON_EXIT=0
 WATCH_BIG_PICTURE="${WATCH_BIG_PICTURE:-false}"
 EXIT_ON_ALL_CONTROLLERS_OFF="${EXIT_ON_ALL_CONTROLLERS_OFF:-false}"
+CLOSE_APPS_ENABLED="${CLOSE_APPS_ENABLED:-false}"
+CLOSE_APPS_WAIT_SECONDS="${CLOSE_APPS_WAIT_SECONDS:-5}"
+APPS_TO_CLOSE="${APPS_TO_CLOSE:-}"
 
 controller_usage_secs=0
 controllers_off_since=""
@@ -606,6 +610,307 @@ move_steam_to_desk_monitor() {
     log "move_steam: Steam repositioned to the office display (${DESK_OUTPUT} @ ${pos})"
 }
 
+is_protected_process() {
+    local name="$1"
+    local lower_name="${name,,}"
+    if [[ "$lower_name" == xwayland* ]]; then
+        return 0
+    fi
+    local protected
+    for protected in "${PROTECTED_PROCESSES[@]}"; do
+        if [[ "${protected,,}" == "$lower_name" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+close_tracked_apps() {
+    local apps_raw="${APPS_TO_CLOSE:-}"
+    [[ -n "$apps_raw" ]] || return 0
+    local -a apps=()
+    IFS=',' read -ra apps <<< "$apps_raw"
+    local app
+    for app in "${apps[@]}"; do
+        app="$(printf '%s' "$app" | xargs)"
+        [[ -n "$app" ]] || continue
+        if is_protected_process "$app"; then
+            log "app-cleanup: skipping protected process $app"
+            continue
+        fi
+        if pkill -x "$app" 2>/dev/null; then
+            log "app-cleanup: closed $app"
+        else
+            log "app-cleanup: no process found for $app"
+        fi
+    done
+}
+
+desktop_process_names() {
+    local exec_line="$1"
+    local -a names=()
+    if [[ "$exec_line" == *"flatpak run"* ]]; then
+        local cmd
+        cmd="$(printf '%s' "$exec_line" | grep -oE -- '--command=[^[:space:]]+' 2>/dev/null | head -n1 | cut -d= -f2- || true)"
+        if [[ -n "$cmd" ]]; then
+            cmd="${cmd#\"}"
+            cmd="${cmd%\"}"
+            cmd="${cmd#\'}"
+            cmd="${cmd%\'}"
+            # Only use --command directly if it looks like a filesystem path;
+            # when it is just an app-id like com.example.App we derive the
+            # name from the app-id instead, otherwise we would create phantom
+            # entries like "com.discordapp.Discord".
+            if [[ "$cmd" == *"/"* ]]; then
+                cmd="$(basename "$cmd" 2>/dev/null || printf '%s' "$cmd")"
+                cmd="$(printf '%s' "$cmd" | xargs 2>/dev/null || printf '%s' "$cmd")"
+                [[ -n "$cmd" ]] && names+=("$cmd")
+            fi
+        fi
+        local appid
+        appid="$(printf '%s' "$exec_line" | grep -oE '[A-Za-z0-9_-]+\.[A-Za-z0-9._-]+' 2>/dev/null | grep -E '\.' | head -n1 || true)"
+        if [[ -n "$appid" ]]; then
+            local last="${appid##*.}"
+            last="$(printf '%s' "$last" | xargs 2>/dev/null || printf '%s' "$last")"
+            [[ -n "$last" ]] && names+=("$last")
+        fi
+        if ((${#names[@]} == 0)); then
+            names+=("flatpak")
+        fi
+    else
+        local cleaned
+        cleaned="$(printf '%s' "$exec_line" | sed -E 's/ %[fFuUdDnNiCkKvVm]//g; s/^ *//; s/ *$//')"
+        local -a parts=()
+        read -ra parts <<< "$cleaned"
+        local token=""
+        local p
+        for p in "${parts[@]}"; do
+            if [[ "$p" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+                if [[ "$p" != /* && "$p" != *":"* ]]; then
+                    continue
+                fi
+            fi
+            if [[ "$p" == "env" ]]; then
+                continue
+            fi
+            token="$p"
+            break
+        done
+        [[ -n "$token" ]] || token="${parts[0]:-}"
+        token="${token#\"}"
+        token="${token%\"}"
+        token="${token#\'}"
+        token="${token%\'}"
+        local pname
+        pname="$(basename "$token" 2>/dev/null || printf '%s' "$token")"
+        pname="$(printf '%s' "$pname" | xargs 2>/dev/null || printf '%s' "$pname")"
+        [[ -n "$pname" ]] && names+=("$pname")
+    fi
+    printf '%s\n' "${names[@]}"
+}
+
+list_apps() {
+    local -A seen=()
+    local -a entries=()
+    local -A visited=()
+    local -a search_dirs=()
+    search_dirs+=("${XDG_DATA_HOME:-$HOME/.local/share}/applications")
+    local xdg_dirs_str="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    local -a xdg_dirs=()
+    IFS=':' read -ra xdg_dirs <<< "$xdg_dirs_str"
+    local d
+    for d in "${xdg_dirs[@]}"; do
+        [[ -n "$d" ]] || continue
+        search_dirs+=("$d/applications")
+    done
+    search_dirs+=("$HOME/.local/share/flatpak/exports/share/applications")
+    search_dirs+=("/var/lib/flatpak/exports/share/applications")
+    search_dirs+=("/var/lib/snapd/desktop/applications")
+    local dir file
+    for dir in "${search_dirs[@]}"; do
+        [[ -d "$dir" ]] || continue
+        [[ -n "${visited[$dir]:-}" ]] && continue
+        visited["$dir"]=1
+        while IFS= read -r -d '' file; do
+            if grep -qE '^[[:space:]]*NoDisplay[[:space:]]*=[[:space:]]*true' "$file" 2>/dev/null; then
+                continue
+            fi
+            if grep -qE '^[[:space:]]*Hidden[[:space:]]*=[[:space:]]*true' "$file" 2>/dev/null; then
+                continue
+            fi
+            local f_type
+            f_type="$(grep -m1 -E '^[[:space:]]*Type[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | xargs 2>/dev/null || true)"
+            if [[ -n "$f_type" && "$f_type" != "Application" ]]; then
+                continue
+            fi
+            local f_name f_exec f_icon
+            f_name="$(grep -m1 -E '^[[:space:]]*Name[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)"
+            f_exec="$(grep -m1 -E '^[[:space:]]*Exec[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)"
+            f_icon="$(grep -m1 -E '^[[:space:]]*Icon[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)"
+            [[ -n "$f_name" && -n "$f_exec" ]] || continue
+            local -a pnames=()
+            while IFS= read -r pn; do
+                [[ -n "$pn" ]] || continue
+                pnames+=("$pn")
+            done < <(desktop_process_names "$f_exec")
+            if ((${#pnames[@]} == 0)); then
+                continue
+            fi
+            local pname
+            for pname in "${pnames[@]}"; do
+                if is_protected_process "$pname"; then
+                    continue
+                fi
+                local lower="${pname,,}"
+                if [[ -n "${seen[$lower]:-}" ]]; then
+                    continue
+                fi
+                seen["$lower"]=1
+                local icon_val="${f_icon:-application-x-executable}"
+                local json_entry
+                json_entry="$(jq -c -n --arg processName "$pname" --arg displayName "$f_name" --arg icon "$icon_val" '{processName:$processName, displayName:$displayName, icon:$icon}')"
+                entries+=("$json_entry")
+            done
+        done < <(find "$dir" -maxdepth 2 \( -type f -o -type l \) -name "*.desktop" -print0 2>/dev/null)
+    done
+    if ((${#entries[@]} == 0)); then
+        printf '[]\n'
+        return 0
+    fi
+    printf '%s\n' "${entries[@]}" | jq -s -c 'sort_by(.displayName | ascii_downcase)'
+}
+
+list_running_apps() {
+    local -A seen=()
+    local -A desktop_name=()
+    local -A desktop_icon=()
+    local -A visited=()
+    local -a search_dirs=()
+    search_dirs+=("${XDG_DATA_HOME:-$HOME/.local/share}/applications")
+    local xdg_dirs_str="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+    local -a xdg_dirs=()
+    IFS=':' read -ra xdg_dirs <<< "$xdg_dirs_str"
+    local d
+    for d in "${xdg_dirs[@]}"; do
+        [[ -n "$d" ]] || continue
+        search_dirs+=("$d/applications")
+    done
+    search_dirs+=("$HOME/.local/share/flatpak/exports/share/applications")
+    search_dirs+=("/var/lib/flatpak/exports/share/applications")
+    search_dirs+=("/var/lib/snapd/desktop/applications")
+    local dir file
+    for dir in "${search_dirs[@]}"; do
+        [[ -d "$dir" ]] || continue
+        [[ -n "${visited[$dir]:-}" ]] && continue
+        visited["$dir"]=1
+        while IFS= read -r -d '' file; do
+            if grep -qE '^[[:space:]]*NoDisplay[[:space:]]*=[[:space:]]*true' "$file" 2>/dev/null; then
+                continue
+            fi
+            if grep -qE '^[[:space:]]*Hidden[[:space:]]*=[[:space:]]*true' "$file" 2>/dev/null; then
+                continue
+            fi
+            local f_type
+            f_type="$(grep -m1 -E '^[[:space:]]*Type[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | xargs 2>/dev/null || true)"
+            if [[ -n "$f_type" && "$f_type" != "Application" ]]; then
+                continue
+            fi
+            local f_name f_exec f_icon
+            f_name="$(grep -m1 -E '^[[:space:]]*Name[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)"
+            f_exec="$(grep -m1 -E '^[[:space:]]*Exec[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)"
+            f_icon="$(grep -m1 -E '^[[:space:]]*Icon[[:space:]]*=' "$file" 2>/dev/null | cut -d= -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' || true)"
+            [[ -n "$f_name" && -n "$f_exec" ]] || continue
+            local -a pnames=()
+            while IFS= read -r pn; do
+                [[ -n "$pn" ]] || continue
+                pnames+=("$pn")
+            done < <(desktop_process_names "$f_exec")
+            local pname
+            for pname in "${pnames[@]}"; do
+                if is_protected_process "$pname"; then
+                    continue
+                fi
+                local lower="${pname,,}"
+                if [[ -z "${desktop_name[$lower]:-}" ]]; then
+                    desktop_name["$lower"]="$f_name"
+                    desktop_icon["$lower"]="${f_icon:-application-x-executable}"
+                fi
+            done
+        done < <(find "$dir" -maxdepth 2 \( -type f -o -type l \) -name "*.desktop" -print0 2>/dev/null)
+    done
+
+    local current_user
+    current_user="$(id -un 2>/dev/null || printf '%s' "${USER:-}")"
+    [[ -n "$current_user" ]] || current_user="${USER:-$(whoami 2>/dev/null || true)}"
+
+    local -a pids=()
+    if command -v pgrep >/dev/null 2>&1 && [[ -n "$current_user" ]]; then
+        while IFS= read -r pid; do
+            [[ -n "$pid" ]] || continue
+            pids+=("$pid")
+        done < <(pgrep -u "$current_user" 2>/dev/null || true)
+    fi
+    if ((${#pids[@]} == 0)); then
+        while IFS= read -r pid _; do
+            [[ -n "$pid" ]] || continue
+            if ! [[ "$pid" =~ ^[0-9]+$ ]]; then
+                continue
+            fi
+            pids+=("$pid")
+        done < <(ps -u "$current_user" -o pid= 2>/dev/null || ps -eo pid= 2>/dev/null || true)
+    fi
+
+    local -a entries=()
+    local pid pname exe_name comm_raw displayName icon windowTitle cmd json_entry lower
+    for pid in "${pids[@]}"; do
+        [[ -n "$pid" ]] || continue
+        if ! [[ "$pid" =~ ^[0-9]+$ ]]; then
+            continue
+        fi
+        if [[ ! -d "/proc/$pid" ]]; then
+            continue
+        fi
+        exe_name="$(basename "$(readlink "/proc/$pid/exe" 2>/dev/null)" 2>/dev/null || true)"
+        exe_name="$(printf '%s' "$exe_name" | xargs 2>/dev/null || printf '%s' "$exe_name")"
+        if [[ -n "$exe_name" ]]; then
+            pname="$exe_name"
+        else
+            comm_raw="$(tr -d '\0' < "/proc/$pid/comm" 2>/dev/null | xargs 2>/dev/null || true)"
+            if [[ -z "$comm_raw" ]]; then
+                comm_raw="$(ps -p "$pid" -o comm= 2>/dev/null | xargs 2>/dev/null || true)"
+            fi
+            pname="$comm_raw"
+            pname="$(printf '%s' "$pname" | xargs 2>/dev/null || printf '%s' "$pname")"
+        fi
+        [[ -n "$pname" ]] || continue
+        if is_protected_process "$pname"; then
+            continue
+        fi
+        lower="${pname,,}"
+        if [[ -n "${seen[$lower]:-}" ]]; then
+            continue
+        fi
+        displayName="${desktop_name[$lower]:-}"
+        icon="${desktop_icon[$lower]:-}"
+        if [[ -z "$displayName" ]]; then
+            continue
+        fi
+        seen["$lower"]=1
+        [[ -n "$icon" ]] || icon="application-x-executable"
+        cmd="$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | xargs 2>/dev/null | cut -c1-300 || true)"
+        windowTitle="$cmd"
+        [[ -n "$windowTitle" ]] || windowTitle="$displayName"
+        json_entry="$(jq -c -n --arg processName "$pname" --argjson pid "$pid" --arg displayName "$displayName" --arg windowTitle "$windowTitle" --arg icon "$icon" '{processName:$processName, pid:$pid, displayName:$displayName, windowTitle:$windowTitle, icon:$icon}')"
+        entries+=("$json_entry")
+    done
+
+    if ((${#entries[@]} == 0)); then
+        printf '[]\n'
+        return 0
+    fi
+    printf '%s\n' "${entries[@]}" | jq -s -c 'sort_by(.displayName | ascii_downcase)'
+}
+
 steam_main_pids() {
     pgrep -u "$USER" -x steam || true
 }
@@ -817,6 +1122,14 @@ launch_big_picture_and_wait() {
         log "play: could not detect the Big Picture window; will wait for Steam to close"
     fi
 
+    if [[ "${CLOSE_APPS_ENABLED:-false}" == "true" && -n "${APPS_TO_CLOSE:-}" ]]; then
+        (
+            sleep "${CLOSE_APPS_WAIT_SECONDS:-5}"
+            close_tracked_apps
+        ) &
+        disown
+    fi
+
     wait_for_steam_exit_or_bpm_exit "$steam_pid" "$bpm_seen"
 
     if kill -0 "$steam_pid" 2>/dev/null; then
@@ -910,7 +1223,7 @@ print_outputs() {
 
 print_status() {
     log "Status refresh requested"
-    log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE EXIT_ON_ALL_CONTROLLERS_OFF=$EXIT_ON_ALL_CONTROLLERS_OFF"
+    log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE EXIT_ON_ALL_CONTROLLERS_OFF=$EXIT_ON_ALL_CONTROLLERS_OFF CLOSE_APPS_ENABLED=$CLOSE_APPS_ENABLED CLOSE_APPS_WAIT_SECONDS=$CLOSE_APPS_WAIT_SECONDS APPS_TO_CLOSE=$APPS_TO_CLOSE"
     log_missing_host_components
     if version_gte "${ENGINE_VERSION:-0.0.0}" "$MIN_VERSION"; then
         log "Engine version: ${ENGINE_VERSION:-unknown} (meets minimum requirement: $MIN_VERSION)"
@@ -1079,6 +1392,9 @@ Usage:
   open-couch-engine print-history-log <id>   
   open-couch-engine export-history-log <id>  
   open-couch-engine export-log     
+  open-couch-engine list-running   
+  open-couch-engine list-apps
+  open-couch-engine close-tracked-apps
 EOF
 }
 
@@ -1131,6 +1447,15 @@ main() {
             ;;
         export-log)
             export_log
+            ;;
+        list-running)
+            list_running_apps
+            ;;
+        list-apps)
+            list_apps
+            ;;
+        close-tracked-apps)
+            close_tracked_apps
             ;;
         *)
             usage
