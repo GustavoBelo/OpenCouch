@@ -122,5 +122,24 @@
 <message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine foi instalado com sucesso!</translation></message>
 <message id="engine.install_button"><source>engine.install_button</source><translation>Instalar Engine</translation></message>
 <message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>O engine já vem incluído neste app e será instalado automaticamente no primeiro uso.</translation></message>
+<message id="resource_control.heading"><source>resource_control.heading</source><translation>Controle de recursos</translation></message>
+<message id="resource_control.description"><source>resource_control.description</source><translation>Escolha quais aplicativos são fechados automaticamente quando o modo sala abre.</translation></message>
+<message id="resource_control.app_cleanup_heading"><source>resource_control.app_cleanup_heading</source><translation>Limpeza de apps</translation></message>
+<message id="resource_control.enable_cleanup"><source>resource_control.enable_cleanup</source><translation>Fechar apps selecionados depois que o modo sala abrir</translation></message>
+<message id="resource_control.enable_cleanup_description"><source>resource_control.enable_cleanup_description</source><translation>Depois que o Big Picture estiver visível, o OpenCouch aguarda o tempo definido abaixo e fecha os apps selecionados.</translation></message>
+<message id="resource_control.warning_terminate"><source>resource_control.warning_terminate</source><translation>Os apps selecionados são encerrados diretamente. Trabalho não salvo pode ser perdido.</translation></message>
+<message id="resource_control.apps_to_close"><source>resource_control.apps_to_close</source><translation>Apps a fechar</translation></message>
+<message id="resource_control.apps_to_close_description"><source>resource_control.apps_to_close_description</source><translation>Somente os apps selecionados aqui são fechados quando o modo sala abre. Todo o resto continua rodando.</translation></message>
+<message id="resource_control.choose_app"><source>resource_control.choose_app</source><translation>Escolher app…</translation></message>
+<message id="resource_control.running_apps"><source>resource_control.running_apps</source><translation>Apps em execução…</translation></message>
+<message id="resource_control.no_apps_selected"><source>resource_control.no_apps_selected</source><translation>Nenhum app selecionado.</translation></message>
+<message id="resource_control.remove_app"><source>resource_control.remove_app</source><translation>Remover</translation></message>
+<message id="resource_control.wait_before_closing"><source>resource_control.wait_before_closing</source><translation>Aguardar antes de fechar</translation></message>
+<message id="resource_control.wait_before_closing_description"><source>resource_control.wait_before_closing_description</source><translation>Segundos de espera após o modo sala abrir antes de fechar os apps selecionados.</translation></message>
+<message id="resource_control.picker_title"><source>resource_control.picker_title</source><translation>Escolher aplicativo</translation></message>
+<message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation>Nenhum aplicativo encontrado.</translation></message>
+<message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation>Aplicativos em execução</translation></message>
+<message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation>Nenhum aplicativo em execução detectado.</translation></message>
+<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation>A detecção de apps em execução precisa do pacote opcional `wmctrl` instalado no sistema.</translation></message>
 </context>
 </TS>

@@ -122,5 +122,24 @@
 <message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine installed successfully!</translation></message>
 <message id="engine.install_button"><source>engine.install_button</source><translation>Install Engine</translation></message>
 <message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>The engine is already included in this app and will be installed automatically on first use.</translation></message>
+<message id="resource_control.heading"><source>resource_control.heading</source><translation>Resource Control</translation></message>
+<message id="resource_control.description"><source>resource_control.description</source><translation>Choose which apps are automatically closed when couch mode opens.</translation></message>
+<message id="resource_control.app_cleanup_heading"><source>resource_control.app_cleanup_heading</source><translation>App cleanup</translation></message>
+<message id="resource_control.enable_cleanup"><source>resource_control.enable_cleanup</source><translation>Close selected apps after couch mode opens</translation></message>
+<message id="resource_control.enable_cleanup_description"><source>resource_control.enable_cleanup_description</source><translation>After Big Picture is visible, OpenCouch waits for the delay below, then closes your selected apps.</translation></message>
+<message id="resource_control.warning_terminate"><source>resource_control.warning_terminate</source><translation>Selected apps are terminated directly. Unsaved work may be lost.</translation></message>
+<message id="resource_control.apps_to_close"><source>resource_control.apps_to_close</source><translation>Apps to close</translation></message>
+<message id="resource_control.apps_to_close_description"><source>resource_control.apps_to_close_description</source><translation>Only the apps you select here are closed when couch mode opens. Everything else keeps running.</translation></message>
+<message id="resource_control.choose_app"><source>resource_control.choose_app</source><translation>Choose app…</translation></message>
+<message id="resource_control.running_apps"><source>resource_control.running_apps</source><translation>Running apps…</translation></message>
+<message id="resource_control.no_apps_selected"><source>resource_control.no_apps_selected</source><translation>No apps selected.</translation></message>
+<message id="resource_control.remove_app"><source>resource_control.remove_app</source><translation>Remove</translation></message>
+<message id="resource_control.wait_before_closing"><source>resource_control.wait_before_closing</source><translation>Wait before closing</translation></message>
+<message id="resource_control.wait_before_closing_description"><source>resource_control.wait_before_closing_description</source><translation>Seconds to wait after couch mode opens before closing your selected apps.</translation></message>
+<message id="resource_control.picker_title"><source>resource_control.picker_title</source><translation>Choose application</translation></message>
+<message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation>No applications found.</translation></message>
+<message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation>Running applications</translation></message>
+<message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation>No running applications detected.</translation></message>
+<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation>Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
 </context>
 </TS>
