@@ -20,24 +20,25 @@ A GUI é apenas uma camada: toda a lógica de exibição vive no engine bash (`b
 
 ### app/ — GUI Qt6/QML
 
-- `src/main.cpp` — bootstrap: instância única (QLocalServer), tradutores, engine QML, context properties (`backend`, `displaySettingsModel`, `appInfo`).
+- `src/main.cpp` — bootstrap: instância única (QLocalServer), tradutores, engine QML, context properties (`backend`, `displaySettingsModel`, `appCleanupModel`, `appInfo`).
 - `src/backend.{h,cpp}` — ponte QML↔engine. Expõe `Q_INVOKABLE`s para todas as ações (play, restore, status, logs, autostart, engine install). Roda o engine de forma síncrona (`runSync`) ou assíncrona (`runEngineAsync`).
 - `src/engineclient.{h,cpp}` — constrói a linha de comando do engine (usa `flatpak-spawn --host` dentro de Flatpak), versão e instalação do engine empacotado em `~/.local/bin`.
-- `src/configstore.{h,cpp}` — config (`config.env`), autostart (desktop entry / portal Background), `backgroundOnClose`, onboarding.
+- `src/configstore.{h,cpp}` — config (`config.env`), autostart (desktop entry / portal Background), `backgroundOnClose`, onboarding, e chaves de limpeza de apps (`CLOSE_APPS_ENABLED`, `CLOSE_APPS_WAIT_SECONDS`, `APPS_TO_CLOSE`).
 - `src/displaysettingsmodel.{h,cpp}` — modelo de settings usado pela tela de configuração.
 - `src/displaysettingsvalidator.{h,cpp}` — valida DESK_OUTPUT/TV_OUTPUT/scale/pos antes de salvar.
+- `src/appcleanupmodel.{h,cpp}` — modelo de controle de recursos: lista de apps a fechar, tempo de espera e integração com `close-tracked-apps` do engine. **Faz varredura nativa** de `.desktop` (`QStandardPaths`/`QDir`/`QFile`/`QDirIterator`, até depth 2, segue symlinks flatpak) e de processos (`/proc` + `/proc/<pid>/exe|comm|cmdline`, filtra `PROTECTED_PROCESSES`, cruza com desktop) com **cache em memória por sessão** (`QMap` lower → displayName/icon) e **carregamento assíncrono** (`QThread::create` + `installedApps`/`runningApps`/`loadingInstalled`/`loadingRunning` + `requestInstalledApplications`/`requestRunningApplications` + `BusyIndicator`). Em Flatpak usa `/run/host` ou `flatpak-spawn --host open-couch-engine` como fallback.
 - `src/appinfomodel.{h,cpp}` — nome, versão e URL do script de instalação.
-- `qml/` — `main.qml`, `SetupPage.qml`, `DashboardPage.qml`, `OnboardingSheet.qml` (Kirigami, `QtQuick.Controls`).
+- `qml/` — `main.qml`, `SetupPage.qml`, `DashboardPage.qml`, `OnboardingSheet.qml`, `ChooseAppDialog.qml`, `RunningAppsDialog.qml` (Kirigami, `QtQuick.Controls`).
 - `translations/` — catálogos Qt Linguist (`.ts`); `opencouch_en.ts` é o catálogo base.
 
 ### backend/ — engine
 
-- `open-couch-engine` — script bash (com `set -euo pipefail`). Comandos: `play`, `restore`, `status`, `outputs`, `check`, `version`, `watch`, `config-path`, `log`, `append-log`, `clear-log`, `log-history`, `print-history-log`, `export-history-log`, `export-log`. Dependências de host: `jq`, `kscreen-doctor`, `pgrep`; opcional: `wmctrl`. O `status` registra no log os componentes ausentes (obrigatórios como `ERROR`, opcionais como `WARNING`); o app usa `append-log` para persistir eventos próprios no arquivo (ex.: falha do watcher). Opção de config `EXIT_ON_ALL_CONTROLLERS_OFF`: quando habilitada, o modo sala encerra o Big Picture e restaura o desktop quando todos os controles são desligados (após 10s de debounce e mínimo de 1 minuto de uso de controle na sessão; detecção via `/dev/input/js*`).
+- `open-couch-engine` — script bash (com `set -euo pipefail`). Comandos core: `play`, `restore`, `status`, `outputs`, `check`, `version`, `watch`, `config-path`, `log`, `append-log`, `clear-log`, `log-history`, `print-history-log`, `export-history-log`, `export-log`, `close-tracked-apps`; legados `list-running`/`list-apps` mantidos só para CLI/host fallback. Dependências de host: `jq`, `kscreen-doctor`, `pgrep`; opcional: `wmctrl` (apenas para posicionar/fechar janelas X11 do Steam). O `status` registra no log os componentes ausentes (obrigatórios como `ERROR`, opcionais como `WARNING`); o app usa `append-log` para persistir eventos próprios no arquivo (ex.: falha do watcher). Opção de config `EXIT_ON_ALL_CONTROLLERS_OFF`: quando habilitada, o modo sala encerra o Big Picture e restaura o desktop quando todos os controles são desligados (após 10s de debounce e mínimo de 1 minuto de uso de controle na sessão; detecção via `/dev/input/js*`). Opções de controle de recursos `CLOSE_APPS_ENABLED`/`CLOSE_APPS_WAIT_SECONDS`/`APPS_TO_CLOSE` (virgula-separada): quando habilitada, o `play` aguarda o tempo configurado após o Big Picture abrir e encerra os apps listados via `pkill -x` (processos em `PROTECTED_PROCESSES` nunca são fechados nem aparecem nas listas). A GUI **não usa mais** `list-running`/`list-apps` do engine: `AppCleanupModel` faz tudo nativo em C++ (ver acima) e só usa `close-tracked-apps` do engine.
 - `open-couch-log-viewer` — abre `konsole` com status + log em modo live.
 - `SHA256SUMS` — checksums usados pelo instalador remoto.
 
 Runtime do engine:
-- Config: `${XDG_CONFIG_HOME:-~/.config}/open-couch-engine/config.env`
+- Config: `${XDG_CONFIG_HOME:-~/.config}/open-couch-engine/config.env` (inclui `CLOSE_APPS_ENABLED`, `CLOSE_APPS_WAIT_SECONDS`, `APPS_TO_CLOSE`)
 - Estado: `${XDG_STATE_HOME:-~/.local/state}/open-couch-engine/` (`layout.env` snapshot, `session.pid`, logs, `history/`)
 
 ### packaging/

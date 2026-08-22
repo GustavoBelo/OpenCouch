@@ -9,6 +9,7 @@ Kirigami.ScrollablePage {
 
     Component.onCompleted: {
         displaySettingsModel.bindBackend(backend);
+        appCleanupModel.bindBackend(backend);
         displaySettingsModel.refreshOutputs();
     }
 
@@ -426,6 +427,218 @@ Kirigami.ScrollablePage {
         }
 
         Kirigami.Heading {
+            text: qsTrId("resource_control.heading")
+            level: 3
+            Layout.topMargin: Kirigami.Units.smallSpacing
+            enabled: !backend.engineNeedsUpdate()
+            opacity: backend.engineNeedsUpdate() ? 0.5 : 1
+        }
+
+        Controls.Label {
+            Layout.fillWidth: true
+            wrapMode: Text.Wrap
+            text: qsTrId("resource_control.description")
+            opacity: backend.engineNeedsUpdate() ? 0.5 : 0.8
+            enabled: !backend.engineNeedsUpdate()
+        }
+
+        Controls.Label {
+            Layout.fillWidth: true
+            visible: backend.engineNeedsUpdate()
+            wrapMode: Text.Wrap
+            color: Kirigami.Theme.negativeTextColor
+            text: qsTrId("engine.outdated")
+            opacity: 0.9
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: Kirigami.Units.largeSpacing
+            enabled: !backend.engineNeedsUpdate()
+            opacity: backend.engineNeedsUpdate() ? 0.5 : 1
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+
+                Kirigami.Icon {
+                    source: "edit-clear-all"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                    Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                    Kirigami.Theme.inherit: false
+                }
+
+                Kirigami.Heading {
+                    text: qsTrId("resource_control.app_cleanup_heading")
+                    level: 4
+                    Layout.fillWidth: true
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                Controls.CheckBox {
+                    id: closeAppsEnabledCheck
+                    Layout.fillWidth: true
+                    text: qsTrId("resource_control.enable_cleanup")
+                    checked: appCleanupModel.enabled
+                    onToggled: appCleanupModel.enabled = checked
+                }
+                Controls.Label {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                    wrapMode: Text.Wrap
+                    text: qsTrId("resource_control.enable_cleanup_description")
+                    opacity: 0.7
+                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                }
+            }
+
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.smallSpacing
+                visible: closeAppsEnabledCheck.checked
+                showCloseButton: false
+                type: Kirigami.MessageType.Warning
+                text: qsTrId("resource_control.warning_terminate")
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: Kirigami.Units.largeSpacing
+                Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                spacing: Kirigami.Units.smallSpacing
+                enabled: closeAppsEnabledCheck.checked
+                opacity: closeAppsEnabledCheck.checked ? 1 : 0.5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        text: qsTrId("resource_control.apps_to_close")
+                        font.bold: true
+                    }
+
+                    Controls.Button {
+                        text: qsTrId("resource_control.choose_app")
+                        icon.name: "list-add"
+                        onClicked: chooseAppDialog.open()
+                    }
+
+                    Controls.Button {
+                        text: qsTrId("resource_control.running_apps")
+                        icon.name: "view-list-details"
+                        onClicked: runningAppsDialog.open()
+                    }
+                }
+
+                Controls.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: qsTrId("resource_control.apps_to_close_description")
+                    opacity: 0.7
+                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 10
+                    radius: Kirigami.Units.smallSpacing
+                    color: Kirigami.Theme.backgroundColor
+                    border.color: Kirigami.Theme.separatorColor
+                    border.width: 1
+
+                    Controls.BusyIndicator {
+                        anchors.centerIn: parent
+                        visible: appCleanupModel.loadingInstalled
+                        running: visible
+                    }
+
+                    Kirigami.PlaceholderMessage {
+                        anchors.centerIn: parent
+                        width: parent.width - Kirigami.Units.largeSpacing * 4
+                        visible: !appCleanupModel.loadingInstalled && appCleanupModel.appsToClose.length === 0
+                        icon.name: "edit-clear-all"
+                        text: qsTrId("resource_control.no_apps_selected")
+                    }
+
+                    ListView {
+                        id: appsToCloseList
+                        anchors.fill: parent
+                        anchors.margins: Kirigami.Units.smallSpacing
+                        visible: !appCleanupModel.loadingInstalled && appCleanupModel.appsToClose.length > 0
+                        clip: true
+                        reuseItems: true
+                        spacing: Kirigami.Units.smallSpacing
+                        model: appCleanupModel.appsToClose
+                        Controls.ScrollBar.vertical: Controls.ScrollBar {}
+
+                        delegate: Controls.ItemDelegate {
+                            width: ListView.view.width
+                            hoverEnabled: false
+                            down: false
+
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+
+                                AppRowDelegate {
+                                    Layout.fillWidth: true
+                                    displayName: modelData.displayName
+                                    subtitle: modelData.processName
+                                    iconSource: modelData.icon
+                                }
+
+                                Controls.ToolButton {
+                                    icon.name: "edit-delete"
+                                    display: Controls.ToolButton.IconOnly
+                                    Controls.ToolTip.visible: hovered
+                                    Controls.ToolTip.text: qsTrId("resource_control.remove_app")
+                                    onClicked: appCleanupModel.removeApp(index)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Kirigami.FormLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                enabled: closeAppsEnabledCheck.checked
+                opacity: closeAppsEnabledCheck.checked ? 1 : 0.5
+
+                Controls.SpinBox {
+                    id: waitSecondsSpin
+                    Kirigami.FormData.label: qsTrId("resource_control.wait_before_closing")
+                    from: 0
+                    to: 60
+                    value: appCleanupModel.waitSeconds
+                    onValueModified: appCleanupModel.waitSeconds = value
+                    textFromValue: function(value) { return value + " s"; }
+                    valueFromText: function(text) { return parseInt(text) || 0; }
+                }
+            }
+
+            Controls.Label {
+                Layout.fillWidth: true
+                Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                wrapMode: Text.Wrap
+                text: qsTrId("resource_control.wait_before_closing_description")
+                opacity: 0.7
+                font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+            }
+        }
+
+        Kirigami.Separator {
+            Layout.fillWidth: true
+        }
+
+        Kirigami.Heading {
             text: qsTrId("settings.startup")
             level: 3
             Layout.topMargin: Kirigami.Units.smallSpacing
@@ -524,7 +737,8 @@ Kirigami.ScrollablePage {
                     }
 
                     var ok = displaySettingsModel.save();
-                    if (ok) {
+                    var ok2 = appCleanupModel.save();
+                    if (ok && ok2) {
                         statusLabel.type = Kirigami.MessageType.Positive;
                         statusLabel.text = qsTrId("settings.saved");
                         statusLabel.visible = true;
@@ -538,4 +752,7 @@ Kirigami.ScrollablePage {
             }
         }
     }
+
+    ChooseAppDialog { id: chooseAppDialog }
+    RunningAppsDialog { id: runningAppsDialog }
 }
