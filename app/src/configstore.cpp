@@ -233,3 +233,60 @@ void ConfigStore::setOnboardingSeen(bool seen) const
     QSettings settings;
     settings.setValue(QStringLiteral("onboardingSeen"), seen);
 }
+
+bool ConfigStore::closeAppsEnabled() const
+{
+    return loadConfig().value(QStringLiteral("CLOSE_APPS_ENABLED")).toString() == QLatin1String("true");
+}
+
+bool ConfigStore::setCloseAppsEnabled(bool enabled) const
+{
+    QVariantMap config = loadConfig();
+    config.insert(QStringLiteral("CLOSE_APPS_ENABLED"), enabled ? QStringLiteral("true") : QStringLiteral("false"));
+    return saveConfig(config);
+}
+
+int ConfigStore::closeAppsWaitSeconds() const
+{
+    bool ok = false;
+    const int value = loadConfig().value(QStringLiteral("CLOSE_APPS_WAIT_SECONDS")).toString().toInt(&ok);
+    if (!ok) {
+        return 5;
+    }
+    if (value < 0) {
+        return 0;
+    }
+    if (value > 60) {
+        return 60;
+    }
+    return value;
+}
+
+bool ConfigStore::setCloseAppsWaitSeconds(int seconds) const
+{
+    if (seconds < 0) {
+        seconds = 0;
+    }
+    if (seconds > 60) {
+        seconds = 60;
+    }
+    QVariantMap config = loadConfig();
+    config.insert(QStringLiteral("CLOSE_APPS_WAIT_SECONDS"), QString::number(seconds));
+    return saveConfig(config);
+}
+
+QStringList ConfigStore::appsToClose() const
+{
+    const QString raw = loadConfig().value(QStringLiteral("APPS_TO_CLOSE")).toString();
+    if (raw.isEmpty()) {
+        return {};
+    }
+    return raw.split(',', Qt::SkipEmptyParts);
+}
+
+bool ConfigStore::setAppsToClose(const QStringList &apps) const
+{
+    QVariantMap config = loadConfig();
+    config.insert(QStringLiteral("APPS_TO_CLOSE"), apps.join(','));
+    return saveConfig(config);
+}

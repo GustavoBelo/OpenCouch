@@ -22,6 +22,13 @@ public:
     bool onboardingSeen() const;
     void setOnboardingSeen(bool seen) const;
 
+    bool closeAppsEnabled() const;
+    bool setCloseAppsEnabled(bool enabled) const;
+    int closeAppsWaitSeconds() const;
+    bool setCloseAppsWaitSeconds(int seconds) const;
+    QStringList appsToClose() const;
+    bool setAppsToClose(const QStringList &apps) const;
+
     static QString configFilePath();
     
 private:

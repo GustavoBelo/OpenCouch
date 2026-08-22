@@ -55,6 +55,8 @@ public:
     Q_INVOKABLE void setOnboardingSeen(bool seen);
     Q_INVOKABLE QString readHistoryLog(const QString &id);
 
+    Q_INVOKABLE QString runSync(const QStringList &args);
+
 signals:
     void logLine(const QString &line);
     void actionFinished(bool success, const QString &message);

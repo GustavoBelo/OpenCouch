@@ -433,6 +433,17 @@ QString Backend::readHistoryLog(const QString &id) {
     
     return output;
 }
+
+QString Backend::runSync(const QStringList &args)
+{
+    bool ok = false;
+    const QString output = runEngineSync(args, &ok);
+    if (!ok) {
+        return QString();
+    }
+    return output;
+}
+
 QString Backend::readLog()
 {
     bool ok = false;
