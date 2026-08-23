@@ -112,582 +112,688 @@ Kirigami.ScrollablePage {
             level: 3
         }
 
-        ColumnLayout {
+        Rectangle {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: desktopEnvColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-            RowLayout {
-                Layout.fillWidth: true
+            ColumnLayout {
+                id: desktopEnvColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
-                
-                Kirigami.Icon {
-                    source: "computer"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                    Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                    Kirigami.Theme.inherit: false
-                }
-                
-                Kirigami.Heading {
-                    text: qsTrId("settings.desktop_environment")
-                    level: 4
-                    Layout.fillWidth: true
-                }
-            }
-
-            Kirigami.FormLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.gridUnit * 2
-
-                Controls.ComboBox {
-                    Kirigami.FormData.label: qsTrId("settings.desktop_display")
-                    model: displaySettingsModel.outputs.map(function(o) { return o.name; })
-                    currentIndex: model.indexOf(displaySettingsModel.desktopOutput)
-                    onActivated: displaySettingsModel.desktopOutput = currentText
-                }
-
-                Controls.ComboBox {
-                    id: deskResCombo
-                    Kirigami.FormData.label: qsTrId("settings.resolution")
-                    
-                    property var allModes: {
-                        var _trigger = displaySettingsModel.outputs;
-                        return page.outputModes(displaySettingsModel.desktopOutput);
-                    }
-                    property var resList: page.uniqueResolutions(allModes)
-                    
-                    model: resList
-                    currentIndex: resList.indexOf(String(displaySettingsModel.desktopMode).split('@')[0])
-                    
-                    onActivated: {
-                        var newRes = currentText;
-                        var availableRates = page.ratesForResolution(allModes, newRes);
-                        var bestRate = availableRates.length > 0 ? availableRates[0].replace(" Hz", "") : "";
-                        displaySettingsModel.desktopMode = bestRate ? (newRes + "@" + bestRate) : newRes;
-                    }
-                }
-
-                Controls.ComboBox {
-                    id: deskRateCombo
-                    Kirigami.FormData.label: qsTrId("settings.refresh_rate")
-                    
-                    property var allModes: deskResCombo.allModes
-                    property string currentRes: String(displaySettingsModel.desktopMode).split('@')[0]
-                    property var rateList: page.ratesForResolution(allModes, currentRes)
-                    
-                    model: rateList
-                    visible: rateList.length > 0
-                    
-                    currentIndex: {
-                        var parts = String(displaySettingsModel.desktopMode).split('@');
-                        if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
-                        return -1;
-                    }
-                    
-                    onActivated: {
-                        var cleanRate = currentText.replace(" Hz", "");
-                        displaySettingsModel.desktopMode = currentRes + "@" + cleanRate;
-                    }
-                }
-
-                RowLayout {
-                    Kirigami.FormData.label: qsTrId("settings.desktop_scale")
-                    spacing: Kirigami.Units.smallSpacing
-
-                    Controls.TextField {
-                        id: deskScaleField
-                        text: displaySettingsModel.desktopScale
-                        onTextEdited: displaySettingsModel.desktopScale = text
-                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
-                    }
-
-                    Controls.ToolButton {
-                        icon.name: "help-hint"
-                        display: Controls.ToolButton.IconOnly
-                        Controls.ToolTip.visible: hovered
-                        Controls.ToolTip.text: qsTrId("settings.desktop_scale_tooltip")
-                    }
-                }
-            }
-        }
-
-        Kirigami.Separator {
-            Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.largeSpacing
-            Layout.bottomMargin: Kirigami.Units.largeSpacing
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
-                
-                Kirigami.Icon {
-                    source: "video-display"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                    Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                    Kirigami.Theme.inherit: false
-                }
-                
-                Kirigami.Heading {
-                    text: qsTrId("settings.couch_environment")
-                    level: 4
-                    Layout.fillWidth: true
-                }
-            }
-
-            Kirigami.FormLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.gridUnit * 2
-
-                Controls.ComboBox {
-                    Kirigami.FormData.label: qsTrId("settings.couch_display")
-                    model: displaySettingsModel.outputs.map(function(o) { return o.name; })
-                    currentIndex: model.indexOf(displaySettingsModel.tvOutput)
-                    onActivated: displaySettingsModel.tvOutput = currentText
-                }
-
-                Controls.ComboBox {
-                    id: tvResCombo
-                    Kirigami.FormData.label: qsTrId("settings.resolution")
-                    
-                    property var allModes: {
-                        var _trigger = displaySettingsModel.outputs;
-                        return page.outputModes(displaySettingsModel.tvOutput);
-                    }
-                    property var resList: page.uniqueResolutions(allModes)
-                    
-                    model: resList
-                    currentIndex: resList.indexOf(String(displaySettingsModel.tvMode).split('@')[0])
-                    
-                    onActivated: {
-                        var newRes = currentText;
-                        var availableRates = page.ratesForResolution(allModes, newRes);
-                        var bestRate = availableRates.length > 0 ? availableRates[0].replace(" Hz", "") : "";
-                        displaySettingsModel.tvMode = bestRate ? (newRes + "@" + bestRate) : newRes;
-                    }
-                }
-
-                Controls.ComboBox {
-                    id: tvRateCombo
-                    Kirigami.FormData.label: qsTrId("settings.refresh_rate")
-                    
-                    property var allModes: tvResCombo.allModes
-                    property string currentRes: String(displaySettingsModel.tvMode).split('@')[0]
-                    property var rateList: page.ratesForResolution(allModes, currentRes)
-                    
-                    model: rateList
-                    visible: rateList.length > 0
-                    
-                    currentIndex: {
-                        var parts = String(displaySettingsModel.tvMode).split('@');
-                        if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
-                        return -1;
-                    }
-                    
-                    onActivated: {
-                        var cleanRate = currentText.replace(" Hz", "");
-                        displaySettingsModel.tvMode = currentRes + "@" + cleanRate;
-                    }
-                }
-
-                RowLayout {
-                    Kirigami.FormData.label: qsTrId("settings.couch_scale")
-                    spacing: Kirigami.Units.smallSpacing
-
-                    Controls.TextField {
-                        id: tvScaleField
-                        text: displaySettingsModel.tvScale
-                        onTextEdited: displaySettingsModel.tvScale = text
-                        Layout.preferredWidth: Kirigami.Units.gridUnit * 4
-                    }
-
-                    Controls.ToolButton {
-                        icon.name: "help-hint"
-                        display: Controls.ToolButton.IconOnly
-                        Controls.ToolTip.visible: hovered
-                        Controls.ToolTip.text: qsTrId("settings.couch_scale_tooltip")
-                    }
-                }
-            }
-        }
-
-        Kirigami.Separator {
-            Layout.fillWidth: true
-        }
-
-        Kirigami.Heading {
-            text: qsTrId("settings.couch_behavior")
-            level: 3
-            Layout.topMargin: Kirigami.Units.smallSpacing
-        }
-
-        Kirigami.FormLayout {
-            Layout.fillWidth: true
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Kirigami.FormData.label: qsTrId("settings.desktop_display_label")
-                spacing: 0
-
-                Controls.CheckBox {
-                    id: keepDeskEnabledCheck
-                    Layout.fillWidth: true
-                    text: qsTrId("settings.keep_desktop_enabled")
-                    checked: displaySettingsModel.keepDeskEnabled
-                    onToggled: displaySettingsModel.keepDeskEnabled = checked
-                }
-                Controls.Label {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("settings.keep_desktop_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.maximumHeight: keepDeskEnabledCheck.checked ? -1 : 0
-                Kirigami.FormData.label: qsTrId("settings.mirroring")
-                opacity: keepDeskEnabledCheck.checked ? 1 : 0
-                enabled: keepDeskEnabledCheck.checked
-                clip: true
-                spacing: 0
-
-                Controls.CheckBox {
-                    id: mirrorDeskToTvCheck
-                    Layout.fillWidth: true
-                    text: qsTrId("settings.mirror_desktop")
-                    checked: displaySettingsModel.mirrorDeskToTv
-                    onToggled: displaySettingsModel.mirrorDeskToTv = checked
-                }
-                Controls.Label {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("settings.mirror_desktop_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Kirigami.FormData.label: qsTrId("settings.big_picture_label")
-                spacing: 0
-
-                Controls.CheckBox {
-                    id: watchBigPictureCheck
-                    Layout.fillWidth: true
-                    text: qsTrId("settings.watch_big_picture")
-                    checked: displaySettingsModel.watchBigPicture
-                    onToggled: displaySettingsModel.watchBigPicture = checked
-                }
-                Controls.Label {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("settings.watch_big_picture_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Kirigami.FormData.label: qsTrId("settings.controllers_label")
-                spacing: 0
-
-                Controls.CheckBox {
-                    id: exitOnControllersOffCheck
-                    Layout.fillWidth: true
-                    text: qsTrId("settings.exit_on_controllers_off")
-                    checked: displaySettingsModel.exitOnControllersOff
-                    onToggled: displaySettingsModel.exitOnControllersOff = checked
-                }
-                Controls.Label {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("settings.exit_on_controllers_off_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                }
-            }
-        }
-
-        Kirigami.Separator {
-            Layout.fillWidth: true
-        }
-
-        Kirigami.Heading {
-            text: qsTrId("resource_control.heading")
-            level: 3
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            enabled: !backend.engineNeedsUpdate()
-            opacity: backend.engineNeedsUpdate() ? 0.5 : 1
-        }
-
-        Controls.Label {
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            text: qsTrId("resource_control.description")
-            opacity: backend.engineNeedsUpdate() ? 0.5 : 0.8
-            enabled: !backend.engineNeedsUpdate()
-        }
-
-        Controls.Label {
-            Layout.fillWidth: true
-            visible: backend.engineNeedsUpdate()
-            wrapMode: Text.Wrap
-            color: Kirigami.Theme.negativeTextColor
-            text: qsTrId("engine.outdated")
-            opacity: 0.9
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: Kirigami.Units.largeSpacing
-            enabled: !backend.engineNeedsUpdate()
-            opacity: backend.engineNeedsUpdate() ? 0.5 : 1
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
-
-                Kirigami.Icon {
-                    source: "edit-clear-all"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                    Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                    Kirigami.Theme.inherit: false
-                }
-
-                Kirigami.Heading {
-                    text: qsTrId("resource_control.app_cleanup_heading")
-                    level: 4
-                    Layout.fillWidth: true
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 0
-
-                Controls.CheckBox {
-                    id: closeAppsEnabledCheck
-                    Layout.fillWidth: true
-                    text: qsTrId("resource_control.enable_cleanup")
-                    checked: appCleanupModel.enabled
-                    onToggled: appCleanupModel.enabled = checked
-                }
-                Controls.Label {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("resource_control.enable_cleanup_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                }
-            }
-
-            Kirigami.InlineMessage {
-                Layout.fillWidth: true
-                Layout.topMargin: Kirigami.Units.smallSpacing
-                visible: closeAppsEnabledCheck.checked
-                showCloseButton: false
-                type: Kirigami.MessageType.Warning
-                text: qsTrId("resource_control.warning_terminate")
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: Kirigami.Units.largeSpacing
-                Layout.leftMargin: Kirigami.Units.gridUnit * 2
-                spacing: Kirigami.Units.smallSpacing
-                enabled: closeAppsEnabledCheck.checked
-                opacity: closeAppsEnabledCheck.checked ? 1 : 0.5
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: Kirigami.Units.largeSpacing
 
-                    Controls.Label {
+                    Kirigami.Icon {
+                        source: "computer"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("settings.desktop_environment")
+                        level: 4
                         Layout.fillWidth: true
-                        text: qsTrId("resource_control.apps_to_close")
-                        font.bold: true
-                    }
-
-                    Controls.Button {
-                        text: qsTrId("resource_control.choose_app")
-                        icon.name: "list-add"
-                        onClicked: chooseAppDialog.open()
-                    }
-
-                    Controls.Button {
-                        text: qsTrId("resource_control.running_apps")
-                        icon.name: "view-list-details"
-                        onClicked: runningAppsDialog.open()
                     }
                 }
 
-                Controls.Label {
+                Kirigami.FormLayout {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    text: qsTrId("resource_control.apps_to_close_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                }
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 10
-                    radius: Kirigami.Units.smallSpacing
-                    color: Kirigami.Theme.backgroundColor
-                    border.color: Kirigami.Theme.separatorColor
-                    border.width: 1
-
-                    Controls.BusyIndicator {
-                        anchors.centerIn: parent
-                        visible: appCleanupModel.loadingInstalled
-                        running: visible
+                    Controls.ComboBox {
+                        Kirigami.FormData.label: qsTrId("settings.desktop_display")
+                        model: displaySettingsModel.outputs.map(function(o) { return o.name; })
+                        currentIndex: model.indexOf(displaySettingsModel.desktopOutput)
+                        onActivated: displaySettingsModel.desktopOutput = currentText
                     }
 
-                    Kirigami.PlaceholderMessage {
-                        anchors.centerIn: parent
-                        width: parent.width - Kirigami.Units.largeSpacing * 4
-                        visible: !appCleanupModel.loadingInstalled && appCleanupModel.appsToClose.length === 0
-                        icon.name: "edit-clear-all"
-                        text: qsTrId("resource_control.no_apps_selected")
+                    Controls.ComboBox {
+                        id: deskResCombo
+                        Kirigami.FormData.label: qsTrId("settings.resolution")
+                        
+                        property var allModes: {
+                            var _trigger = displaySettingsModel.outputs;
+                            return page.outputModes(displaySettingsModel.desktopOutput);
+                        }
+                        property var resList: page.uniqueResolutions(allModes)
+                        
+                        model: resList
+                        currentIndex: resList.indexOf(String(displaySettingsModel.desktopMode).split('@')[0])
+                        
+                        onActivated: {
+                            var newRes = currentText;
+                            var availableRates = page.ratesForResolution(allModes, newRes);
+                            var bestRate = availableRates.length > 0 ? availableRates[0].replace(" Hz", "") : "";
+                            displaySettingsModel.desktopMode = bestRate ? (newRes + "@" + bestRate) : newRes;
+                        }
                     }
 
-                    ListView {
-                        id: appsToCloseList
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        visible: !appCleanupModel.loadingInstalled && appCleanupModel.appsToClose.length > 0
-                        clip: true
-                        reuseItems: true
+                    Controls.ComboBox {
+                        id: deskRateCombo
+                        Kirigami.FormData.label: qsTrId("settings.refresh_rate")
+                        
+                        property var allModes: deskResCombo.allModes
+                        property string currentRes: String(displaySettingsModel.desktopMode).split('@')[0]
+                        property var rateList: page.ratesForResolution(allModes, currentRes)
+                        
+                        model: rateList
+                        visible: rateList.length > 0
+                        
+                        currentIndex: {
+                            var parts = String(displaySettingsModel.desktopMode).split('@');
+                            if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
+                            return -1;
+                        }
+                        
+                        onActivated: {
+                            var cleanRate = currentText.replace(" Hz", "");
+                            displaySettingsModel.desktopMode = currentRes + "@" + cleanRate;
+                        }
+                    }
+
+                    RowLayout {
+                        Kirigami.FormData.label: qsTrId("settings.desktop_scale")
                         spacing: Kirigami.Units.smallSpacing
-                        model: appCleanupModel.appsToClose
-                        Controls.ScrollBar.vertical: Controls.ScrollBar {}
 
-                        delegate: Controls.ItemDelegate {
-                            width: ListView.view.width
-                            hoverEnabled: false
-                            down: false
+                        Controls.TextField {
+                            id: deskScaleField
+                            text: displaySettingsModel.desktopScale
+                            onTextEdited: displaySettingsModel.desktopScale = text
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                        }
 
-                            contentItem: RowLayout {
-                                spacing: Kirigami.Units.smallSpacing
-
-                                AppRowDelegate {
-                                    Layout.fillWidth: true
-                                    displayName: modelData.displayName
-                                    subtitle: modelData.processName
-                                    iconSource: modelData.icon
-                                }
-
-                                Controls.ToolButton {
-                                    icon.name: "edit-delete"
-                                    display: Controls.ToolButton.IconOnly
-                                    Controls.ToolTip.visible: hovered
-                                    Controls.ToolTip.text: qsTrId("resource_control.remove_app")
-                                    onClicked: appCleanupModel.removeApp(index)
-                                }
-                            }
+                        Controls.ToolButton {
+                            icon.name: "help-hint"
+                            display: Controls.ToolButton.IconOnly
+                            Controls.ToolTip.visible: hovered
+                            Controls.ToolTip.text: qsTrId("settings.desktop_scale_tooltip")
                         }
                     }
                 }
             }
-
-            Kirigami.FormLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.gridUnit * 2
-                enabled: closeAppsEnabledCheck.checked
-                opacity: closeAppsEnabledCheck.checked ? 1 : 0.5
-
-                Controls.SpinBox {
-                    id: waitSecondsSpin
-                    Kirigami.FormData.label: qsTrId("resource_control.wait_before_closing")
-                    from: 0
-                    to: 60
-                    value: appCleanupModel.waitSeconds
-                    onValueModified: appCleanupModel.waitSeconds = value
-                    textFromValue: function(value) { return value + " s"; }
-                    valueFromText: function(text) { return parseInt(text) || 0; }
-                }
-            }
-
-            Controls.Label {
-                Layout.fillWidth: true
-                Layout.leftMargin: Kirigami.Units.gridUnit * 2
-                wrapMode: Text.Wrap
-                text: qsTrId("resource_control.wait_before_closing_description")
-                opacity: 0.7
-                font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-            }
         }
 
-        Kirigami.Separator {
+        Rectangle {
             Layout.fillWidth: true
-        }
-
-        Kirigami.Heading {
-            text: qsTrId("settings.startup")
-            level: 3
-            Layout.topMargin: Kirigami.Units.smallSpacing
-        }
-
-        Kirigami.FormLayout {
-            Layout.fillWidth: true
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: couchEnvColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
             ColumnLayout {
-                Layout.fillWidth: true
-                Kirigami.FormData.label: qsTrId("settings.system")
-                spacing: 0
+                id: couchEnvColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
 
-                Controls.CheckBox {
-                    id: autostartCheck
+                RowLayout {
                     Layout.fillWidth: true
-                    text: qsTrId("settings.autostart")
-                    checked: displaySettingsModel.autostart
-                    onToggled: displaySettingsModel.autostart = checked
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Kirigami.Icon {
+                        source: "video-display"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("settings.couch_environment")
+                        level: 4
+                        Layout.fillWidth: true
+                    }
                 }
-                Controls.Label {
+
+                Kirigami.FormLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("settings.autostart_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
+
+                    Controls.ComboBox {
+                        Kirigami.FormData.label: qsTrId("settings.couch_display")
+                        model: displaySettingsModel.outputs.map(function(o) { return o.name; })
+                        currentIndex: model.indexOf(displaySettingsModel.tvOutput)
+                        onActivated: displaySettingsModel.tvOutput = currentText
+                    }
+
+                    Controls.ComboBox {
+                        id: tvResCombo
+                        Kirigami.FormData.label: qsTrId("settings.resolution")
+                        
+                        property var allModes: {
+                            var _trigger = displaySettingsModel.outputs;
+                            return page.outputModes(displaySettingsModel.tvOutput);
+                        }
+                        property var resList: page.uniqueResolutions(allModes)
+                        
+                        model: resList
+                        currentIndex: resList.indexOf(String(displaySettingsModel.tvMode).split('@')[0])
+                        
+                        onActivated: {
+                            var newRes = currentText;
+                            var availableRates = page.ratesForResolution(allModes, newRes);
+                            var bestRate = availableRates.length > 0 ? availableRates[0].replace(" Hz", "") : "";
+                            displaySettingsModel.tvMode = bestRate ? (newRes + "@" + bestRate) : newRes;
+                        }
+                    }
+
+                    Controls.ComboBox {
+                        id: tvRateCombo
+                        Kirigami.FormData.label: qsTrId("settings.refresh_rate")
+                        
+                        property var allModes: tvResCombo.allModes
+                        property string currentRes: String(displaySettingsModel.tvMode).split('@')[0]
+                        property var rateList: page.ratesForResolution(allModes, currentRes)
+                        
+                        model: rateList
+                        visible: rateList.length > 0
+                        
+                        currentIndex: {
+                            var parts = String(displaySettingsModel.tvMode).split('@');
+                            if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
+                            return -1;
+                        }
+                        
+                        onActivated: {
+                            var cleanRate = currentText.replace(" Hz", "");
+                            displaySettingsModel.tvMode = currentRes + "@" + cleanRate;
+                        }
+                    }
+
+                    RowLayout {
+                        Kirigami.FormData.label: qsTrId("settings.couch_scale")
+                        spacing: Kirigami.Units.smallSpacing
+
+                        Controls.TextField {
+                            id: tvScaleField
+                            text: displaySettingsModel.tvScale
+                            onTextEdited: displaySettingsModel.tvScale = text
+                            Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                        }
+
+                        Controls.ToolButton {
+                            icon.name: "help-hint"
+                            display: Controls.ToolButton.IconOnly
+                            Controls.ToolTip.visible: hovered
+                            Controls.ToolTip.text: qsTrId("settings.couch_scale_tooltip")
+                        }
+                    }
                 }
             }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: couchBehaviorColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
             ColumnLayout {
-                Layout.fillWidth: true
-                Kirigami.FormData.label: qsTrId("settings.background")
-                spacing: 0
+                id: couchBehaviorColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
 
-                Controls.CheckBox {
-                    id: backgroundOnCloseCheck
+                RowLayout {
                     Layout.fillWidth: true
-                    text: qsTrId("settings.background_on_close")
-                    checked: displaySettingsModel.backgroundOnClose
-                    onToggled: displaySettingsModel.backgroundOnClose = checked
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Kirigami.Icon {
+                        source: "preferences-system"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("settings.couch_behavior")
+                        level: 4
+                        Layout.fillWidth: true
+                    }
                 }
-                Controls.Label {
+
+                Kirigami.FormLayout {
                     Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                    wrapMode: Text.Wrap
-                    text: qsTrId("settings.background_on_close_description")
-                    opacity: 0.7
-                    font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Kirigami.FormData.label: qsTrId("settings.desktop_display_label")
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: keepDeskEnabledCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.keep_desktop_enabled")
+                            checked: displaySettingsModel.keepDeskEnabled
+                            onToggled: displaySettingsModel.keepDeskEnabled = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("settings.keep_desktop_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.maximumHeight: keepDeskEnabledCheck.checked ? -1 : 0
+                        Kirigami.FormData.label: qsTrId("settings.mirroring")
+                        opacity: keepDeskEnabledCheck.checked ? 1 : 0
+                        enabled: keepDeskEnabledCheck.checked
+                        clip: true
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: mirrorDeskToTvCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.mirror_desktop")
+                            checked: displaySettingsModel.mirrorDeskToTv
+                            onToggled: displaySettingsModel.mirrorDeskToTv = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("settings.mirror_desktop_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Kirigami.FormData.label: qsTrId("settings.big_picture_label")
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: watchBigPictureCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.watch_big_picture")
+                            checked: displaySettingsModel.watchBigPicture
+                            onToggled: displaySettingsModel.watchBigPicture = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("settings.watch_big_picture_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Kirigami.FormData.label: qsTrId("settings.controllers_label")
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: exitOnControllersOffCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.exit_on_controllers_off")
+                            checked: displaySettingsModel.exitOnControllersOff
+                            onToggled: displaySettingsModel.exitOnControllersOff = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("settings.exit_on_controllers_off_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: resourceControlColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+
+            ColumnLayout {
+                id: resourceControlColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Kirigami.Icon {
+                        source: "utilities-system-monitor"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Layout.alignment: Qt.AlignTop
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                        opacity: backend.engineNeedsUpdate() ? 0.5 : 1
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+
+                        Kirigami.Heading {
+                            text: qsTrId("resource_control.heading")
+                            level: 4
+                            Layout.fillWidth: true
+                            enabled: !backend.engineNeedsUpdate()
+                            opacity: backend.engineNeedsUpdate() ? 0.5 : 1
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTrId("resource_control.description")
+                            opacity: backend.engineNeedsUpdate() ? 0.5 : 0.8
+                            enabled: !backend.engineNeedsUpdate()
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            visible: backend.engineNeedsUpdate()
+                            wrapMode: Text.Wrap
+                            color: Kirigami.Theme.negativeTextColor
+                            text: qsTrId("engine.outdated")
+                            opacity: 0.9
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    Layout.topMargin: Kirigami.Units.smallSpacing
+                    spacing: Kirigami.Units.largeSpacing
+                    enabled: !backend.engineNeedsUpdate()
+                    opacity: backend.engineNeedsUpdate() ? 0.5 : 1
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+
+                        Kirigami.Icon {
+                            source: "edit-clear-all"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                            Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                            Kirigami.Theme.inherit: false
+                        }
+
+                        Kirigami.Heading {
+                            text: qsTrId("resource_control.app_cleanup_heading")
+                            level: 4
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: closeAppsEnabledCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("resource_control.enable_cleanup")
+                            checked: appCleanupModel.enabled
+                            onToggled: appCleanupModel.enabled = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("resource_control.enable_cleanup_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
+
+                    Kirigami.InlineMessage {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Kirigami.Units.smallSpacing
+                        visible: closeAppsEnabledCheck.checked
+                        showCloseButton: false
+                        type: Kirigami.MessageType.Warning
+                        text: qsTrId("resource_control.warning_terminate")
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Kirigami.Units.largeSpacing
+                        Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                        spacing: Kirigami.Units.smallSpacing
+                        enabled: closeAppsEnabledCheck.checked
+                        opacity: closeAppsEnabledCheck.checked ? 1 : 0.5
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: Kirigami.Units.smallSpacing
+
+                            Controls.Label {
+                                Layout.fillWidth: true
+                                text: qsTrId("resource_control.apps_to_close")
+                                font.bold: true
+                            }
+
+                            Controls.Button {
+                                text: qsTrId("resource_control.choose_app")
+                                icon.name: "list-add"
+                                onClicked: chooseAppDialog.open()
+                            }
+
+                            Controls.Button {
+                                text: qsTrId("resource_control.running_apps")
+                                icon.name: "view-list-details"
+                                onClicked: runningAppsDialog.open()
+                            }
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            text: qsTrId("resource_control.apps_to_close_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Kirigami.Units.gridUnit * 10
+                            radius: Kirigami.Units.smallSpacing
+                            color: Kirigami.Theme.alternateBackgroundColor
+                            border.color: Kirigami.Theme.separatorColor
+                            border.width: 1
+
+                            Controls.BusyIndicator {
+                                anchors.centerIn: parent
+                                visible: appCleanupModel.loadingInstalled
+                                running: visible
+                            }
+
+                            Kirigami.PlaceholderMessage {
+                                anchors.centerIn: parent
+                                width: parent.width - Kirigami.Units.largeSpacing * 4
+                                visible: !appCleanupModel.loadingInstalled && appCleanupModel.appsToClose.length === 0
+                                icon.name: "edit-clear-all"
+                                text: qsTrId("resource_control.no_apps_selected")
+                            }
+
+                            ListView {
+                                id: appsToCloseList
+                                anchors.fill: parent
+                                anchors.margins: Kirigami.Units.smallSpacing
+                                visible: !appCleanupModel.loadingInstalled && appCleanupModel.appsToClose.length > 0
+                                clip: true
+                                reuseItems: true
+                                spacing: Kirigami.Units.smallSpacing
+                                model: appCleanupModel.appsToClose
+                                Controls.ScrollBar.vertical: Controls.ScrollBar {}
+
+                                delegate: Controls.ItemDelegate {
+                                    width: ListView.view.width
+                                    hoverEnabled: false
+                                    down: false
+
+                                    background: Rectangle {
+                                        radius: Kirigami.Units.smallSpacing
+                                        color: Kirigami.Theme.backgroundColor
+                                    }
+
+                                    contentItem: RowLayout {
+                                        spacing: Kirigami.Units.smallSpacing
+
+                                        AppRowDelegate {
+                                            Layout.fillWidth: true
+                                            displayName: modelData.displayName
+                                            subtitle: modelData.processName
+                                            iconSource: modelData.icon
+                                        }
+
+                                        Controls.ToolButton {
+                                            icon.name: "edit-delete"
+                                            display: Controls.ToolButton.IconOnly
+                                            Controls.ToolTip.visible: hovered
+                                            Controls.ToolTip.text: qsTrId("resource_control.remove_app")
+                                            onClicked: appCleanupModel.removeApp(index)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Kirigami.FormLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                        enabled: closeAppsEnabledCheck.checked
+                        opacity: closeAppsEnabledCheck.checked ? 1 : 0.5
+
+                        Controls.SpinBox {
+                            id: waitSecondsSpin
+                            Kirigami.FormData.label: qsTrId("resource_control.wait_before_closing")
+                            from: 0
+                            to: 60
+                            value: appCleanupModel.waitSeconds
+                            onValueModified: appCleanupModel.waitSeconds = value
+                            textFromValue: function(value) { return value + " s"; }
+                            valueFromText: function(text) { return parseInt(text) || 0; }
+                        }
+                    }
+
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                        wrapMode: Text.Wrap
+                        text: qsTrId("resource_control.wait_before_closing_description")
+                        opacity: 0.7
+                        font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: startupColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+
+            ColumnLayout {
+                id: startupColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Kirigami.Icon {
+                        source: "system-run"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("settings.startup")
+                        level: 4
+                        Layout.fillWidth: true
+                    }
+                }
+
+                Kirigami.FormLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Kirigami.FormData.label: qsTrId("settings.system")
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: autostartCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.autostart")
+                            checked: displaySettingsModel.autostart
+                            onToggled: displaySettingsModel.autostart = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("settings.autostart_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Kirigami.FormData.label: qsTrId("settings.background")
+                        spacing: 0
+
+                        Controls.CheckBox {
+                            id: backgroundOnCloseCheck
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.background_on_close")
+                            checked: displaySettingsModel.backgroundOnClose
+                            onToggled: displaySettingsModel.backgroundOnClose = checked
+                        }
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+                            wrapMode: Text.Wrap
+                            text: qsTrId("settings.background_on_close_description")
+                            opacity: 0.7
+                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                    }
                 }
             }
         }

@@ -11,6 +11,8 @@ Controls.Dialog {
     standardButtons: Controls.Dialog.Close
     implicitWidth: Math.min(480, root.parent ? root.parent.width - Kirigami.Units.gridUnit * 4 : 420)
     implicitHeight: Math.min(480, root.parent ? root.parent.height - Kirigami.Units.gridUnit * 8 : 420)
+    x: root.parent ? Math.round((root.parent.width - width) / 2) : 0
+    y: root.parent ? Math.round((root.parent.height - height) / 2) : 0
 
     property var apps: []
 
@@ -64,10 +66,18 @@ Controls.Dialog {
             Controls.ScrollBar.vertical: Controls.ScrollBar {}
 
             delegate: Controls.ItemDelegate {
+                id: appDelegate
                 width: ListView.view.width
                 onClicked: {
                     appCleanupModel.addApp(modelData.processName, modelData.displayName, modelData.icon);
                     root.close();
+                }
+
+                background: Rectangle {
+                    radius: Kirigami.Units.smallSpacing
+                    color: appDelegate.hovered ? Kirigami.Theme.alternateBackgroundColor : "transparent"
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
                 }
 
                 contentItem: AppRowDelegate {

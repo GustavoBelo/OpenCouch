@@ -31,7 +31,7 @@ Controls.Popup {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.largeSpacing
 
             Kirigami.Icon {
                 source: "help-about"

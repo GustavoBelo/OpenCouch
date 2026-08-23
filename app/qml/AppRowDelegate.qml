@@ -5,7 +5,7 @@ import org.kde.kirigami as Kirigami
 
 RowLayout {
     id: root
-    spacing: Kirigami.Units.smallSpacing
+    spacing: Kirigami.Units.largeSpacing
 
     property string displayName: ""
     property string subtitle: ""
@@ -13,8 +13,8 @@ RowLayout {
 
     Kirigami.Icon {
         source: root.iconSource.length > 0 ? root.iconSource : "application-x-executable"
-        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-        Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+        Layout.preferredWidth: Kirigami.Units.iconSizes.large
+        Layout.preferredHeight: Kirigami.Units.iconSizes.large
         Layout.alignment: Qt.AlignVCenter
     }
 
@@ -27,6 +27,7 @@ RowLayout {
             Layout.fillWidth: true
             text: root.displayName
             elide: Text.ElideRight
+            font.weight: Font.Medium
         }
 
         Controls.Label {

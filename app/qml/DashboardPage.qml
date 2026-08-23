@@ -123,21 +123,24 @@ Kirigami.ScrollablePage {
         }
 
         Rectangle {
+            id: heroCard
             Layout.fillWidth: true
-            Layout.preferredHeight: Kirigami.Units.gridUnit * 4
-            visible: backend.running
-            radius: Kirigami.Units.smallSpacing
-            color: Kirigami.Theme.positiveBackgroundColor
-            border.color: Kirigami.Theme.positiveTextColor
+            Layout.preferredHeight: Kirigami.Units.gridUnit * 4.5
+            radius: Kirigami.Units.largeSpacing
+            color: backend.running ? Kirigami.Theme.positiveBackgroundColor : Kirigami.Theme.alternateBackgroundColor
+            border.color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.separatorColor
             border.width: 1
+
+            Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.InOutQuad } }
+            Behavior on border.color { ColorAnimation { duration: 220; easing.type: Easing.InOutQuad } }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.margins: Kirigami.Units.smallSpacing
+                anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.largeSpacing
 
                 Kirigami.Icon {
-                    source: "video-display"
+                    source: backend.running ? "video-display" : "computer"
                     Layout.preferredWidth: Kirigami.Units.iconSizes.large
                     Layout.preferredHeight: Kirigami.Units.iconSizes.large
                     Layout.alignment: Qt.AlignVCenter
@@ -150,11 +153,12 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         level: 3
-                        text: qsTrId("status.couch")
-                        color: Kirigami.Theme.positiveTextColor
+                        text: backend.running ? qsTrId("status.couch") : qsTrId("status.desktop")
+                        color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
                     }
 
                     Controls.Label {
+                        visible: backend.running
                         text: qsTrId("dashboard.couch_active")
                         opacity: 0.85
                         font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
@@ -164,277 +168,369 @@ Kirigami.ScrollablePage {
             }
         }
 
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.largeSpacing
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: actionRow.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-            Controls.Button {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 3
-                text: qsTrId("dashboard.enter_couch")
-                icon.name: "media-playback-start"
-                highlighted: !backend.running
-                enabled: !backend.running
-                onClicked: {
-                    if(!backend.engineAvailable()) {
-                        permissionPopup.open();
-                        return;
-                    }
-                    banner.visible = false;
-                    backend.play();
-                }
-            }
+            RowLayout {
+                id: actionRow
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.largeSpacing
 
-            Controls.Button {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Kirigami.Units.gridUnit * 3
-                text: qsTrId("dashboard.return_desktop")
-                icon.name: "go-home"
-                enabled: backend.running
-                highlighted: backend.running
-                onClicked: {
-                    banner.visible = false;
-                    backend.restore();
-                }
-            }
-        }
-
-        Kirigami.Heading {
-            text: qsTrId("dashboard.display_status")
-            level: 3
-            Layout.topMargin: Kirigami.Units.smallSpacing
-        }
-
-        Controls.Label {
-            id: statusArea
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            text: qsTrId("common.loading")
-            opacity: 0.85
-        }
-
-        Controls.Button {
-            text: qsTrId("dashboard.refresh_status")
-            icon.name: "view-refresh"
-            onClicked: {
-                backend.refreshStatus();
-                let rawContent = backend.readLog();
-                if (rawContent !== undefined && rawContent !== "") {
-                    let lines = rawContent.split('\n');
-                    let formattedLines = [];
-                    for (let i = 0; i < lines.length; i++) {
-                        if (i === lines.length - 1 && lines[i] === "") continue;
-                        formattedLines.push(logArea.getFormattedLine(lines[i]));
-                    }
-                    logArea.text = formattedLines.join("<br/>");
-                    logArea.cursorPosition = logArea.length;
-                }
-                var rMissing = !backend.engineAvailable();
-                var rOutdated = !rMissing && backend.engineNeedsUpdate();
-                if (rMissing || rOutdated) {
-                    if (backend.canAutoInstallEngine()) {
-                        var installError = backend.tryAutoInstallEngine();
-                        if (installError.length > 0) {
-                            backend.refreshStatus();
-                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
-                        } else if (rMissing) {
-                            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                        } else {
-                            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                Controls.Button {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3.2
+                    text: qsTrId("dashboard.enter_couch")
+                    icon.name: "media-playback-start"
+                    icon.width: Kirigami.Units.iconSizes.medium
+                    icon.height: Kirigami.Units.iconSizes.medium
+                    highlighted: !backend.running
+                    enabled: !backend.running
+                    onClicked: {
+                        if(!backend.engineAvailable()) {
+                            permissionPopup.open();
+                            return;
                         }
-                    } else if (rMissing) {
-                        page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                    } else {
-                        page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                        banner.visible = false;
+                        backend.play();
                     }
-                } else {
-                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
+                }
+
+                Controls.Button {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3.2
+                    text: qsTrId("dashboard.return_desktop")
+                    icon.name: "go-home"
+                    icon.width: Kirigami.Units.iconSizes.medium
+                    icon.height: Kirigami.Units.iconSizes.medium
+                    enabled: backend.running
+                    highlighted: backend.running
+                    onClicked: {
+                        banner.visible = false;
+                        backend.restore();
+                    }
                 }
             }
         }
 
-        Kirigami.Heading {
-            text: qsTrId("common.log")
-            level: 3
-            Layout.topMargin: Kirigami.Units.smallSpacing
-        }
-
-        RowLayout {
+        Rectangle {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.smallSpacing
+            Layout.topMargin: Kirigami.Units.smallSpacing
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: statusCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-            Controls.Button {
-                text: qsTrId("dashboard.copy_log")
-                icon.name: "edit-copy"
-                enabled: page.viewingHistoryId === ""
-                onClicked: {
-                    backend.copyLogToClipboard();
-                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_copied"), false, false, false);
+            ColumnLayout {
+                id: statusCardColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Kirigami.Icon {
+                        source: "view-list-details"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("dashboard.display_status")
+                        level: 3
+                        Layout.fillWidth: true
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: statusArea.implicitHeight + Kirigami.Units.smallSpacing * 2
+                    radius: Kirigami.Units.smallSpacing
+                    color: Kirigami.Theme.alternateBackgroundColor
+
+                    Controls.Label {
+                        id: statusArea
+                        anchors.fill: parent
+                        anchors.margins: Kirigami.Units.smallSpacing
+                        wrapMode: Text.Wrap
+                        text: qsTrId("common.loading")
+                        opacity: 0.85
+                    }
+                }
+
+                Controls.Button {
+                    Layout.alignment: Qt.AlignRight
+                    text: qsTrId("dashboard.refresh_status")
+                    icon.name: "view-refresh"
+                    onClicked: {
+                        backend.refreshStatus();
+                        let rawContent = backend.readLog();
+                        if (rawContent !== undefined && rawContent !== "") {
+                            let lines = rawContent.split('\n');
+                            let formattedLines = [];
+                            for (let i = 0; i < lines.length; i++) {
+                                if (i === lines.length - 1 && lines[i] === "") continue;
+                                formattedLines.push(logArea.getFormattedLine(lines[i]));
+                            }
+                            logArea.text = formattedLines.join("<br/>");
+                            logArea.cursorPosition = logArea.length;
+                        }
+                        var rMissing = !backend.engineAvailable();
+                        var rOutdated = !rMissing && backend.engineNeedsUpdate();
+                        if (rMissing || rOutdated) {
+                            if (backend.canAutoInstallEngine()) {
+                                var installError = backend.tryAutoInstallEngine();
+                                if (installError.length > 0) {
+                                    backend.refreshStatus();
+                                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
+                                } else if (rMissing) {
+                                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+                                } else {
+                                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                                }
+                            } else if (rMissing) {
+                                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+                            } else {
+                                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
+                            }
+                        } else {
+                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
+                        }
+                    }
                 }
             }
+        }
 
-            Controls.Button {
-                text: qsTrId("dashboard.log_history")
-                icon.name: "document-open-recent"
-                onClicked: historyDialog.open()
-            }
+        Rectangle {
+            Layout.fillWidth: true
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: logCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-            Controls.ToolButton {
-                id: logOverflowButton
-                icon.name: "overflow-menu"
-                enabled: page.viewingHistoryId === ""
-                onClicked: logOptionsMenu.popup(logOverflowButton)
-                
-                Controls.Menu {
-                    id: logOptionsMenu
+            ColumnLayout {
+                id: logCardColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
 
-                    Controls.MenuItem {
-                        text: qsTrId("dashboard.download_log")
-                        icon.name: "document-save"
-                        onTriggered: {
-                            const path = backend.exportLogToHome();
-                            if (path.length > 0) {
-                                page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_saved").arg(path), false, false, false);
-                            } else {
-                                page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.log_save_failed"), false, false, false);
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Kirigami.Icon {
+                        source: "text-x-log"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("common.log")
+                        level: 3
+                        Layout.fillWidth: true
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.smallSpacing
+
+                    Controls.Button {
+                        text: qsTrId("dashboard.copy_log")
+                        icon.name: "edit-copy"
+                        enabled: page.viewingHistoryId === ""
+                        onClicked: {
+                            backend.copyLogToClipboard();
+                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_copied"), false, false, false);
+                        }
+                    }
+
+                    Controls.Button {
+                        text: qsTrId("dashboard.log_history")
+                        icon.name: "document-open-recent"
+                        onClicked: historyDialog.open()
+                    }
+
+                    Controls.ToolButton {
+                        id: logOverflowButton
+                        icon.name: "overflow-menu"
+                        enabled: page.viewingHistoryId === ""
+                        onClicked: logOptionsMenu.popup(logOverflowButton)
+                        
+                        Controls.Menu {
+                            id: logOptionsMenu
+
+                            Controls.MenuItem {
+                                text: qsTrId("dashboard.download_log")
+                                icon.name: "document-save"
+                                onTriggered: {
+                                    const path = backend.exportLogToHome();
+                                    if (path.length > 0) {
+                                        page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_saved").arg(path), false, false, false);
+                                    } else {
+                                        page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.log_save_failed"), false, false, false);
+                                    }
+                                }
+                            }
+
+                            Controls.MenuItem {
+                                text: qsTrId("dashboard.clear_log")
+                                icon.name: "edit-clear"
+                                onTriggered: {
+                                    logArea.clear();
+                                    backend.clearLog();
+                                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_cleared"), false, false, false);
+                                }
                             }
                         }
                     }
 
-                    Controls.MenuItem {
-                        text: qsTrId("dashboard.clear_log")
-                        icon.name: "edit-clear"
-                        onTriggered: {
-                            logArea.clear();
-                            backend.clearLog();
-                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_cleared"), false, false, false);
+                    Item { Layout.fillWidth: true }
+                }
+
+                Kirigami.InlineMessage {
+                    id: historyModeBanner
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: Kirigami.Units.smallSpacing
+                    visible: page.viewingHistoryId !== ""
+                    type: Kirigami.MessageType.Warning
+                    text: qsTrId("dashboard.viewing_history").arg(page.viewingHistoryName)
+                    actions: [
+                        Kirigami.Action {
+                            text: qsTrId("dashboard.back_to_live_log")
+                            icon.name: "media-skip-backward"
+                            onTriggered: {
+                                page.viewingHistoryId = "";
+                                page.viewingHistoryName = "";
+                                logArea.text = page.liveLogCache;
+                                logArea.cursorPosition = logArea.length;
+                            }
+                        }
+                    ]
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: page.logPanelHeight
+                    radius: Kirigami.Units.smallSpacing
+                    color: Kirigami.Theme.alternateBackgroundColor
+                    clip: true
+
+                    Controls.ScrollView {
+                        id: logScroll
+                        anchors.fill: parent
+                        anchors.margins: Kirigami.Units.smallSpacing
+                        clip: true
+                        Controls.ScrollBar.vertical.policy: Controls.ScrollBar.AsNeeded
+
+                        Controls.TextArea {
+                            id: logArea
+                            width: logScroll.availableWidth
+                            readOnly: true
+                            wrapMode: Controls.TextArea.Wrap
+                            textFormat: TextEdit.RichText
+                            font.family: "monospace"
+                            color: Kirigami.Theme.textColor
+                            background: null
+
+                            function escapeHtml(value) {
+                                return value
+                                    .replace(/&/g, "&amp;")
+                                    .replace(/</g, "&lt;")
+                                    .replace(/>/g, "&gt;")
+                                    .replace(/"/g, "&quot;");
+                            }
+
+                            function getFormattedLine(line) {
+                                const safeLine = escapeHtml(line);
+                                return /(ERRO|ERROR|error|WARN|warning)/.test(line)
+                                    ? "<font color=\"#ef5350\">" + safeLine + "</font>"
+                                    : safeLine;
+                            }
+
+                            function clear() {
+                                text = "";
+                                page.liveLogCache = "";
+                            }
+
+                            function append(line) {
+                                const formatted = getFormattedLine(line);
+
+                                if (page.viewingHistoryId === "") {
+                                    text += (text.length > 0 ? "<br/>" : "") + formatted;
+                                    cursorPosition = length;
+                                } else {
+                                    page.liveLogCache += (page.liveLogCache.length > 0 ? "<br/>" : "") + formatted;
+                                }
+                            }
+                        }
+
+                        WheelHandler {
+                            target: parent
+                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                            onWheel: (event) => {
+                                event.accepted = true
+                                const bar = logScroll.Controls.ScrollBar.vertical
+                                if (bar.size >= 1) return
+                                const step = event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3
+                                bar.position = Math.max(0, Math.min(1 - bar.size, bar.position - step / logArea.implicitHeight))
+                            }
                         }
                     }
                 }
-            }
 
-            Item { Layout.fillWidth: true }
-        }
+                MouseArea {
+                    id: logResizeHandle
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Kirigami.Units.smallSpacing * 2
+                    Layout.topMargin: Kirigami.Units.smallSpacing
+                    cursorShape: Qt.SizeVerCursor
+                    hoverEnabled: true
+                    preventStealing: true
 
-        Kirigami.InlineMessage {
-            id: historyModeBanner
-            Layout.fillWidth: true
-            Layout.bottomMargin: Kirigami.Units.smallSpacing
-            visible: page.viewingHistoryId !== ""
-            type: Kirigami.MessageType.Warning
-            text: qsTrId("dashboard.viewing_history").arg(page.viewingHistoryName)
-            actions: [
-                Kirigami.Action {
-                    text: qsTrId("dashboard.back_to_live_log")
-                    icon.name: "media-skip-backward"
-                    onTriggered: {
-                        page.viewingHistoryId = "";
-                        page.viewingHistoryName = "";
-                        logArea.text = page.liveLogCache;
-                        logArea.cursorPosition = logArea.length;
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: Kirigami.Units.gridUnit * 3
+                        height: parent.height
+                        radius: height / 2
+                        color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
+                        opacity: logResizeHandle.pressed ? 0.9 : (logResizeHandle.containsMouse ? 0.7 : 0.5)
+
+                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                    }
+
+                    Controls.ToolTip.visible: logResizeHandle.containsMouse && !logResizeHandle.pressed
+                    Controls.ToolTip.text: qsTrId("dashboard.log_resize_hint")
+
+                    onPressed: (mouse) => {
+                        const p = logResizeHandle.mapToGlobal(mouse.x, mouse.y);
+                        page.logResizeStartY = p.y;
+                        page.logResizeStartHeight = page.logPanelHeight;
+                    }
+                    onPositionChanged: (mouse) => {
+                        if (!pressed) return;
+
+                        const p = logResizeHandle.mapToGlobal(mouse.x, mouse.y);
+                        const newHeight = page.logResizeStartHeight + (p.y - page.logResizeStartY);
+                        const originalSize = Kirigami.Units.gridUnit * 10;
+                        
+                        page.logPanelHeight = Math.max(originalSize, Math.min(page.logPanelMaxHeight, newHeight));
+                    }
+                    
+                    onDoubleClicked: {
+                        page.logPanelHeight = Kirigami.Units.gridUnit * 10;
                     }
                 }
-            ]
-        }
-
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: page.logPanelHeight
-
-            Controls.ScrollView {
-                id: logScroll
-                anchors.fill: parent
-                clip: true
-                Controls.ScrollBar.vertical.policy: Controls.ScrollBar.AsNeeded
-
-                Controls.TextArea {
-                    id: logArea
-                    width: logScroll.availableWidth
-                    readOnly: true
-                    wrapMode: Controls.TextArea.Wrap
-                    textFormat: TextEdit.RichText
-
-                    function escapeHtml(value) {
-                        return value
-                            .replace(/&/g, "&amp;")
-                            .replace(/</g, "&lt;")
-                            .replace(/>/g, "&gt;")
-                            .replace(/"/g, "&quot;");
-                    }
-
-                    function getFormattedLine(line) {
-                        const safeLine = escapeHtml(line);
-                        return /(ERRO|ERROR|error|WARN|warning)/.test(line)
-                            ? "<font color=\"#ef5350\">" + safeLine + "</font>"
-                            : safeLine;
-                    }
-
-                    function clear() {
-                        text = "";
-                        page.liveLogCache = "";
-                    }
-
-                    function append(line) {
-                        const formatted = getFormattedLine(line);
-
-                        if (page.viewingHistoryId === "") {
-                            text += (text.length > 0 ? "<br/>" : "") + formatted;
-                            cursorPosition = length;
-                        } else {
-                            page.liveLogCache += (page.liveLogCache.length > 0 ? "<br/>" : "") + formatted;
-                        }
-                    }
-                }
-
-                WheelHandler {
-                    target: parent
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: (event) => {
-                        event.accepted = true
-                        const bar = logScroll.Controls.ScrollBar.vertical
-                        if (bar.size >= 1) return
-                        const step = event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3
-                        bar.position = Math.max(0, Math.min(1 - bar.size, bar.position - step / logArea.implicitHeight))
-                    }
-                }
-            }
-        }
-
-        MouseArea {
-            id: logResizeHandle
-            Layout.fillWidth: true
-            Layout.preferredHeight: Kirigami.Units.smallSpacing * 2
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            cursorShape: Qt.SizeVerCursor
-            hoverEnabled: true
-            preventStealing: true
-
-            Rectangle {
-                anchors.fill: parent
-                color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : "transparent"
-                opacity: logResizeHandle.pressed ? 0.7 : (logResizeHandle.containsMouse ? 0.4 : 0.2)
-            }
-
-            Controls.ToolTip.visible: logResizeHandle.containsMouse && !logResizeHandle.pressed
-            Controls.ToolTip.text: qsTrId("dashboard.log_resize_hint")
-
-            onPressed: (mouse) => {
-                const p = logResizeHandle.mapToGlobal(mouse.x, mouse.y);
-                page.logResizeStartY = p.y;
-                page.logResizeStartHeight = page.logPanelHeight;
-            }
-            onPositionChanged: (mouse) => {
-                if (!pressed) return;
-
-                const p = logResizeHandle.mapToGlobal(mouse.x, mouse.y);
-                const newHeight = page.logResizeStartHeight + (p.y - page.logResizeStartY);
-                const originalSize = Kirigami.Units.gridUnit * 10;
-                
-                page.logPanelHeight = Math.max(originalSize, Math.min(page.logPanelMaxHeight, newHeight));
-            }
-            
-            onDoubleClicked: {
-                page.logPanelHeight = Kirigami.Units.gridUnit * 10;
             }
         }
 
@@ -443,35 +539,47 @@ Kirigami.ScrollablePage {
             Layout.topMargin: Kirigami.Units.largeSpacing
         }
 
-        ColumnLayout {
+        Rectangle {
             Layout.fillWidth: true
             Layout.topMargin: Kirigami.Units.smallSpacing
-            spacing: Kirigami.Units.smallSpacing 
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.alternateBackgroundColor
+            border.color: Kirigami.Theme.separatorColor
+            border.width: 1
+            implicitHeight: supportColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Kirigami.Units.largeSpacing
+            ColumnLayout {
+                id: supportColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
 
-                Kirigami.Icon {
-                    source: "help-donate"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    Layout.alignment: Qt.AlignTop 
-                }
-
-                Controls.Label {
+                RowLayout {
                     Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    text: qsTrId("support.description")
-                    opacity: 0.8
-                }
-            }
+                    spacing: Kirigami.Units.largeSpacing
 
-            Controls.Button {
-                text: qsTrId("support.buy_coffee")
-                icon.name: "help-donate"
-                Layout.alignment: Qt.AlignRight
-                onClicked: Qt.openUrlExternally("https://www.buymeacoffee.com/gustavobelo")
+                    Kirigami.Icon {
+                        source: "help-donate"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Layout.alignment: Qt.AlignTop 
+                    }
+
+                    Controls.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: qsTrId("support.description")
+                        opacity: 0.8
+                    }
+                }
+
+                Controls.Button {
+                    text: qsTrId("support.buy_coffee")
+                    icon.name: "help-donate"
+                    highlighted: true
+                    Layout.alignment: Qt.AlignRight
+                    onClicked: Qt.openUrlExternally("https://www.buymeacoffee.com/gustavobelo")
+                }
             }
         }
 
@@ -479,7 +587,8 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             horizontalAlignment: Text.AlignRight
             text: qsTrId("common.version").arg(appInfo.formattedVersion())
-            opacity: 0.7
+            opacity: 0.6
+            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
         }
     }
 
@@ -517,7 +626,7 @@ Kirigami.ScrollablePage {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
+                    spacing: Kirigami.Units.largeSpacing
 
                     Kirigami.Icon {
                         source: permissionPopup.installResult === "ok" ? "dialog-ok" : "dialog-warning"
@@ -704,6 +813,8 @@ Kirigami.ScrollablePage {
         modal: true
         standardButtons: Controls.Dialog.Close
         implicitWidth: Math.min(620, page.width > 0 ? page.width - Kirigami.Units.gridUnit * 4 : 600)
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
 
         property var entries: []
         property string selectedId: ""
@@ -756,11 +867,21 @@ Kirigami.ScrollablePage {
                 currentIndex: -1
 
                 delegate: Controls.ItemDelegate {
+                    id: historyDelegate
                     width: ListView.view.width
                     highlighted: modelData.id === historyDialog.selectedId
                     onClicked: {
                         historyDialog.selectedId = modelData.id;
                         historyList.currentIndex = index;
+                    }
+
+                    background: Rectangle {
+                        radius: Kirigami.Units.smallSpacing
+                        color: historyDelegate.highlighted ? Kirigami.Theme.highlightColor
+                             : (historyDelegate.hovered ? Kirigami.Theme.alternateBackgroundColor : "transparent")
+                        opacity: historyDelegate.highlighted ? 0.25 : 1
+
+                        Behavior on color { ColorAnimation { duration: 120 } }
                     }
 
                     contentItem: RowLayout {
@@ -779,6 +900,7 @@ Kirigami.ScrollablePage {
                             Controls.Label {
                                 Layout.fillWidth: true
                                 text: historyDialog.formatTimestamp(modelData.timestamp)
+                                font.bold: historyDelegate.highlighted
                             }
 
                             Controls.Label {

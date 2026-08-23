@@ -5,10 +5,10 @@ import org.kde.kirigami as Kirigami
 Kirigami.ApplicationWindow {
     id: root
     title: appInfo.displayName + " v" + appInfo.version
-    width: 520
-    height: 640
-    minimumWidth: 420
-    minimumHeight: 480
+    width: 560
+    height: 720
+    minimumWidth: 440
+    minimumHeight: 520
 
     pageStack.defaultColumnWidth: root.width
 
