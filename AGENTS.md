@@ -88,6 +88,82 @@ que valida a versão, verifica árvore limpa, sincroniza todos os arquivos, rege
 
 Ao alterar o engine de forma que exija reinstalação do usuário, **bumpe `kMinEngineVersion`** em `app/src/engineclient.cpp` (o release.sh copia esse valor para `MIN_VERSION` do engine). O build do AppImage é feito pela CI (`.github/workflows/release.yml`) ao dar push de uma tag `v*`.
 
+## Publicação de release — boa prática
+
+Fluxo completo após `packaging/release.sh` + `git push`. **Release notes sempre em inglês**; este arquivo permanece em PT-BR.
+
+### 1. Pré-voo
+
+```sh
+git status --porcelain  # limpo
+git tag --sort=-v:refname | head
+grep -n kMinEngineVersion app/src/engineclient.cpp  # fonte de MIN_VERSION
+cat app/version.txt
+bash -n backend/open-couch-engine
+```
+
+### 2. Versionar (único caminho)
+
+```sh
+packaging/release.sh X.Y.Z
+# valida X.Y.Z, tag inexistente, árvore limpa,
+# atualiza app/version.txt (RELEASE_DATE=date -u), SELF_VERSION,
+# ENGINE_VERSION, manifest tag, MIN_VERSION (de kMinEngineVersion),
+# regenera backend/SHA256SUMS, valida metainfo/next
+git log --oneline -2 && git show --stat HEAD
+sha256sum -c backend/SHA256SUMS
+```
+
+Revisar `app/version.txt:1`, `backend/open-couch-engine:5-6`, `packaging/host/install.sh:5`, `packaging/io.github.gustavobelo.opencouch.yml:30`.
+
+### 3. Push da tag
+
+```sh
+git push origin main --tags
+# dispara .github/workflows/release.yml:135-153 (Build AppImage + Create GitHub Release)
+```
+
+### 4. Release notes
+
+```sh
+PREV=$(git tag --sort=-v:refname | sed -n '2p')
+git log $PREV..HEAD --oneline --no-merges
+git log $PREV..HEAD --pretty=format:"%h %s%n%b"
+git diff $PREV..HEAD --stat
+```
+
+Categorizar em **Highlights / Features / Fixes / Translations / Packaging & Docs / Engine & Versioning**. Incluir sempre `**Full Changelog**: https://github.com/GustavoBelo/OpenCouch/compare/<prev>...vX.Y.Z` e, se `MIN_VERSION` bumpou, instrução de reinstalação (`Refresh Status` → Install ou `packaging/host/install.sh --update`).
+
+Modelo publicado: `v1.7.0` — https://github.com/GustavoBelo/OpenCouch/releases/tag/v1.7.0
+
+### 5. GitHub Release — idempotência (CRÍTICO)
+
+O workflow `release.yml:146-153` é **idempotente**:
+
+```sh
+if gh release view "$TAG" >/dev/null 2>&1; then
+  gh release upload "$TAG" "OpenCouch-x86_64.AppImage" --clobber  # preserva notes manuais
+else
+  gh release create "$TAG" "OpenCouch-x86_64.AppImage" --title "Open Couch $TAG" --generate-notes
+fi
+```
+
+Duas formas válidas:
+
+* **A — Automática (simples):** só `git push origin main --tags`; workflow cria a release com `--generate-notes`. Depois editar se quiser notas detalhadas: `gh release edit vX.Y.Z --notes-file /tmp/release_notes.md`.
+* **B — Manual detalhada (usada em v1.7.0):** criar antes do workflow com `gh release create vX.Y.Z --title "Open Couch vX.Y.Z" --notes-file /tmp/release_notes.md --latest`; workflow detecta que a release já existe e apenas faz `upload --clobber` do AppImage, sem sobrescrever as notas. **Não recriar** a tag com `gh release create` após o workflow já ter criado — falhará com `a release with the same tag name already exists`.
+
+Verificação:
+
+```sh
+gh release view vX.Y.Z --json tagName,name,body,assets --jq .
+gh release list --limit 5
+```
+
+### 6. Pós-release
+
+Acompanhar `gh run list --limit 5` e `gh run view <id> --log-failed`. Warnings `screenshot-image-not-found` antes do push são esperados (URLs usam `vX.Y.Z`).
+
 ## Traduções
 
 - Mensagens de UI usam IDs estáveis: `qsTrId("dominio.chave")` em QML e `qtTrId("dominio.chave")` em C++.
@@ -115,6 +191,6 @@ Ao alterar o engine de forma que exija reinstalação do usuário, **bumpe `kMin
 1. Entender a mudança dentro da divisão app/backend/packaging (a lógica de display fica no engine, não na GUI).
 2. Implementar seguindo as convenções acima.
 3. Validar com build (distrobox) e `bash -n` no engine.
-4. Nunca versionar manualmente; apontar para `packaging/release.sh` quando o release for o objetivo.
+4. Nunca versionar manualmente; para releases seguir **Publicação de release — boa prática** (`packaging/release.sh` + push + GitHub Release idempotente).
 5. Nunca fazer commit ou push sem pedido explícito do usuário.
 6. Manter este arquivo atualizado: se a mudança afetar o que está documentado (build, versionamento, traduções, arquitetura, comandos), atualizar o AGENTS.md na mesma mudança e avisar o usuário o que e porquê alterou.
