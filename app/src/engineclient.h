@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QJsonObject>
 #include <QObject>
 #include <QStringList>
 
@@ -16,6 +17,8 @@ public:
     bool engineAvailable() const;
     QString engineVersion() const;
     bool engineNeedsUpdate() const;
+    QString detectCompositor() const;
+    QJsonObject capabilities() const;
 
     static bool canAutoInstall();
     bool installBundledEngine(QString *errorMessage = nullptr) const;

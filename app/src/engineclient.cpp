@@ -3,6 +3,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 
 namespace {
@@ -88,6 +90,23 @@ bool EngineClient::engineNeedsUpdate() const
     if (engineVer.isEmpty())
         return true; // engine ran but couldn't report version - it's broken/stripped
     return versionLessThan(engineVer, QString::fromLatin1(kMinEngineVersion));
+}
+
+QString EngineClient::detectCompositor() const
+{
+    bool ok = false;
+    const QString output = runSync({QStringLiteral("detect")}, &ok);
+    return ok ? output.trimmed() : QString();
+}
+
+QJsonObject EngineClient::capabilities() const
+{
+    bool ok = false;
+    const QString output = runSync({QStringLiteral("capabilities")}, &ok);
+    if (!ok || output.trimmed().isEmpty())
+        return QJsonObject();
+    const QJsonDocument doc = QJsonDocument::fromJson(output.trimmed().toUtf8());
+    return doc.isObject() ? doc.object() : QJsonObject();
 }
 
 bool EngineClient::runningInFlatpakSandbox()

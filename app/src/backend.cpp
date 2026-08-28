@@ -434,6 +434,27 @@ QString Backend::readHistoryLog(const QString &id) {
     return output;
 }
 
+QString Backend::detectCompositor()
+{
+    // Cached: this spawns the engine, and QML calls it from a property binding.
+    // The compositor cannot change within a session.
+    if (!m_compositorResolved) {
+        m_compositor = m_engineClient->detectCompositor();
+        m_compositorResolved = true;
+    }
+    return m_compositor;
+}
+
+QVariantMap Backend::capabilities()
+{
+    const QJsonObject caps = m_engineClient->capabilities();
+    QVariantMap result;
+    for (auto it = caps.constBegin(); it != caps.constEnd(); ++it) {
+        result.insert(it.key(), it.value().toVariant());
+    }
+    return result;
+}
+
 QString Backend::runSync(const QStringList &args)
 {
     bool ok = false;

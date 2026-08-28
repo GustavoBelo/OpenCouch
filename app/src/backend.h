@@ -55,6 +55,9 @@ public:
     Q_INVOKABLE void setOnboardingSeen(bool seen);
     Q_INVOKABLE QString readHistoryLog(const QString &id);
 
+    Q_INVOKABLE QString detectCompositor();
+    Q_INVOKABLE QVariantMap capabilities();
+
     Q_INVOKABLE QString runSync(const QStringList &args);
 
 signals:
@@ -75,6 +78,9 @@ private:
     QProcess *m_watcherProcess = nullptr;
     class QSystemTrayIcon *m_trayIcon = nullptr;
     class QWindow *m_window = nullptr;
+
+    QString m_compositor;
+    bool m_compositorResolved = false;
 
     ConfigStore *m_configStore = nullptr;
     EngineClient *m_engineClient = nullptr;
