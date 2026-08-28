@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Bumped automatilcally by release.sh, do not edit manually
+# GENERATED FILE — do not edit.
+# Built by packaging/build-engine.sh from backend/lib, backend/drivers
+# and backend/dispatcher.sh. Edit those instead.
+
+# common.sh — shared functions for the open-couch-engine dispatcher.
+# Sourced by the dispatcher and all drivers.
+
+# Both are synced by packaging/build-engine.sh — ENGINE_VERSION from
+# app/version.txt, MIN_VERSION from kMinEngineVersion in app/src/engineclient.cpp.
+# Do not edit manually.
 ENGINE_VERSION="1.7.0"
 MIN_VERSION="1.7.0"
 
@@ -15,12 +24,22 @@ HISTORY_DIR="${STATE_DIR}/history"
 LOG_MAX_BYTES=524288
 MAX_HISTORY_LOGS=50
 
-CONTROLLER_DEBOUNCE_SECS=10
-CONTROLLER_MIN_USAGE_SECS=60
+DRIVER_NAME=""
 
-REQUIRED_HOST_COMMANDS=(jq kscreen-doctor pgrep)
-OPTIONAL_HOST_COMMANDS=(wmctrl)
-PROTECTED_PROCESSES=(plasmashell kwin_wayland kwin_x11 kwin_wayland_wrapper ksmserver systemsettings steam steamwebhelper open-couch opencouch open-couch-engine Xwayland)
+REQUIRED_HOST_COMMANDS=()
+OPTIONAL_HOST_COMMANDS=()
+# Never listed to the user and never closed. Keep in sync with
+# kProtectedProcesses in app/src/appcleanupmodel.cpp.
+PROTECTED_PROCESSES=(
+    # KDE Plasma
+    plasmashell kwin_wayland kwin_x11 kwin_wayland_wrapper ksmserver systemsettings
+    # Hyprland and its usual session components
+    Hyprland hyprpaper hypridle hyprlock hyprsunset hyprpolkitagent
+    waybar swaync mako wofi rofi uwsm xdg-desktop-portal-hyprland
+    # Shared
+    xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-kde
+    steam steamwebhelper open-couch opencouch open-couch-engine Xwayland
+)
 
 DESK_OUTPUT="DP-1"
 TV_OUTPUT="HDMI-A-1"
@@ -44,6 +63,8 @@ EXIT_ON_ALL_CONTROLLERS_OFF="${EXIT_ON_ALL_CONTROLLERS_OFF:-false}"
 CLOSE_APPS_ENABLED="${CLOSE_APPS_ENABLED:-false}"
 CLOSE_APPS_WAIT_SECONDS="${CLOSE_APPS_WAIT_SECONDS:-5}"
 APPS_TO_CLOSE="${APPS_TO_CLOSE:-}"
+CONTROLLER_DEBOUNCE_SECS="${CONTROLLER_DEBOUNCE_SECS:-10}"
+CONTROLLER_MIN_USAGE_SECS="${CONTROLLER_MIN_USAGE_SECS:-60}"
 
 controller_usage_secs=0
 controllers_off_since=""
@@ -54,8 +75,6 @@ load_config() {
         source "$CONFIG_FILE"
     fi
 }
-
-load_config
 
 version_gte() {
     local current="$1"
@@ -111,8 +130,13 @@ log() {
         archive_log >/dev/null 2>&1 || true
         : >"$LOG_FILE"
     fi
+    # Accepts either `log "message"` or `log LEVEL "message"`.
+    local message="$1"
+    if (( $# > 1 )); then
+        message="$1: $2"
+    fi
     local line
-    line="$(date '+%Y-%m-%d %H:%M:%S') [$$] $1"
+    line="$(date '+%Y-%m-%d %H:%M:%S') [$$] ${message}"
     printf '%s\n' "$line" >>"$LOG_FILE"
     printf '%s\n' "$line" >&2
 }
@@ -176,10 +200,6 @@ log_missing_host_components() {
     if ((${#missing_optional[@]} > 0)); then
         log "WARNING: Missing optional host component(s): ${missing_optional[*]} — Big Picture monitoring and automatic return when controllers turn off are disabled."
     fi
-}
-
-current_layout_json() {
-    kscreen-doctor -j
 }
 
 output_snapshot_tsv() {
@@ -346,7 +366,7 @@ save_snapshot() {
     local desk_connected desk_enabled desk_priority desk_pos desk_scale desk_mode
     local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
 
-    json="$(current_layout_json)"
+    json="$(driver_get_layout_json)"
 
     desk_line="$(output_snapshot_tsv "$json" "$DESK_OUTPUT")"
     tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
@@ -377,237 +397,74 @@ save_snapshot() {
     save_var "TV_MODE" "${tv_mode:-$FALLBACK_TV_MODE}"
 }
 
-switch_to_living_room_layout() {
-    local json tv_line
-    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
-    local -a args=()
+driver_name_from_id() {
+    local id="$1"
+    case "$id" in
+        kde)        printf 'KDE Plasma' ;;
+        hyprland)   printf 'Hyprland' ;;
+        gnome)      printf 'GNOME' ;;
+        generic-x11) printf 'Generic X11' ;;
+        *)          printf '%s' "$id" ;;
+    esac
+}
 
-    json="$(current_layout_json)"
-    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
+steam_main_pids() {
+    pgrep -u "$USER" -x steam || true
+}
 
-    log "switch_to_living_room_layout: config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
-    log_layout_debug "switch_to_living_room_layout: before" "$json"
+# Default implementation, used by any driver that does not provide its own
+# <driver>_big_picture_window_present. load_driver() wires the dispatch.
+default_big_picture_window_present() {
+    driver_window_action is_open '([Ss]team|[Bb]ig.?[Pp]icture)'
+}
 
-    [[ -n "$tv_line" ]] || die "Could not find the TV ($TV_OUTPUT)."
-    IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
-
-    [[ "$tv_connected" == "true" ]] || die "The TV ($TV_OUTPUT) is not connected."
-
-    tv_mode="$(resolve_mode "$json" "$TV_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
-
-    if [[ "${KEEP_DESK_ENABLED:-false}" == "true" ]]; then
-        if [[ "${MIRROR_DESK_TO_TV:-false}" == "true" ]]; then
-            local mirror_mode
-            mirror_mode="$(common_mirror_mode "$json" "$TV_OUTPUT" "$DESK_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
-            if [[ -z "$mirror_mode" ]]; then
-                show_error "Could not find a common mode between ${TV_OUTPUT} and ${DESK_OUTPUT}; mirroring may not work." || true
-            fi
-
-            args=("output.${TV_OUTPUT}.enable")
-            [[ -n "$mirror_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${mirror_mode}")
-            args+=(
-                "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
-                "output.${TV_OUTPUT}.position.0,0"
-                "output.${TV_OUTPUT}.priority.1"
-                "output.${DESK_OUTPUT}.enable"
-            )
-            [[ -n "$mirror_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${mirror_mode}")
-            args+=(
-                "output.${DESK_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
-                "output.${DESK_OUTPUT}.position.0,0"
-                "output.${DESK_OUTPUT}.priority.2"
-            )
-            log "switch_to_living_room_layout: active config => TV primary + desktop mirrored on the couch${mirror_mode:+ (common mode: ${mirror_mode})}"
-        else
-            local desk_mode desk_x
-            desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
-            desk_x="$(logical_width "${tv_mode:-$FALLBACK_TV_MODE}" "${tv_scale:-$FALLBACK_TV_SCALE}")"
-
-            args=("output.${TV_OUTPUT}.enable")
-            [[ -n "$tv_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_mode}")
-            args+=(
-                "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
-                "output.${TV_OUTPUT}.position.0,0"
-                "output.${TV_OUTPUT}.priority.1"
-                "output.${DESK_OUTPUT}.enable"
-            )
-            [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
-            args+=(
-                "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
-                "output.${DESK_OUTPUT}.position.${desk_x},0"
-                "output.${DESK_OUTPUT}.priority.2"
-            )
-            log "switch_to_living_room_layout: active config => TV primary + desktop next to it (desk_x=${desk_x})"
-        fi
+controllers_connected() {
+    local -a devices=(/dev/input/js*)
+    if [[ -e "${devices[0]:-}" ]]; then
+        printf '%s\n' "${#devices[@]}"
     else
-        args=("output.${TV_OUTPUT}.enable")
-        [[ -n "$tv_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_mode}")
-        args+=(
-            "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
-            "output.${TV_OUTPUT}.position.0,0"
-            "output.${TV_OUTPUT}.priority.1"
-            "output.${DESK_OUTPUT}.disable"
-        )
-        log "switch_to_living_room_layout: active config => TV primary and office display turned off"
+        printf '%s\n' "0"
     fi
-
-    log "switch_to_living_room_layout: executing kscreen-doctor: ${args[*]}"
-    kscreen-doctor "${args[@]}"
-
-    local json_after
-    json_after="$(current_layout_json)"
-    log_layout_debug "switch_to_living_room_layout: after" "$json_after"
-    verify_primary_output "switch_to_living_room_layout" "$json_after"
 }
 
-append_restore_args() {
-    local -n args_ref="$1"
-    local prefix="$2"
-    local output="$3"
-    local json="$4"
+controller_session_reset() {
+    controller_usage_secs=0
+    controllers_off_since=""
+    controllers_last_poll=""
+}
 
-    local enabled_var="${prefix}_ENABLED"
-    local mode_var="${prefix}_MODE"
-    local scale_var="${prefix}_SCALE"
-    local pos_var="${prefix}_POS"
-    local priority_var="${prefix}_PRIORITY"
+controllers_all_off() {
+    local count now delta
+    count="$(controllers_connected)"
+    now="$(date +%s)"
 
-    if [[ "${!enabled_var:-false}" == "true" ]]; then
-        args_ref+=("output.${output}.enable")
-
-        if [[ -n "${!mode_var:-}" ]]; then
-            local resolved_mode
-            resolved_mode="$(resolve_mode "$json" "$output" "${!mode_var}")"
-            [[ -n "$resolved_mode" ]] && args_ref+=("output.${output}.mode.${resolved_mode}")
+    if [[ -n "$controllers_last_poll" ]]; then
+        delta=$(( now - controllers_last_poll ))
+        if (( delta > 0 )) && (( count > 0 )); then
+            controller_usage_secs=$(( controller_usage_secs + delta ))
         fi
-
-        if [[ -n "${!scale_var:-}" ]]; then
-            args_ref+=("output.${output}.scale.${!scale_var}")
-        fi
-
-        if [[ -n "${!pos_var:-}" ]]; then
-            args_ref+=("output.${output}.position.${!pos_var}")
-        fi
-
-        if [[ -n "${!priority_var:-}" ]]; then
-            args_ref+=("output.${output}.priority.${!priority_var}")
-        fi
-    else
-        args_ref+=("output.${output}.disable")
     fi
-}
+    controllers_last_poll="$now"
 
-restore_fallback_layout() {
-    local json tv_line
-    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
-    local desk_mode tv_resolved_mode
-
-    json="$(current_layout_json)"
-    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
-
-    if [[ -n "$tv_line" ]]; then
-        IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
-    else
-        tv_connected="false"
+    if (( count > 0 )); then
+        controllers_off_since=""
+        return 1
     fi
 
-    desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
-
-    if [[ "$tv_connected" == "true" ]]; then
-        tv_resolved_mode="$(resolve_mode "$json" "$TV_OUTPUT" "$FALLBACK_TV_MODE")"
-
-        local -a args=("output.${DESK_OUTPUT}.enable")
-        [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
-        args+=(
-            "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
-            "output.${DESK_OUTPUT}.position.${FALLBACK_DESK_POS}"
-            "output.${DESK_OUTPUT}.priority.${FALLBACK_DESK_PRIORITY}"
-            "output.${TV_OUTPUT}.enable"
-        )
-        [[ -n "$tv_resolved_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_resolved_mode}")
-        args+=(
-            "output.${TV_OUTPUT}.scale.${FALLBACK_TV_SCALE}"
-            "output.${TV_OUTPUT}.position.${FALLBACK_TV_POS}"
-            "output.${TV_OUTPUT}.priority.${FALLBACK_TV_PRIORITY}"
-        )
-
-        kscreen-doctor "${args[@]}"
-    else
-        local -a args=("output.${DESK_OUTPUT}.enable")
-        [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
-        args+=(
-            "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
-            "output.${DESK_OUTPUT}.position.${FALLBACK_DESK_POS}"
-            "output.${DESK_OUTPUT}.priority.${FALLBACK_DESK_PRIORITY}"
-        )
-
-        kscreen-doctor "${args[@]}"
-    fi
-}
-
-restore_layout() {
-    local -a args=()
-    local json
-
-    if [[ ! -f "$SNAPSHOT_FILE" ]]; then
-        log "restore_layout: snapshot missing; using desktop fallback"
-        restore_fallback_layout
-        move_steam_to_desk_monitor
-        return
+    if (( controller_usage_secs < CONTROLLER_MIN_USAGE_SECS )); then
+        controllers_off_since=""
+        return 1
     fi
 
-    source "$SNAPSHOT_FILE"
-
-    json="$(current_layout_json)"
-    log_layout_debug "restore_layout: before" "$json"
-
-    append_restore_args args "DESK" "$DESK_OUTPUT" "$json"
-    append_restore_args args "TV" "$TV_OUTPUT" "$json"
-
-    log "restore_layout: executing kscreen-doctor: ${args[*]}"
-    kscreen-doctor "${args[@]}"
-
-    local json_after
-    json_after="$(current_layout_json)"
-    log_layout_debug "restore_layout: after" "$json_after"
-    rm -f "$SNAPSHOT_FILE"
-
-    move_steam_to_desk_monitor
-}
-
-close_big_picture() {
-    log "Closing Big Picture (keeping Steam open in desktop mode)"
-
-    if command -v wmctrl >/dev/null 2>&1; then
-        wmctrl -lx 2>/dev/null | awk 'tolower($0) ~ /big picture/ {print $1}' | xargs -r wmctrl -i -c || true
-        sleep 0.5
-    fi
-}
-
-move_steam_to_desk_monitor() {
-    command -v wmctrl >/dev/null 2>&1 || { log "move_steam: wmctrl missing; skipping Steam repositioning"; return; }
-
-    local attempt win_id pos=""
-
-    for attempt in $(seq 1 15); do
-        win_id="$(wmctrl -lx 2>/dev/null | awk '$3 ~ /\.steam$/ || $3 == "steam" { if (tolower($0) !~ /big picture/) { print $1; exit } }')"
-        [[ -n "$win_id" ]] && break
-        sleep 1
-    done
-
-    [[ -n "$win_id" ]] || { log "move_steam: Steam window not found; nothing to reposition"; return; }
-
-    pos="$(current_layout_json | jq -r --arg o "$DESK_OUTPUT" '
-        [ .outputs[] | select(.name == $o and .enabled == true) ]
-        | if length > 0 then (((.[0].pos.x // 0) | tostring) + "," + ((.[0].pos.y // 0) | tostring)) else empty end
-    ' 2>/dev/null || true)"
-
-    if [[ -z "$pos" ]]; then
-        pos="${FALLBACK_DESK_POS:-0,0}"
+    if [[ -z "$controllers_off_since" ]]; then
+        controllers_off_since="$now"
+        return 1
     fi
 
-    wmctrl -i -r "$win_id" -e "0,${pos},-1,-1" || true
-    log "move_steam: Steam repositioned to the office display (${DESK_OUTPUT} @ ${pos})"
+    if (( now - controllers_off_since >= CONTROLLER_DEBOUNCE_SECS )); then
+        return 0
+    fi
+    return 1
 }
 
 is_protected_process() {
@@ -657,10 +514,6 @@ desktop_process_names() {
             cmd="${cmd%\"}"
             cmd="${cmd#\'}"
             cmd="${cmd%\'}"
-            # Only use --command directly if it looks like a filesystem path;
-            # when it is just an app-id like com.example.App we derive the
-            # name from the app-id instead, otherwise we would create phantom
-            # entries like "com.discordapp.Discord".
             if [[ "$cmd" == *"/"* ]]; then
                 cmd="$(basename "$cmd" 2>/dev/null || printf '%s' "$cmd")"
                 cmd="$(printf '%s' "$cmd" | xargs 2>/dev/null || printf '%s' "$cmd")"
@@ -911,69 +764,11 @@ list_running_apps() {
     printf '%s\n' "${entries[@]}" | jq -s -c 'sort_by(.displayName | ascii_downcase)'
 }
 
-steam_main_pids() {
-    pgrep -u "$USER" -x steam || true
-}
-
-big_picture_window_present() {
-    command -v wmctrl >/dev/null 2>&1 || return 1
-    wmctrl -lx 2>/dev/null | grep -qi 'big picture'
-}
-
-controllers_connected() {
-    local -a devices=(/dev/input/js*)
-    if [[ -e "${devices[0]:-}" ]]; then
-        printf '%s\n' "${#devices[@]}"
-    else
-        printf '%s\n' "0"
-    fi
-}
-
-controller_session_reset() {
-    controller_usage_secs=0
-    controllers_off_since=""
-    controllers_last_poll=""
-}
-
-controllers_all_off() {
-    local count now delta
-    count="$(controllers_connected)"
-    now="$(date +%s)"
-
-    if [[ -n "$controllers_last_poll" ]]; then
-        delta=$(( now - controllers_last_poll ))
-        if (( delta > 0 )) && (( count > 0 )); then
-            controller_usage_secs=$(( controller_usage_secs + delta ))
-        fi
-    fi
-    controllers_last_poll="$now"
-
-    if (( count > 0 )); then
-        controllers_off_since=""
-        return 1
-    fi
-
-    if (( controller_usage_secs < CONTROLLER_MIN_USAGE_SECS )); then
-        controllers_off_since=""
-        return 1
-    fi
-
-    if [[ -z "$controllers_off_since" ]]; then
-        controllers_off_since="$now"
-        return 1
-    fi
-
-    if (( now - controllers_off_since >= CONTROLLER_DEBOUNCE_SECS )); then
-        return 0
-    fi
-    return 1
-}
-
 wait_for_big_picture_close() {
     local attempt
 
     for attempt in $(seq 1 30); do
-        if ! big_picture_window_present; then
+        if ! driver_big_picture_window_present; then
             return 0
         fi
         sleep 1
@@ -1005,7 +800,7 @@ wait_for_big_picture_window() {
     local attempt
 
     for attempt in $(seq 1 60); do
-        if big_picture_window_present; then
+        if driver_big_picture_window_present; then
             return 0
         fi
         sleep 1
@@ -1027,18 +822,14 @@ wait_for_steam_exit_or_bpm_exit() {
     local bpm_seen="$2"
 
     while kill -0 "$steam_pid" 2>/dev/null; do
-        if [[ "$bpm_seen" == "1" ]] && ! big_picture_window_present; then
+        if [[ "$bpm_seen" == "1" ]] && ! driver_big_picture_window_present; then
             return 0
         fi
 
         if [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] && controllers_all_off; then
             controller_session_reset
-            if command -v wmctrl >/dev/null 2>&1; then
-                log "controllers: all controllers turned off; closing Big Picture and returning to desktop"
-                close_big_picture
-            else
-                log "controllers: all controllers turned off; wmctrl is missing, Big Picture will stay open"
-            fi
+            driver_close_big_picture
+            log "controllers: all controllers turned off; closing Big Picture and returning to desktop"
             return 0
         fi
 
@@ -1046,6 +837,82 @@ wait_for_steam_exit_or_bpm_exit() {
     done
 
     return 0
+}
+
+# Default implementation, used by any driver that does not provide its own
+# <driver>_close_big_picture. load_driver() wires the dispatch.
+default_close_big_picture() {
+    log "Closing Big Picture (keeping Steam open in desktop mode)"
+    driver_window_action close '([Ss]team|[Bb]ig.?[Pp]icture)' || true
+    sleep 0.5
+}
+
+launch_big_picture_and_wait() {
+    local existing_pids steam_pid launcher_pid bpm_seen
+    local -a steam_launcher=()
+
+    existing_pids=" $(steam_main_pids | tr '\n' ' ') "
+
+    if command -v bazzite-steam-bpm >/dev/null 2>&1; then
+        steam_launcher=(bazzite-steam-bpm)
+        log "play: using Bazzite's Big Picture launcher"
+    elif command -v steam >/dev/null 2>&1; then
+        # The URI works both when Steam is already running and when it needs
+        # to start.
+        steam_launcher=(steam steam://open/bigpicture)
+        log "play: using the default Steam Big Picture launcher"
+    else
+        die "Could not find Steam or the bazzite-steam-bpm launcher."
+    fi
+
+    log "play: trying to start Big Picture with launcher=${steam_launcher[*]} and config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}"
+
+    "${steam_launcher[@]}" >/dev/null 2>&1 &
+    launcher_pid=$!
+
+    # If Steam was already running, the launcher reuses the existing process
+    # (no new PID).  Use the existing one directly instead of waiting 90s.
+    local trimmed_pids
+    trimmed_pids="${existing_pids// /}"
+    if [[ -n "$trimmed_pids" ]]; then
+        steam_pid="$(pgrep -u "$USER" -n -x steam || true)"
+        log "play: Steam was already running, reusing existing PID=${steam_pid}"
+    else
+        steam_pid="$(wait_for_new_steam_pid "$existing_pids" || true)"
+        if [[ -z "$steam_pid" ]]; then
+            steam_pid="$(pgrep -u "$USER" -n -x steam || true)"
+        fi
+    fi
+
+    [[ -n "$steam_pid" ]] || die "Could not detect Steam opening in Big Picture."
+
+    log "play: Steam detected: PID=${steam_pid}; launcher_pid=${launcher_pid}"
+
+    bpm_seen=0
+    if wait_for_big_picture_window; then
+        bpm_seen=1
+        log "play: Big Picture detected, monitoring until it closes or Steam exits"
+    else
+        log "play: could not detect the Big Picture window; will wait for Steam to close"
+    fi
+
+    if [[ "${CLOSE_APPS_ENABLED:-false}" == "true" && -n "${APPS_TO_CLOSE:-}" ]]; then
+        (
+            sleep "${CLOSE_APPS_WAIT_SECONDS:-5}"
+            close_tracked_apps
+        ) &
+        disown
+    fi
+
+    wait_for_steam_exit_or_bpm_exit "$steam_pid" "$bpm_seen"
+
+    if kill -0 "$steam_pid" 2>/dev/null; then
+        log "play: Big Picture closed (Steam still open in desktop mode)"
+        :
+    else
+        log "play: Steam exited"
+        wait "$launcher_pid" || true
+    fi
 }
 
 start_session() {
@@ -1077,110 +944,16 @@ cleanup() {
     local status=$?
 
     if [[ "$AUTO_RESTORE_ON_EXIT" == "1" ]]; then
-        restore_layout >/dev/null 2>&1 || true
+        # Never silence this: swallowing the output once hid the fact that the
+        # function being called did not exist, leaving the desk monitor off.
+        if ! driver_restore_layout; then
+            log "ERROR: automatic layout restore failed on exit; run 'open-couch-engine restore'"
+        fi
     fi
 
     clear_session_file
     exit "$status"
 }
-
-launch_big_picture_and_wait() {
-    local existing_pids steam_pid launcher_pid bpm_seen
-    local -a steam_launcher=()
-
-    existing_pids=" $(steam_main_pids | tr '\n' ' ') "
-
-    if command -v bazzite-steam-bpm >/dev/null 2>&1; then
-        steam_launcher=(bazzite-steam-bpm)
-        log "play: using Bazzite's Big Picture launcher"
-    elif command -v steam >/dev/null 2>&1; then
-        steam_launcher=(steam -gamepadui)
-        log "play: using the default Steam launcher (-gamepadui)"
-    else
-        die "Could not find Steam or the bazzite-steam-bpm launcher."
-    fi
-
-    log "play: trying to start Big Picture with launcher=${steam_launcher[*]} and config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}"
-
-    "${steam_launcher[@]}" >/dev/null 2>&1 &
-    launcher_pid=$!
-
-    steam_pid="$(wait_for_new_steam_pid "$existing_pids" || true)"
-    if [[ -z "$steam_pid" ]]; then
-        steam_pid="$(pgrep -u "$USER" -n -x steam || true)"
-    fi
-
-    [[ -n "$steam_pid" ]] || die "Could not detect Steam opening in Big Picture."
-
-    log "play: Steam detected: PID=${steam_pid}; launcher_pid=${launcher_pid}; wmctrl present=$(command -v wmctrl >/dev/null 2>&1 && printf '%s' 'yes' || printf '%s' 'no')"
-
-    bpm_seen=0
-    if wait_for_big_picture_window; then
-        bpm_seen=1
-        log "play: Big Picture detected, monitoring until it closes or Steam exits"
-    else
-        log "play: could not detect the Big Picture window; will wait for Steam to close"
-    fi
-
-    if [[ "${CLOSE_APPS_ENABLED:-false}" == "true" && -n "${APPS_TO_CLOSE:-}" ]]; then
-        (
-            sleep "${CLOSE_APPS_WAIT_SECONDS:-5}"
-            close_tracked_apps
-        ) &
-        disown
-    fi
-
-    wait_for_steam_exit_or_bpm_exit "$steam_pid" "$bpm_seen"
-
-    if kill -0 "$steam_pid" 2>/dev/null; then
-        log "play: Big Picture closed (Steam still open in desktop mode)"
-        :
-    else
-        log "play: Steam exited"
-        wait "$launcher_pid" || true
-    fi
-}
-
-watch_big_picture() {
-    local active=0
-
-    require_commands
-    command -v wmctrl >/dev/null 2>&1 || die "The optional wmctrl command is required to monitor Big Picture."
-    AUTO_RESTORE_ON_EXIT=1
-    trap cleanup EXIT INT TERM
-    log "watch: monitoring Big Picture started by Steam"
-
-    while true; do
-        if [[ -f "$SESSION_FILE" ]]; then
-            sleep 2
-            continue
-        fi
-        if [[ "$active" == "0" ]] && big_picture_window_present; then
-            log "watch: Big Picture detected externally; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}"
-            save_snapshot
-            switch_to_living_room_layout
-            controller_session_reset
-            active=1
-            log "watch: Big Picture detected, couch layout applied"
-        elif [[ "$active" == "1" ]] && ! big_picture_window_present; then
-            restore_layout
-            active=0
-            log "watch: Big Picture closed, desktop layout restored"
-        elif [[ "$active" == "1" ]] \
-            && [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] \
-            && controllers_all_off; then
-            log "watch: all controllers turned off; closing Big Picture and restoring desktop"
-            close_big_picture
-            wait_for_big_picture_close
-            restore_layout
-            controller_session_reset
-            active=0
-            log "watch: desktop layout restored after all controllers turned off"
-        fi
-        sleep 2
-    done
-}
-
 
 stop_active_session() {
     local session_pid=""
@@ -1202,58 +975,6 @@ stop_active_session() {
     fi
 
     rm -f "$SESSION_FILE"
-}
-
-print_outputs() {
-    current_layout_json | jq -c '
-        [.outputs[]
-         | select(.connected == true)
-         | . as $out
-         | {
-             name: .name,
-             enabled: .enabled,
-             modes: ([$out.modes[].name] | unique),
-             currentMode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // ""),
-             scale: (.scale // 1),
-             pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring))
-           }
-        ]
-    '
-}
-
-print_status() {
-    log "Status refresh requested"
-    log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE EXIT_ON_ALL_CONTROLLERS_OFF=$EXIT_ON_ALL_CONTROLLERS_OFF CLOSE_APPS_ENABLED=$CLOSE_APPS_ENABLED CLOSE_APPS_WAIT_SECONDS=$CLOSE_APPS_WAIT_SECONDS APPS_TO_CLOSE=$APPS_TO_CLOSE"
-    log_missing_host_components
-    if version_gte "${ENGINE_VERSION:-0.0.0}" "$MIN_VERSION"; then
-        log "Engine version: ${ENGINE_VERSION:-unknown} (meets minimum requirement: $MIN_VERSION)"
-    else
-        log "Engine version: ${ENGINE_VERSION:-unknown} (below minimum requirement: $MIN_VERSION)"
-    fi
-    current_layout_json | jq -c --arg desk "$DESK_OUTPUT" --arg tv "$TV_OUTPUT" '
-        [
-            (.outputs[] | select(.name == $desk) | . as $out | {
-                role: "desk",
-                name: .name,
-                enabled: .enabled,
-                connected: .connected,
-                priority: (.priority // null),
-                pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring)),
-                scale: (.scale // 1),
-                mode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
-            }),
-            (.outputs[] | select(.name == $tv) | . as $out | {
-                role: "tv",
-                name: .name,
-                enabled: .enabled,
-                connected: .connected,
-                priority: (.priority // null),
-                pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring)),
-                scale: (.scale // 1),
-                mode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
-            })
-        ]
-    '
 }
 
 print_log() {
@@ -1328,7 +1049,1316 @@ export_history_log() {
     printf '%s\n' "$dest"
 }
 
-play_mode() {
+print_capabilities_json() {
+    if [[ -n "$DRIVER_NAME" ]]; then
+        driver_capabilities_json
+    else
+        printf '{"compositor":"unknown","display":{"list_outputs":false},"note":"no_driver"}'
+    fi
+}
+
+print_detect() {
+    if [[ -n "$DRIVER_NAME" ]]; then
+        printf '%s\n' "$DRIVER_NAME"
+    else
+        printf '%s\n' "unknown"
+    fi
+}
+
+# detect.sh — compositor detection and driver dispatch for open-couch-engine.
+
+detect_compositor() {
+    if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        printf 'hyprland'
+        return
+    fi
+
+    case "${XDG_CURRENT_DESKTOP:-}" in
+        *KDE*)
+            if command -v kscreen-doctor >/dev/null 2>&1; then
+                printf 'kde'
+                return
+            fi
+            ;;
+        *GNOME*)
+            printf 'gnome'
+            return
+            ;;
+    esac
+
+    if [[ "${XDG_SESSION_TYPE:-}" == "x11" ]]; then
+        printf 'generic-x11'
+        return
+    fi
+
+    printf 'unknown'
+}
+
+# Map compositor ID to driver prefix (used by dispatch functions below)
+_driver_prefix() {
+    case "$1" in
+        kde)           printf 'kde' ;;
+        hyprland)      printf 'hyprland' ;;
+        gnome)         printf 'gnome' ;;
+        generic-x11)   printf 'generic' ;;
+        *)             printf '' ;;
+    esac
+}
+
+load_driver() {
+    local compositor="$1"
+
+    # All drivers are inlined in the built engine (and sourced up front by
+    # backend/dispatcher.sh in development) with compositor-prefixed function
+    # names (e.g. kde_play, hyprland_play). Here we bind the generic driver_*
+    # interface to the right implementation for the detected compositor.
+    local prefix
+    prefix="$(_driver_prefix "$compositor")"
+
+    if [[ -n "$prefix" ]]; then
+        local fn
+        for fn in check_deps capabilities_json list_outputs_json get_layout_json \
+                  apply_layout window_action open_terminal play restore watch \
+                  switch_to_tv restore_layout \
+                  big_picture_window_present close_big_picture; do
+            if declare -F "${prefix}_${fn}" >/dev/null 2>&1; then
+                eval "driver_${fn}() { ${prefix}_${fn} \"\$@\"; }"
+            elif declare -F "default_${fn}" >/dev/null 2>&1; then
+                # Shared implementation in lib/common.sh (e.g. Big Picture
+                # handling built on driver_window_action).
+                eval "driver_${fn}() { default_${fn} \"\$@\"; }"
+            else
+                # Never leave a driver_* name unbound: an unbound call would be
+                # a 'command not found' swallowed by some caller's `|| true`.
+                eval "driver_${fn}() {
+                    log \"ERROR: driver '${compositor}' does not implement ${fn}\"
+                    return 1
+                }"
+            fi
+        done
+    fi
+
+    # Set global dependency arrays from namespaced driver variables.
+    # In the concatenated build, all drivers define their own
+    # *_REQUIRED_HOST_COMMANDS and *_OPTIONAL_HOST_COMMANDS at the top level;
+    # the last driver loaded would overwrite them. This resolves the correct
+    # set for the active compositor.
+    case "$compositor" in
+        kde)
+            REQUIRED_HOST_COMMANDS=("${KDE_REQUIRED_HOST_COMMANDS[@]+"${KDE_REQUIRED_HOST_COMMANDS[@]}"}")
+            OPTIONAL_HOST_COMMANDS=("${KDE_OPTIONAL_HOST_COMMANDS[@]+"${KDE_OPTIONAL_HOST_COMMANDS[@]}"}")
+            ;;
+        hyprland)
+            REQUIRED_HOST_COMMANDS=("${HYPRLAND_REQUIRED_HOST_COMMANDS[@]+"${HYPRLAND_REQUIRED_HOST_COMMANDS[@]}"}")
+            OPTIONAL_HOST_COMMANDS=("${HYPRLAND_OPTIONAL_HOST_COMMANDS[@]+"${HYPRLAND_OPTIONAL_HOST_COMMANDS[@]}"}")
+            ;;
+        gnome)
+            REQUIRED_HOST_COMMANDS=()
+            OPTIONAL_HOST_COMMANDS=()
+            ;;
+        generic-x11)
+            REQUIRED_HOST_COMMANDS=("${GENERIC_REQUIRED_HOST_COMMANDS[@]+"${GENERIC_REQUIRED_HOST_COMMANDS[@]}"}")
+            OPTIONAL_HOST_COMMANDS=("${GENERIC_OPTIONAL_HOST_COMMANDS[@]+"${GENERIC_OPTIONAL_HOST_COMMANDS[@]}"}")
+            ;;
+        *)
+            REQUIRED_HOST_COMMANDS=()
+            OPTIONAL_HOST_COMMANDS=()
+            ;;
+    esac
+
+    DRIVER_NAME="$compositor"
+    return 0
+}
+
+
+# drivers/generic.sh — Generic X11 fallback driver for open-couch-engine.
+# Basic xrandr-based driver for X11 sessions without a recognized DE.
+
+GENERIC_REQUIRED_HOST_COMMANDS=(jq xrandr pgrep)
+GENERIC_OPTIONAL_HOST_COMMANDS=(wmctrl)
+
+generic_check_deps() {
+    local cmd
+    for cmd in "${REQUIRED_HOST_COMMANDS[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            printf 'generic-x11:%s:present\n' "$cmd"
+        else
+            printf 'generic-x11:%s:missing\n' "$cmd"
+        fi
+    done
+}
+
+generic_capabilities_json() {
+    local wmctrl_present="false"
+    command -v wmctrl >/dev/null 2>&1 && wmctrl_present="true"
+    printf '{"compositor":"generic-x11","display":{"list_outputs":true,"apply_layout":true,"mirror":false,"disable_output":false,"primary_output":false},"window_management":"%s","terminal_launch":true,"autostart":"desktop_entry","background_portal":false,"tray":"none"}' \
+        "$wmctrl_present"
+}
+
+generic_list_outputs_json() {
+    xrandr --query 2>/dev/null | jq -Rn '
+        [inputs
+         | select(test("^.* connected"))
+         | split(" ")
+         | {name: .[0],
+            enabled: (index("primary") != null or (length > 2 and .[2] != "disconnected")),
+            modes: []}]
+    ' 2>/dev/null || printf '[]'
+}
+
+generic_get_layout_json() {
+    printf '{"outputs":[]}'
+}
+
+generic_apply_layout() {
+    log ERROR "Generic X11 driver has limited display management support"
+    return 1
+}
+
+generic_window_action() {
+    local action="$1"
+    local class_regex="$2"
+
+    if ! command -v wmctrl >/dev/null 2>&1; then
+        return 1
+    fi
+
+    case "$action" in
+        is_open)
+            wmctrl -lx 2>/dev/null | awk -v re="$class_regex" 'tolower($0) ~ re {found=1; exit} END {exit !found}'
+            ;;
+        close)
+            wmctrl -lx 2>/dev/null | awk -v re="$class_regex" 'tolower($0) ~ re {print $1}' | xargs -r wmctrl -i -c || true
+            ;;
+        focus)
+            wmctrl -lx 2>/dev/null | awk -v re="$class_regex" 'tolower($0) ~ re {print $1; exit}' | xargs -r wmctrl -i -a || true
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+generic_open_terminal() {
+    local cmd="$1"
+    if [[ -n "${TERMINAL:-}" ]] && command -v "$TERMINAL" >/dev/null; then
+        exec "$TERMINAL" -e bash -c "$cmd"
+    fi
+    if command -v xdg-terminal-exec >/dev/null 2>&1; then
+        exec xdg-terminal-exec bash -c "$cmd"
+    fi
+    for t in xterm konsole kitty foot alacritty; do
+        if command -v "$t" >/dev/null 2>&1; then
+            exec "$t" -e bash -c "$cmd"
+        fi
+    done
+    log ERROR "No terminal emulator found. Run manually: $cmd"
+    return 1
+}
+
+generic_play() {
+    die "Generic X11 driver does not support couch mode. Install a desktop environment (KDE Plasma, Hyprland)."
+}
+
+generic_restore() {
+    die "Generic X11 driver does not support couch mode."
+}
+
+generic_watch() {
+    die "Generic X11 driver does not support Big Picture monitoring."
+}
+
+
+# drivers/gnome.sh — GNOME stub driver for open-couch-engine.
+# Not yet implemented — fails gracefully.
+
+gnome_check_deps() {
+    printf 'gnome:not_implemented:missing\n'
+}
+
+gnome_capabilities_json() {
+    printf '{"compositor":"gnome","display":{"list_outputs":false},"window_management":"none","terminal_launch":false,"autostart":"desktop_entry","background_portal":true,"tray":"native","note":"not_implemented"}'
+}
+
+gnome_list_outputs_json() {
+    printf '[]'
+}
+
+gnome_get_layout_json() {
+    printf '{"outputs":[]}'
+}
+
+gnome_apply_layout() {
+    log ERROR "GNOME driver not yet implemented"
+    return 1
+}
+
+gnome_window_action() {
+    log ERROR "GNOME driver not yet implemented"
+    return 1
+}
+
+gnome_open_terminal() {
+    log ERROR "GNOME driver not yet implemented"
+    return 1
+}
+
+gnome_play() {
+    die "GNOME driver not yet implemented."
+}
+
+gnome_restore() {
+    die "GNOME driver not yet implemented."
+}
+
+gnome_watch() {
+    die "GNOME driver not yet implemented."
+}
+
+
+# drivers/hyprland.sh — Hyprland driver for open-couch-engine.
+
+HYPRLAND_REQUIRED_HOST_COMMANDS=(jq hyprctl pgrep)
+HYPRLAND_OPTIONAL_HOST_COMMANDS=()
+
+# --- Runtime detection helpers (plan sections 3.6, 3.7, 3.8) ---
+
+hyprland_autostart_via_desktop_entry() {
+    # Detect whether the session manager reads ~/.config/autostart/.
+    # Hyprland via UWSM/systemd activates xdg-desktop-autostart.target;
+    # Hyprland launched directly from TTY does not.
+    if systemctl --user is-active graphical-session.target &>/dev/null \
+       && systemctl --user is-active xdg-desktop-autostart.target &>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+hyprland_portal_has_background() {
+    # Check whether org.freedesktop.portal.Background is actually available
+    # on the session bus. xdg-desktop-portal-hyprland does NOT implement it
+    # as of 2026 — only xdg-desktop-portal-gnome and xdg-desktop-portal-kde do.
+    if ! command -v busctl >/dev/null 2>&1; then
+        return 1
+    fi
+    busctl --user introspect org.freedesktop.portal.Desktop \
+        /org/freedesktop/portal/desktop 2>/dev/null \
+        | grep -q 'org.freedesktop.portal.Background'
+}
+
+hyprland_tray_host_present() {
+    # Check whether a StatusNotifierItem host is running on D-Bus.
+    # Without it, QSystemTrayIcon won't show on Hyprland.
+    if ! command -v busctl >/dev/null 2>&1; then
+        return 1
+    fi
+    busctl --user list 2>/dev/null | grep -q 'StatusNotifierWatcher'
+}
+
+# --- Driver interface ---
+
+hyprland_check_deps() {
+    local cmd
+    for cmd in "${REQUIRED_HOST_COMMANDS[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            printf 'hyprland:%s:present\n' "$cmd"
+        else
+            printf 'hyprland:%s:missing\n' "$cmd"
+        fi
+    done
+    for cmd in "${OPTIONAL_HOST_COMMANDS[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            printf 'hyprland:%s:present\n' "$cmd"
+        else
+            printf 'hyprland:%s:missing\n' "$cmd"
+        fi
+    done
+}
+
+hyprland_capabilities_json() {
+    local hypr_version autostart_mode bg_portal tray_mode
+    hypr_version="$(hyprctl version -j 2>/dev/null | jq -r '.version // empty' 2>/dev/null || true)"
+
+    if hyprland_autostart_via_desktop_entry; then
+        autostart_mode="desktop_entry"
+    else
+        autostart_mode="manual_snippet"
+    fi
+
+    if hyprland_portal_has_background; then
+        bg_portal="true"
+    else
+        bg_portal="false"
+    fi
+
+    if hyprland_tray_host_present; then
+        tray_mode="available"
+    else
+        tray_mode="requires_sni_host"
+    fi
+
+    # monitor_api tells support whether this build takes hl.monitor{} (Lua
+    # config parser) or the legacy `hyprctl keyword monitor`.
+    printf '{"compositor":"hyprland","compositor_version":"%s","display":{"list_outputs":true,"apply_layout":true,"mirror":true,"disable_output":"experimental","primary_output":false,"monitor_api":"%s"},"window_management":"best_effort","terminal_launch":true,"autostart":"%s","background_portal":%s,"tray":"%s"}' \
+        "${hypr_version}" "$(hyprland_monitor_api)" "${autostart_mode}" "${bg_portal}" "${tray_mode}"
+}
+
+hyprland_monitors_json() {
+    local json
+    json="$(hyprctl -j monitors all 2>/dev/null || true)"
+    jq -e 'type == "array"' >/dev/null 2>&1 <<<"$json" || return 1
+    printf '%s\n' "$json"
+}
+
+# Connector names reported as physically connected by DRM sysfs.
+# hyprctl always reports connected:true, so this is the only reliable source.
+hyprland_connected_outputs_json() {
+    local names="[]"
+    local connector_dir connector_name
+    for connector_dir in /sys/class/drm/card[0-9]*-*; do
+        [[ -f "${connector_dir}/status" ]] || continue
+        [[ "$(cat "${connector_dir}/status" 2>/dev/null)" == "connected" ]] || continue
+        connector_name="${connector_dir##*/}"
+        connector_name="${connector_name#card[0-9]*-}"
+        names="$(jq -c --arg n "$connector_name" '. + [$n]' <<<"$names" 2>/dev/null \
+            || printf '%s' "$names")"
+    done
+    printf '%s' "$names"
+}
+
+hyprland_list_outputs_json() {
+    # Read EDID-reported modes from DRM sysfs for each connector.
+    # hyprctl monitors only returns the current mode; /sys/class/drm has all.
+    local drm_modes="{}"
+    local connector_dir modes_file connector_name modes_json
+    for connector_dir in /sys/class/drm/card[0-9]*-*; do
+        [[ -f "${connector_dir}/status" ]] || continue
+        [[ "$(cat "${connector_dir}/status" 2>/dev/null)" == "connected" ]] || continue
+        modes_file="${connector_dir}/modes"
+        [[ -f "$modes_file" ]] || continue
+        connector_name="${connector_dir##*/}"
+        connector_name="${connector_name#card[0-9]*-}"
+        modes_json="$(grep -v '^$' "$modes_file" 2>/dev/null \
+            | sort -u | jq -R . | jq -sc . 2>/dev/null || echo "[]")"
+        drm_modes="$(printf '%s' "$drm_modes" \
+            | jq --arg c "$connector_name" --argjson m "$modes_json" \
+            '. + {($c): $m}' 2>/dev/null || printf '%s' "$drm_modes")"
+    done
+
+    local monitors
+    if ! monitors="$(hyprland_monitors_json)"; then
+        log "WARNING: could not read monitors from Hyprland"
+        printf '[]\n'
+        return 0
+    fi
+
+    # Normalizes every mode to WxH@R with one decimal and sorts numerically, so
+    # the Setup combos don't mix "1920x1080", "1920x1080@300.00" and
+    # "1920x1080@300.00000" as three distinct entries. Modes without a refresh
+    # rate (DRM sysfs) and the 0x0 placeholder of a disabled output are dropped.
+    jq -c --argjson drm "$drm_modes" '
+        def norm:
+            capture("^(?<w>[0-9]+)x(?<h>[0-9]+)@(?<r>[0-9.]+)$")
+            | select((.w | tonumber) > 0 and (.h | tonumber) > 0)
+            | {w: (.w | tonumber), h: (.h | tonumber), r: (.r | tonumber)};
+        def fmt: "\(.w)x\(.h)@\(.r * 10 | round / 10)";
+        def current_mode:
+            (.width | tostring) + "x" + (.height | tostring) + "@" + (.refreshRate | tostring);
+        [.[] | . as $m | {
+            name: .name,
+            enabled: (.disabled == false),
+            modes: (
+                ([current_mode] + ((.availableModes // []) | map(tostring | sub("Hz$"; "")))
+                 + ($drm[.name] // []))
+                | map(. as $s | try ($s | norm) catch empty)
+                | unique_by(fmt)
+                | sort_by(-.w, -.h, -.r)
+                | map(fmt)
+            ),
+            currentMode: ((current_mode | try (norm | fmt) catch "") // ""),
+            scale: .scale,
+            pos: ((.x | tostring) + "," + (.y | tostring))
+        }]
+    ' <<<"$monitors"
+}
+
+hyprland_get_layout_json() {
+    local monitors connected
+    if ! monitors="$(hyprland_monitors_json)"; then
+        printf '{"outputs":[]}\n'
+        return 0
+    fi
+    connected="$(hyprland_connected_outputs_json)"
+
+    # Hyprland has no primary-output concept, so `priority` is reported as null
+    # rather than derived from focus (which would flip with the mouse). Callers
+    # already treat it as optional.
+    jq -c --argjson connected "$connected" '
+        def mode_name:
+            (.width | tostring) + "x" + (.height | tostring) + "@" + (.refreshRate | tostring);
+        {
+            outputs: [.[] | {
+                name: .name,
+                connected: (.name as $n | $connected | index($n) != null),
+                enabled: (.disabled == false),
+                priority: null,
+                pos: {x: .x, y: .y},
+                scale: .scale,
+                currentModeId: 0,
+                modes: [{
+                    id: 0,
+                    name: (if (.width > 0 and .height > 0) then mode_name else "" end),
+                    refreshRate: .refreshRate
+                }]
+            }]
+        }
+    ' <<<"$monitors"
+}
+
+# --- Layout application ---------------------------------------------------
+#
+# Hyprland moved `monitor` to its non-legacy (Lua) config parser. On those
+# builds `hyprctl keyword monitor …` answers
+#   "keyword can't work with non-legacy parsers. Use eval."
+# and — critically — still exits 0, so a layout change silently does nothing.
+# The supported entry point there is the Lua API: hl.monitor{...} via
+# `hyprctl eval`. Older builds only understand the legacy keyword.
+#
+# Detected once per process and cached in HYPRLAND_MONITOR_API.
+HYPRLAND_MONITOR_API=""
+
+hyprland_monitor_api() {
+    if [[ -n "$HYPRLAND_MONITOR_API" ]]; then
+        printf '%s' "$HYPRLAND_MONITOR_API"
+        return 0
+    fi
+
+    if [[ "$(hyprctl eval 'return type(hl.monitor)' 2>/dev/null || true)" == *function* ]] \
+       || [[ "$(hyprctl repl 'print(type(hl.monitor))' 2>/dev/null || true)" == *function* ]]; then
+        HYPRLAND_MONITOR_API="lua"
+    else
+        HYPRLAND_MONITOR_API="keyword"
+    fi
+    log "hyprland: monitor API = ${HYPRLAND_MONITOR_API}"
+    printf '%s' "$HYPRLAND_MONITOR_API"
+}
+
+# Hyprland positions are "XxY". The engine stores them as "X,Y" in layout.env
+# (shared format with the KDE driver), so every position must go through here.
+hyprland_position() {
+    local pos="${1:-0,0}"
+    pos="${pos//,/x}"
+    [[ "$pos" =~ ^-?[0-9]+x-?[0-9]+$ ]] || pos="0x0"
+    printf '%s' "$pos"
+}
+
+# Reject scales that would break the awk logical-width math downstream.
+hyprland_scale() {
+    local scale="${1:-}"
+    if [[ "$scale" =~ ^[0-9]+(\.[0-9]+)?$ ]] && awk -v s="$scale" 'BEGIN { exit !(s > 0) }'; then
+        printf '%s' "$scale"
+        return 0
+    fi
+    return 1
+}
+
+# hyprland_monitor_spec <name> disable
+# hyprland_monitor_spec <name> <mode> <position> <scale> [mirror_of]
+#
+# Emits one command in whichever dialect the running Hyprland accepts.
+hyprland_monitor_spec() {
+    local name="$1"
+    local api
+    api="$(hyprland_monitor_api)"
+
+    if [[ "${2:-}" == "disable" ]]; then
+        if [[ "$api" == "lua" ]]; then
+            printf 'hl.monitor({ output = "%s", disabled = true })' "$name"
+        else
+            printf 'keyword monitor %s,disable' "$name"
+        fi
+        return 0
+    fi
+
+    local mode="$2"
+    local position="$3"
+    local scale="$4"
+    local mirror="${5:-}"
+
+    if [[ "$api" == "lua" ]]; then
+        printf 'hl.monitor({ output = "%s", mode = "%s", position = "%s", scale = %s' \
+            "$name" "$mode" "$position" "$scale"
+        [[ -n "$mirror" ]] && printf ', mirror = "%s"' "$mirror"
+        printf ' })'
+    else
+        printf 'keyword monitor %s,%s,%s,%s' "$name" "$mode" "$position" "$scale"
+        [[ -n "$mirror" ]] && printf ',mirror,%s' "$mirror"
+    fi
+}
+
+# Applies the specs produced by hyprland_monitor_spec and verifies the result.
+hyprland_apply_monitors() {
+    local -a specs=("$@")
+    ((${#specs[@]} > 0)) || return 0
+
+    local api
+    api="$(hyprland_monitor_api)"
+
+    local output status=0
+    if [[ "$api" == "lua" ]]; then
+        local lua=""
+        local spec
+        for spec in "${specs[@]}"; do
+            lua+="${spec}"$'\n'
+        done
+        output="$(hyprctl eval "$lua" 2>&1)" || status=$?
+    else
+        local batch=""
+        local spec
+        for spec in "${specs[@]}"; do
+            if [[ -n "$batch" ]]; then
+                batch="${batch}; ${spec}"
+            else
+                batch="$spec"
+            fi
+        done
+        output="$(hyprctl --batch "$batch" 2>&1)" || status=$?
+    fi
+
+    # hyprctl exits 0 even when it refuses the command, so inspect the reply.
+    if (( status != 0 )) || [[ "$output" == *"can't work with non-legacy"* ]] \
+       || [[ "$output" == *"Invalid"* ]] || [[ "$output" == *"error"* ]] \
+       || [[ "$output" == *"Error"* ]]; then
+        log "ERROR: Hyprland refused the layout change (api=${api}): ${output}"
+        return 1
+    fi
+    return 0
+}
+
+# Re-reads the compositor state and logs any output that did not end up as
+# requested. Called after every layout change, not just after `disable`.
+hyprland_verify_output() {
+    local name="$1"
+    local expect_enabled="$2"
+
+    local json disabled
+    json="$(hyprctl -j monitors all 2>/dev/null || true)"
+    [[ -n "$json" ]] || return 0
+
+    disabled="$(jq -r --arg n "$name" '.[] | select(.name == $n) | .disabled' \
+        <<<"$json" 2>/dev/null || printf 'unknown')"
+
+    case "${expect_enabled}:${disabled}" in
+        true:false|false:true)
+            log "hyprland: confirmed ${name} enabled=${expect_enabled}"
+            ;;
+        true:true)
+            log "WARNING: ${name} should be enabled but is still disabled"
+            ;;
+        false:false)
+            log "WARNING: disable of ${name} did not take effect (known Hyprland issues #14711, #14496)"
+            ;;
+        *)
+            log "WARNING: could not verify state of ${name} (disabled=${disabled})"
+            ;;
+    esac
+}
+
+hyprland_apply_layout() {
+    # Kept for the driver contract. The engine drives layout through
+    # hyprland_switch_to_tv / hyprland_restore_layout, which build their specs
+    # with hyprland_monitor_spec and apply them with hyprland_apply_monitors.
+    local json="$1"
+    shift
+    (($# > 0)) || return 0
+    hyprland_apply_monitors "$@"
+}
+
+hyprland_window_action() {
+    local action="$1"
+    local class_regex="$2"
+
+    case "$action" in
+        is_open)
+            hyprctl clients -j | jq -e --arg re "$class_regex" \
+                '.[] | select(.class | test($re; "i"))' >/dev/null 2>&1
+            ;;
+        close)
+            local pids
+            pids="$(hyprctl clients -j | jq -r --arg re "$class_regex" \
+                '.[] | select(.class | test($re; "i")) | .pid' 2>/dev/null || true)"
+            if [[ -n "$pids" ]]; then
+                while IFS= read -r pid; do
+                    [[ -n "$pid" ]] && hyprctl dispatch closewindow "pid:${pid}" 2>/dev/null || true
+                done <<< "$pids"
+            fi
+            ;;
+        focus)
+            hyprctl dispatch focuswindow "class:${class_regex}" 2>/dev/null || true
+            ;;
+        fullscreen)
+            hyprctl dispatch focuswindow "class:${class_regex}" 2>/dev/null || true
+            hyprctl dispatch fullscreen 0 2>/dev/null || true
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Steam's Gamepad UI differs by Steam build: it can be identified by title,
+# initial title, class, or only become fullscreen after the window is mapped.
+#
+# NOTE: `fullscreen` and `fullscreenClient` are integers in hyprctl (0 = none,
+# >0 = a fullscreen mode), not booleans — comparing them against `true` never
+# matches. Keep these prefixed: an unprefixed name here overrides the shared
+# implementation for every compositor in the concatenated engine.
+_hyprland_big_picture_filter='
+    .[] | select(
+        ((.class // "") + " " + (.initialClass // "") + " "
+         + (.title // "") + " " + (.initialTitle // ""))
+        | test("steam|gamepadui|big.?picture"; "i")
+    ) | select(
+        ((.title // "") + " " + (.initialTitle // "")
+         | test("gamepadui|big.?picture"; "i"))
+        or ((.fullscreen // 0) > 0)
+        or ((.fullscreenClient // 0) > 0)
+    )
+'
+
+hyprland_big_picture_window_present() {
+    hyprctl clients -j 2>/dev/null \
+        | jq -e "$_hyprland_big_picture_filter" >/dev/null 2>&1
+}
+
+# Close only the fullscreen Steam window (Big Picture), not desktop Steam.
+hyprland_close_big_picture() {
+    log "Closing Big Picture (keeping Steam open in desktop mode)"
+    local addresses
+    addresses="$(hyprctl clients -j 2>/dev/null \
+        | jq -r "${_hyprland_big_picture_filter} | .address" 2>/dev/null || true)"
+    if [[ -n "$addresses" ]]; then
+        while IFS= read -r address; do
+            # Close by window address, not by pid: `pid:` would take down every
+            # window of that process, including desktop Steam.
+            [[ -n "$address" ]] && hyprctl dispatch closewindow "address:${address}" 2>/dev/null || true
+        done <<< "$addresses"
+    fi
+    sleep 0.5
+}
+
+hyprland_open_terminal() {
+    local cmd="$1"
+    if [[ -n "${TERMINAL:-}" ]] && command -v "$TERMINAL" >/dev/null; then
+        exec "$TERMINAL" -e bash -c "$cmd"
+    fi
+    if command -v xdg-terminal-exec >/dev/null 2>&1; then
+        exec xdg-terminal-exec bash -c "$cmd"
+    fi
+    for t in kitty foot alacritty wezterm konsole gnome-terminal xterm; do
+        if command -v "$t" >/dev/null 2>&1; then
+            exec "$t" -e bash -c "$cmd"
+        fi
+    done
+    log ERROR "No terminal emulator found. Run manually: $cmd"
+    return 1
+}
+
+hyprland_monitor_mode_string() {
+    local name="$1"
+    local json="$2"
+
+    local w h r
+    w="$(jq -r --arg n "$name" '.[] | select(.name == $n) | .width' <<<"$json" 2>/dev/null || true)"
+    h="$(jq -r --arg n "$name" '.[] | select(.name == $n) | .height' <<<"$json" 2>/dev/null || true)"
+    r="$(jq -r --arg n "$name" '.[] | select(.name == $n) | .refreshRate' <<<"$json" 2>/dev/null || true)"
+
+    if [[ -n "$w" && -n "$h" && -n "$r" && "$w" != "null" && "$h" != "null" && "$r" != "null" ]]; then
+        printf '%sx%s@%s' "$w" "$h" "$r"
+    else
+        printf '%s' ""
+    fi
+}
+
+hyprland_switch_to_tv() {
+    local json
+    json="$(hyprland_monitors_json)" || die "Could not query monitors from Hyprland."
+
+    if ! jq -e --arg n "$TV_OUTPUT" 'any(.[]; .name == $n)' >/dev/null 2>&1 <<<"$json"; then
+        die "The TV ($TV_OUTPUT) is not connected."
+    fi
+
+    local tv_mode tv_scale live_scale tv_w desk_mode desk_x
+
+    # The configured mode/scale win: they are what the user picked in Setup.
+    # The live values are only a fallback.
+    tv_mode="${FALLBACK_TV_MODE:-}"
+    [[ -n "$tv_mode" ]] || tv_mode="$(hyprland_monitor_mode_string "$TV_OUTPUT" "$json")"
+
+    live_scale="$(jq -r --arg n "$TV_OUTPUT" '.[] | select(.name == $n) | .scale // empty' \
+        <<<"$json" 2>/dev/null || true)"
+    tv_scale="$(hyprland_scale "$FALLBACK_TV_SCALE" \
+        || hyprland_scale "$live_scale" \
+        || printf '1')"
+
+    tv_w="${tv_mode%%x*}"
+    if [[ ! "$tv_w" =~ ^[0-9]+$ ]] || (( tv_w == 0 )); then
+        desk_x=0
+    else
+        # logical_width takes the full mode string, not just the width.
+        desk_x="$(logical_width "$tv_mode" "$tv_scale")"
+    fi
+
+    log "switch_to_tv: config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, TV_MODE=${tv_mode}, TV_SCALE=${tv_scale}"
+
+    local -a specs=()
+    local desk_expect_enabled="true"
+
+    if [[ "${KEEP_DESK_ENABLED:-false}" == "true" ]]; then
+        if [[ "${MIRROR_DESK_TO_TV:-false}" == "true" ]]; then
+            specs+=("$(hyprland_monitor_spec "$TV_OUTPUT" "$tv_mode" "0x0" "$tv_scale" "$DESK_OUTPUT")")
+            specs+=("$(hyprland_monitor_spec "$DESK_OUTPUT" "$tv_mode" "0x0" "$tv_scale")")
+            log "switch_to_tv: TV primary + desktop mirrored"
+        else
+            desk_mode="${FALLBACK_DESK_MODE:-}"
+            [[ -n "$desk_mode" ]] || desk_mode="$(hyprland_monitor_mode_string "$DESK_OUTPUT" "$json")"
+            [[ -z "$desk_mode" ]] && desk_mode="$FALLBACK_DESK_MODE"
+
+            specs+=("$(hyprland_monitor_spec "$TV_OUTPUT" "$tv_mode" "0x0" "$tv_scale")")
+            specs+=("$(hyprland_monitor_spec "$DESK_OUTPUT" "$desk_mode" "${desk_x}x0" "1")")
+            log "switch_to_tv: TV primary + desktop at x=${desk_x}"
+        fi
+    else
+        specs+=("$(hyprland_monitor_spec "$TV_OUTPUT" "$tv_mode" "0x0" "$tv_scale")")
+        specs+=("$(hyprland_monitor_spec "$DESK_OUTPUT" disable)")
+        desk_expect_enabled="false"
+        log "switch_to_tv: TV primary, desk disabled"
+    fi
+
+    if ! hyprland_apply_monitors "${specs[@]}"; then
+        die "Could not apply the couch layout on Hyprland. See the log for the compositor's reply."
+    fi
+
+    hyprland_verify_output "$TV_OUTPUT" true
+    hyprland_verify_output "$DESK_OUTPUT" "$desk_expect_enabled"
+}
+
+hyprland_restore_layout() {
+    local -a specs=()
+    local desk_expect_enabled tv_expect_enabled
+
+    if [[ ! -f "$SNAPSHOT_FILE" ]]; then
+        log "restore_layout: snapshot missing; using fallback"
+        local json desk_mode tv_mode tv_scale
+        json="$(hyprctl -j monitors all 2>/dev/null || printf '[]')"
+        desk_mode="$(hyprland_monitor_mode_string "$DESK_OUTPUT" "$json")"
+        tv_mode="$(hyprland_monitor_mode_string "$TV_OUTPUT" "$json")"
+        # A disabled monitor reports 0x0@... — never feed that back as a mode.
+        [[ -z "$desk_mode" || "$desk_mode" == 0x0@* ]] && desk_mode="$FALLBACK_DESK_MODE"
+        [[ -z "$tv_mode" || "$tv_mode" == 0x0@* ]] && tv_mode="$FALLBACK_TV_MODE"
+        tv_scale="$(hyprland_scale "$FALLBACK_TV_SCALE" || printf '1')"
+
+        specs+=("$(hyprland_monitor_spec "$DESK_OUTPUT" "$desk_mode" \
+            "$(hyprland_position "$FALLBACK_DESK_POS")" \
+            "$(hyprland_scale "$FALLBACK_DESK_SCALE" || printf '1')")")
+        specs+=("$(hyprland_monitor_spec "$TV_OUTPUT" "$tv_mode" \
+            "$(hyprland_position "$FALLBACK_TV_POS")" "$tv_scale")")
+
+        if ! hyprland_apply_monitors "${specs[@]}"; then
+            log "ERROR: restore_layout fallback failed to apply"
+            return 1
+        fi
+        hyprland_verify_output "$DESK_OUTPUT" true
+        return 0
+    fi
+
+    source "$SNAPSHOT_FILE"
+
+    local desk_mode tv_mode desk_pos tv_pos desk_scale tv_scale
+    desk_mode="${DESK_MODE:-$FALLBACK_DESK_MODE}"
+    tv_mode="${TV_MODE:-$FALLBACK_TV_MODE}"
+    [[ "$desk_mode" == 0x0@* ]] && desk_mode="$FALLBACK_DESK_MODE"
+    [[ "$tv_mode" == 0x0@* ]] && tv_mode="$FALLBACK_TV_MODE"
+
+    # layout.env stores positions as "X,Y"; Hyprland wants "XxY".
+    desk_pos="$(hyprland_position "${DESK_POS:-$FALLBACK_DESK_POS}")"
+    tv_pos="$(hyprland_position "${TV_POS:-$FALLBACK_TV_POS}")"
+
+    desk_scale="$(hyprland_scale "${DESK_SCALE:-}" || hyprland_scale "$FALLBACK_DESK_SCALE" || printf '1')"
+    tv_scale="$(hyprland_scale "${TV_SCALE:-}" || hyprland_scale "$FALLBACK_TV_SCALE" || printf '1')"
+
+    desk_expect_enabled="${DESK_ENABLED:-true}"
+    tv_expect_enabled="${TV_ENABLED:-true}"
+
+    if [[ "$desk_expect_enabled" == "true" ]]; then
+        specs+=("$(hyprland_monitor_spec "$DESK_OUTPUT" "$desk_mode" "$desk_pos" "$desk_scale")")
+    else
+        specs+=("$(hyprland_monitor_spec "$DESK_OUTPUT" disable)")
+    fi
+
+    if [[ "$tv_expect_enabled" == "true" ]]; then
+        specs+=("$(hyprland_monitor_spec "$TV_OUTPUT" "$tv_mode" "$tv_pos" "$tv_scale")")
+    else
+        specs+=("$(hyprland_monitor_spec "$TV_OUTPUT" disable)")
+    fi
+
+    if ! hyprland_apply_monitors "${specs[@]}"; then
+        log "ERROR: restore_layout failed to apply; keeping the snapshot for a retry"
+        return 1
+    fi
+
+    hyprland_verify_output "$DESK_OUTPUT" "$desk_expect_enabled"
+    hyprland_verify_output "$TV_OUTPUT" "$tv_expect_enabled"
+
+    rm -f "$SNAPSHOT_FILE"
+    log "restore_layout: layout restored"
+}
+
+# After restoring the desktop layout, Steam's window may still sit on an output
+# that is now disabled. Pull it back onto the desk monitor's workspace.
+hyprland_move_steam_to_desk_monitor() {
+    local workspace
+    workspace="$(hyprctl -j monitors 2>/dev/null \
+        | jq -r --arg n "$DESK_OUTPUT" \
+            '.[] | select(.name == $n) | .activeWorkspace.id // empty' 2>/dev/null || true)"
+    [[ -n "$workspace" ]] || return 0
+
+    local addresses
+    addresses="$(hyprctl clients -j 2>/dev/null | jq -r --arg w "$workspace" '
+        .[] | select(((.class // "") + " " + (.initialClass // "")) | test("steam"; "i"))
+            | select((.workspace.id | tostring) != $w)
+            | .address
+    ' 2>/dev/null || true)"
+    [[ -n "$addresses" ]] || return 0
+
+    while IFS= read -r address; do
+        [[ -n "$address" ]] || continue
+        hyprctl dispatch movetoworkspacesilent "${workspace},address:${address}" >/dev/null 2>&1 || true
+    done <<< "$addresses"
+    log "restore: moved Steam windows back to ${DESK_OUTPUT} (workspace ${workspace})"
+}
+
+hyprland_play() {
+    log "play: starting couch mode"
+    require_commands
+    start_session
+    AUTO_RESTORE_ON_EXIT=1
+    trap cleanup EXIT INT TERM
+    controller_session_reset
+
+    log "play: active config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}"
+
+    save_snapshot
+    hyprland_switch_to_tv
+    log "play: couch layout applied, opening Big Picture"
+    launch_big_picture_and_wait
+    log "play: restoring desktop layout"
+    hyprland_restore_layout
+    hyprland_move_steam_to_desk_monitor
+    AUTO_RESTORE_ON_EXIT=0
+    log "play: layout restored successfully"
+}
+
+hyprland_restore() {
+    log "restore: starting manual restore"
+    require_commands
+
+    driver_close_big_picture
+
+    local had_session=0
+    if [[ -f "$SESSION_FILE" ]] && kill -0 "$(<"$SESSION_FILE")" 2>/dev/null; then
+        had_session=1
+    fi
+
+    stop_active_session
+
+    if [[ "$had_session" == "0" ]] || [[ -f "$SNAPSHOT_FILE" ]]; then
+        hyprland_restore_layout
+        hyprland_move_steam_to_desk_monitor
+    fi
+
+    rm -f "$SESSION_FILE"
+    log "restore: layout restored successfully"
+}
+
+hyprland_watch() {
+    require_commands
+    AUTO_RESTORE_ON_EXIT=1
+    trap cleanup EXIT INT TERM
+    log "watch: monitoring Big Picture started by Steam"
+
+    local active=0
+
+    while true; do
+        if [[ -f "$SESSION_FILE" ]]; then
+            sleep 2
+            continue
+        fi
+        if [[ "$active" == "0" ]] && driver_big_picture_window_present; then
+            log "watch: Big Picture detected externally"
+            log "watch: active config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}"
+            save_snapshot
+            hyprland_switch_to_tv
+            controller_session_reset
+            active=1
+            log "watch: Big Picture detected, couch layout applied"
+        elif [[ "$active" == "1" ]] && ! driver_big_picture_window_present; then
+            hyprland_restore_layout
+            hyprland_move_steam_to_desk_monitor
+            active=0
+            log "watch: Big Picture closed, desktop layout restored"
+        elif [[ "$active" == "1" ]] \
+            && [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] \
+            && controllers_all_off; then
+            log "watch: all controllers turned off; closing Big Picture and restoring desktop"
+            driver_close_big_picture
+            wait_for_big_picture_close
+            hyprland_restore_layout
+            hyprland_move_steam_to_desk_monitor
+            controller_session_reset
+            active=0
+            log "watch: desktop layout restored after all controllers turned off"
+        fi
+        sleep 2
+    done
+}
+
+
+# drivers/kde.sh — KDE Plasma driver for open-couch-engine.
+# Extracted from the original monolithic engine without behavior changes.
+
+KDE_REQUIRED_HOST_COMMANDS=(jq kscreen-doctor pgrep)
+KDE_OPTIONAL_HOST_COMMANDS=(wmctrl)
+
+kde_check_deps() {
+    local cmd
+    for cmd in "${REQUIRED_HOST_COMMANDS[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            printf 'kde:%s:present\n' "$cmd"
+        else
+            printf 'kde:%s:missing\n' "$cmd"
+        fi
+    done
+    for cmd in "${OPTIONAL_HOST_COMMANDS[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            printf 'kde:%s:present\n' "$cmd"
+        else
+            printf 'kde:%s:missing\n' "$cmd"
+        fi
+    done
+}
+
+kde_capabilities_json() {
+    local wmctrl_present="false"
+    command -v wmctrl >/dev/null 2>&1 && wmctrl_present="true"
+    printf '{"compositor":"kde","display":{"list_outputs":true,"apply_layout":true,"mirror":true,"disable_output":true,"primary_output":true},"window_management":"%s","terminal_launch":true,"autostart":"desktop_entry","background_portal":true,"tray":"native"}' \
+        "$wmctrl_present"
+}
+
+kde_list_outputs_json() {
+    kscreen-doctor -j | jq -c '
+        [.outputs[]
+         | select(.connected == true)
+         | . as $out
+         | {
+             name: .name,
+             enabled: .enabled,
+             modes: ([$out.modes[].name] | unique),
+             currentMode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // ""),
+             scale: (.scale // 1),
+             pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring))
+           }
+        ]
+    '
+}
+
+kde_get_layout_json() {
+    kscreen-doctor -j
+}
+
+kde_apply_layout() {
+    local json="$1"
+    kscreen-doctor "${@:2}"
+}
+
+kde_window_action() {
+    local action="$1"
+    local class_regex="$2"
+
+    case "$action" in
+        is_open)
+            if ! command -v wmctrl >/dev/null 2>&1; then
+                return 1
+            fi
+            wmctrl -lx 2>/dev/null | awk -v re="$class_regex" 'tolower($0) ~ re {found=1; exit} END {exit !found}'
+            ;;
+        close)
+            if ! command -v wmctrl >/dev/null 2>&1; then
+                return 1
+            fi
+            wmctrl -lx 2>/dev/null | awk -v re="$class_regex" 'tolower($0) ~ re {print $1}' | xargs -r wmctrl -i -c || true
+            ;;
+        focus)
+            if ! command -v wmctrl >/dev/null 2>&1; then
+                return 1
+            fi
+            wmctrl -lx 2>/dev/null | awk -v re="$class_regex" 'tolower($0) ~ re {print $1; exit}' | xargs -r wmctrl -i -a || true
+            ;;
+        fullscreen)
+            kde_window_action focus "$class_regex"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+kde_open_terminal() {
+    local cmd="$1"
+    if [[ -n "${TERMINAL:-}" ]] && command -v "$TERMINAL" >/dev/null; then
+        exec "$TERMINAL" -e bash -c "$cmd"
+    fi
+    for t in konsole kitty foot alacritty wezterm gnome-terminal xterm; do
+        if command -v "$t" >/dev/null 2>&1; then
+            case "$t" in
+                konsole)
+                    exec konsole --hold -e bash -c "$cmd"
+                    ;;
+                *)
+                    exec "$t" -e bash -c "$cmd"
+                    ;;
+            esac
+        fi
+    done
+    log ERROR "No terminal emulator found. Run manually: $cmd"
+    return 1
+}
+
+kde_move_steam_to_desk_monitor() {
+    command -v wmctrl >/dev/null 2>&1 || { log "move_steam: wmctrl missing; skipping Steam repositioning"; return; }
+
+    local attempt win_id pos=""
+
+    for attempt in $(seq 1 15); do
+        win_id="$(wmctrl -lx 2>/dev/null | awk '$3 ~ /\.steam$/ || $3 == "steam" { if (tolower($0) !~ /big picture/) { print $1; exit } }')"
+        [[ -n "$win_id" ]] && break
+        sleep 1
+    done
+
+    [[ -n "$win_id" ]] || { log "move_steam: Steam window not found; nothing to reposition"; return; }
+
+    pos="$(kde_get_layout_json | jq -r --arg o "$DESK_OUTPUT" '
+        [ .outputs[] | select(.name == $o and .enabled == true) ]
+        | if length > 0 then (((.[0].pos.x // 0) | tostring) + "," + ((.[0].pos.y // 0) | tostring)) else empty end
+    ' 2>/dev/null || true)"
+
+    if [[ -z "$pos" ]]; then
+        pos="${FALLBACK_DESK_POS:-0,0}"
+    fi
+
+    wmctrl -i -r "$win_id" -e "0,${pos},-1,-1" || true
+    log "move_steam: Steam repositioned to the office display (${DESK_OUTPUT} @ ${pos})"
+}
+
+kde_switch_to_tv() {
+    local json tv_line
+    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
+    local -a args=()
+
+    json="$(kde_get_layout_json)"
+    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
+
+    log "switch_to_living_room_layout: config => KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}"
+    log_layout_debug "switch_to_living_room_layout: before" "$json"
+
+    [[ -n "$tv_line" ]] || die "Could not find the TV ($TV_OUTPUT)."
+    IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
+
+    [[ "$tv_connected" == "true" ]] || die "The TV ($TV_OUTPUT) is not connected."
+
+    tv_mode="$(resolve_mode "$json" "$TV_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
+
+    if [[ "${KEEP_DESK_ENABLED:-false}" == "true" ]]; then
+        if [[ "${MIRROR_DESK_TO_TV:-false}" == "true" ]]; then
+            local mirror_mode
+            mirror_mode="$(common_mirror_mode "$json" "$TV_OUTPUT" "$DESK_OUTPUT" "${tv_mode:-$FALLBACK_TV_MODE}")"
+            if [[ -z "$mirror_mode" ]]; then
+                show_error "Could not find a common mode between ${TV_OUTPUT} and ${DESK_OUTPUT}; mirroring may not work." || true
+            fi
+
+            args=("output.${TV_OUTPUT}.enable")
+            [[ -n "$mirror_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${mirror_mode}")
+            args+=(
+                "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+                "output.${TV_OUTPUT}.position.0,0"
+                "output.${TV_OUTPUT}.priority.1"
+                "output.${DESK_OUTPUT}.enable"
+            )
+            [[ -n "$mirror_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${mirror_mode}")
+            args+=(
+                "output.${DESK_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+                "output.${DESK_OUTPUT}.position.0,0"
+                "output.${DESK_OUTPUT}.priority.2"
+            )
+            log "switch_to_living_room_layout: active config => TV primary + desktop mirrored on the couch${mirror_mode:+ (common mode: ${mirror_mode})}"
+        else
+            local desk_mode desk_x
+            desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
+            desk_x="$(logical_width "${tv_mode:-$FALLBACK_TV_MODE}" "${tv_scale:-$FALLBACK_TV_SCALE}")"
+
+            args=("output.${TV_OUTPUT}.enable")
+            [[ -n "$tv_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_mode}")
+            args+=(
+                "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+                "output.${TV_OUTPUT}.position.0,0"
+                "output.${TV_OUTPUT}.priority.1"
+                "output.${DESK_OUTPUT}.enable"
+            )
+            [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
+            args+=(
+                "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
+                "output.${DESK_OUTPUT}.position.${desk_x},0"
+                "output.${DESK_OUTPUT}.priority.2"
+            )
+            log "switch_to_living_room_layout: active config => TV primary + desktop next to it (desk_x=${desk_x})"
+        fi
+    else
+        args=("output.${TV_OUTPUT}.enable")
+        [[ -n "$tv_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_mode}")
+        args+=(
+            "output.${TV_OUTPUT}.scale.${tv_scale:-$FALLBACK_TV_SCALE}"
+            "output.${TV_OUTPUT}.position.0,0"
+            "output.${TV_OUTPUT}.priority.1"
+            "output.${DESK_OUTPUT}.disable"
+        )
+        log "switch_to_living_room_layout: active config => TV primary and office display turned off"
+    fi
+
+    log "switch_to_living_room_layout: executing kscreen-doctor: ${args[*]}"
+    kscreen-doctor "${args[@]}"
+
+    local json_after
+    json_after="$(kde_get_layout_json)"
+    log_layout_debug "switch_to_living_room_layout: after" "$json_after"
+    verify_primary_output "switch_to_living_room_layout" "$json_after"
+}
+
+kde_append_restore_args() {
+    local -n args_ref="$1"
+    local prefix="$2"
+    local output="$3"
+    local json="$4"
+
+    local enabled_var="${prefix}_ENABLED"
+    local mode_var="${prefix}_MODE"
+    local scale_var="${prefix}_SCALE"
+    local pos_var="${prefix}_POS"
+    local priority_var="${prefix}_PRIORITY"
+
+    if [[ "${!enabled_var:-false}" == "true" ]]; then
+        args_ref+=("output.${output}.enable")
+
+        if [[ -n "${!mode_var:-}" ]]; then
+            local resolved_mode
+            resolved_mode="$(resolve_mode "$json" "$output" "${!mode_var}")"
+            [[ -n "$resolved_mode" ]] && args_ref+=("output.${output}.mode.${resolved_mode}")
+        fi
+
+        if [[ -n "${!scale_var:-}" ]]; then
+            args_ref+=("output.${output}.scale.${!scale_var}")
+        fi
+
+        if [[ -n "${!pos_var:-}" ]]; then
+            args_ref+=("output.${output}.position.${!pos_var}")
+        fi
+
+        if [[ -n "${!priority_var:-}" ]]; then
+            args_ref+=("output.${output}.priority.${!priority_var}")
+        fi
+    else
+        args_ref+=("output.${output}.disable")
+    fi
+}
+
+kde_restore_fallback_layout() {
+    local json tv_line
+    local tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode
+    local desk_mode tv_resolved_mode
+
+    json="$(kde_get_layout_json)"
+    tv_line="$(output_snapshot_tsv "$json" "$TV_OUTPUT")"
+
+    if [[ -n "$tv_line" ]]; then
+        IFS=$'\t' read -r tv_connected tv_enabled tv_priority tv_pos tv_scale tv_mode <<<"$tv_line"
+    else
+        tv_connected="false"
+    fi
+
+    desk_mode="$(resolve_mode "$json" "$DESK_OUTPUT" "$FALLBACK_DESK_MODE")"
+
+    if [[ "$tv_connected" == "true" ]]; then
+        tv_resolved_mode="$(resolve_mode "$json" "$TV_OUTPUT" "$FALLBACK_TV_MODE")"
+
+        local -a args=("output.${DESK_OUTPUT}.enable")
+        [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
+        args+=(
+            "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
+            "output.${DESK_OUTPUT}.position.${FALLBACK_DESK_POS}"
+            "output.${DESK_OUTPUT}.priority.${FALLBACK_DESK_PRIORITY}"
+            "output.${TV_OUTPUT}.enable"
+        )
+        [[ -n "$tv_resolved_mode" ]] && args+=("output.${TV_OUTPUT}.mode.${tv_resolved_mode}")
+        args+=(
+            "output.${TV_OUTPUT}.scale.${FALLBACK_TV_SCALE}"
+            "output.${TV_OUTPUT}.position.${FALLBACK_TV_POS}"
+            "output.${TV_OUTPUT}.priority.${FALLBACK_TV_PRIORITY}"
+        )
+
+        kscreen-doctor "${args[@]}"
+    else
+        local -a args=("output.${DESK_OUTPUT}.enable")
+        [[ -n "$desk_mode" ]] && args+=("output.${DESK_OUTPUT}.mode.${desk_mode}")
+        args+=(
+            "output.${DESK_OUTPUT}.scale.${FALLBACK_DESK_SCALE}"
+            "output.${DESK_OUTPUT}.position.${FALLBACK_DESK_POS}"
+            "output.${DESK_OUTPUT}.priority.${FALLBACK_DESK_PRIORITY}"
+        )
+
+        kscreen-doctor "${args[@]}"
+    fi
+}
+
+kde_restore_layout() {
+    local -a args=()
+    local json
+
+    if [[ ! -f "$SNAPSHOT_FILE" ]]; then
+        log "restore_layout: snapshot missing; using desktop fallback"
+        kde_restore_fallback_layout
+        kde_move_steam_to_desk_monitor
+        return
+    fi
+
+    source "$SNAPSHOT_FILE"
+
+    json="$(kde_get_layout_json)"
+    log_layout_debug "restore_layout: before" "$json"
+
+    kde_append_restore_args args "DESK" "$DESK_OUTPUT" "$json"
+    kde_append_restore_args args "TV" "$TV_OUTPUT" "$json"
+
+    log "restore_layout: executing kscreen-doctor: ${args[*]}"
+    kscreen-doctor "${args[@]}"
+
+    local json_after
+    json_after="$(kde_get_layout_json)"
+    log_layout_debug "restore_layout: after" "$json_after"
+    rm -f "$SNAPSHOT_FILE"
+
+    kde_move_steam_to_desk_monitor
+}
+
+kde_play() {
     log "play: starting couch mode"
     require_commands
     start_session
@@ -1344,35 +2374,93 @@ play_mode() {
     fi
 
     save_snapshot
-    switch_to_living_room_layout
+    kde_switch_to_tv
     log "play: couch layout applied, opening Big Picture"
     launch_big_picture_and_wait
     log "play: restoring desktop layout"
-    restore_layout
+    kde_restore_layout
     AUTO_RESTORE_ON_EXIT=0
     log "play: layout restored successfully"
 }
 
-restore_mode() {
+kde_restore() {
     log "restore: starting manual restore"
     require_commands
-    
-    close_big_picture
-    
+
+    driver_close_big_picture
+
     local had_session=0
     if [[ -f "$SESSION_FILE" ]] && kill -0 "$(<"$SESSION_FILE")" 2>/dev/null; then
         had_session=1
     fi
-    
+
     stop_active_session
-    
+
     if [[ "$had_session" == "0" ]] || [[ -f "$SNAPSHOT_FILE" ]]; then
-        restore_layout
+        kde_restore_layout
     fi
-    
+
     rm -f "$SESSION_FILE"
     log "restore: layout restored successfully"
 }
+
+kde_watch() {
+    require_commands
+    command -v wmctrl >/dev/null 2>&1 || die "The optional wmctrl command is required to monitor Big Picture."
+    AUTO_RESTORE_ON_EXIT=1
+    trap cleanup EXIT INT TERM
+    log "watch: monitoring Big Picture started by Steam"
+
+    local active=0
+
+    while true; do
+        if [[ -f "$SESSION_FILE" ]]; then
+            sleep 2
+            continue
+        fi
+        if [[ "$active" == "0" ]] && driver_big_picture_window_present; then
+            log "watch: Big Picture detected externally; config={KEEP_DESK_ENABLED=${KEEP_DESK_ENABLED}, MIRROR_DESK_TO_TV=${MIRROR_DESK_TO_TV}, DESK_OUTPUT=${DESK_OUTPUT}, TV_OUTPUT=${TV_OUTPUT}, EXIT_ON_ALL_CONTROLLERS_OFF=${EXIT_ON_ALL_CONTROLLERS_OFF}}"
+            save_snapshot
+            kde_switch_to_tv
+            controller_session_reset
+            active=1
+            log "watch: Big Picture detected, couch layout applied"
+        elif [[ "$active" == "1" ]] && ! driver_big_picture_window_present; then
+            kde_restore_layout
+            active=0
+            log "watch: Big Picture closed, desktop layout restored"
+        elif [[ "$active" == "1" ]] \
+            && [[ "${EXIT_ON_ALL_CONTROLLERS_OFF:-false}" == "true" ]] \
+            && controllers_all_off; then
+            log "watch: all controllers turned off; closing Big Picture and restoring desktop"
+            driver_close_big_picture
+            wait_for_big_picture_close
+            kde_restore_layout
+            controller_session_reset
+            active=0
+            log "watch: desktop layout restored after all controllers turned off"
+        fi
+        sleep 2
+    done
+}
+
+
+# dispatcher.sh — command dispatcher for open-couch-engine.
+#
+# This is the SOURCE of the engine. In development it sources lib/ and drivers/
+# directly; packaging/build-engine.sh concatenates everything into the single
+# distributable backend/open-couch-engine. Never edit that generated file.
+
+
+
+load_config
+
+COMPOSITOR="$(detect_compositor)"
+if [[ "$COMPOSITOR" != "unknown" ]]; then
+    if ! load_driver "$COMPOSITOR"; then
+        log "WARNING: could not load driver for compositor '${COMPOSITOR}'; limited functionality available"
+    fi
+fi
 
 usage() {
     cat <<'EOF'
@@ -1380,19 +2468,21 @@ Usage:
   open-couch-engine play
   open-couch-engine restore
   open-couch-engine status
-  open-couch-engine outputs        
-  open-couch-engine check          
-  open-couch-engine version        
-  open-couch-engine watch          
-  open-couch-engine config-path    
-  open-couch-engine log            
-  open-couch-engine append-log <message>   
-  open-couch-engine clear-log      
-  open-couch-engine log-history    
-  open-couch-engine print-history-log <id>   
-  open-couch-engine export-history-log <id>  
-  open-couch-engine export-log     
-  open-couch-engine list-running   
+  open-couch-engine outputs
+  open-couch-engine check
+  open-couch-engine version
+  open-couch-engine watch
+  open-couch-engine detect
+  open-couch-engine capabilities
+  open-couch-engine config-path
+  open-couch-engine log
+  open-couch-engine append-log <message>
+  open-couch-engine clear-log
+  open-couch-engine log-history
+  open-couch-engine print-history-log <id>
+  open-couch-engine export-history-log <id>
+  open-couch-engine export-log
+  open-couch-engine list-running
   open-couch-engine list-apps
   open-couch-engine close-tracked-apps
 EOF
@@ -1401,28 +2491,52 @@ EOF
 main() {
     case "${1:-}" in
         play)
-            play_mode
+            if [[ -z "$DRIVER_NAME" ]]; then
+                die "No supported compositor detected. Supported: KDE Plasma, Hyprland."
+            fi
+            driver_play
             ;;
         restore)
-            restore_mode
+            if [[ -z "$DRIVER_NAME" ]]; then
+                die "No supported compositor detected."
+            fi
+            driver_restore
             ;;
         status)
-            require_commands
+            if [[ -n "$DRIVER_NAME" ]]; then
+                require_commands
+            fi
             print_status
             ;;
         outputs)
-            require_commands
-            print_outputs
+            if [[ -n "$DRIVER_NAME" ]]; then
+                require_commands
+            fi
+            list_outputs
             ;;
         check)
+            # Never report OK without a driver: that would hide a KDE session
+            # missing kscreen-doctor, which falls through detection as 'unknown'.
+            if [[ -z "$DRIVER_NAME" ]]; then
+                die "No supported compositor detected. Supported: KDE Plasma, Hyprland."
+            fi
             require_commands
             printf 'Host dependencies OK\n'
             ;;
         version)
             printf '%s\n' "$ENGINE_VERSION"
-            ;;        
+            ;;
         watch)
-            watch_big_picture
+            if [[ -z "$DRIVER_NAME" ]]; then
+                die "No supported compositor detected."
+            fi
+            driver_watch
+            ;;
+        detect)
+            print_detect
+            ;;
+        capabilities)
+            print_capabilities_json
             ;;
         config-path)
             printf '%s\n' "$CONFIG_FILE"
@@ -1462,6 +2576,58 @@ main() {
             exit 1
             ;;
     esac
+}
+
+print_status() {
+    log "Status refresh requested"
+    log "Config: DESK_OUTPUT=$DESK_OUTPUT TV_OUTPUT=$TV_OUTPUT DESK_MODE=$FALLBACK_DESK_MODE DESK_SCALE=$FALLBACK_DESK_SCALE DESK_POS=$FALLBACK_DESK_POS DESK_PRIORITY=$FALLBACK_DESK_PRIORITY TV_MODE=$FALLBACK_TV_MODE TV_SCALE=$FALLBACK_TV_SCALE TV_POS=$FALLBACK_TV_POS TV_PRIORITY=$FALLBACK_TV_PRIORITY KEEP_DESK=$KEEP_DESK_ENABLED MIRROR=$MIRROR_DESK_TO_TV RESTORE=$AUTO_RESTORE_ON_EXIT WATCH_BP=$WATCH_BIG_PICTURE EXIT_ON_ALL_CONTROLLERS_OFF=$EXIT_ON_ALL_CONTROLLERS_OFF CLOSE_APPS_ENABLED=$CLOSE_APPS_ENABLED CLOSE_APPS_WAIT_SECONDS=$CLOSE_APPS_WAIT_SECONDS APPS_TO_CLOSE=$APPS_TO_CLOSE"
+    log_missing_host_components
+    if version_gte "${ENGINE_VERSION:-0.0.0}" "$MIN_VERSION"; then
+        log "Engine version: ${ENGINE_VERSION:-unknown} (meets minimum requirement: $MIN_VERSION)"
+    else
+        log "Engine version: ${ENGINE_VERSION:-unknown} (below minimum requirement: $MIN_VERSION)"
+    fi
+    if [[ -n "$DRIVER_NAME" ]]; then
+        log "Compositor: $(driver_name_from_id "$DRIVER_NAME")"
+    else
+        log "Compositor: unknown"
+    fi
+    if [[ -n "$DRIVER_NAME" ]]; then
+        driver_get_layout_json | jq -c --arg desk "$DESK_OUTPUT" --arg tv "$TV_OUTPUT" '
+            [
+                (.outputs[] | select(.name == $desk) | . as $out | {
+                    role: "desk",
+                    name: .name,
+                    enabled: .enabled,
+                    connected: .connected,
+                    priority: (.priority // null),
+                    pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring)),
+                    scale: (.scale // 1),
+                    mode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
+                }),
+                (.outputs[] | select(.name == $tv) | . as $out | {
+                    role: "tv",
+                    name: .name,
+                    enabled: .enabled,
+                    connected: .connected,
+                    priority: (.priority // null),
+                    pos: (((.pos.x // 0) | tostring) + "," + ((.pos.y // 0) | tostring)),
+                    scale: (.scale // 1),
+                    mode: (($out.modes | map(select(.id == $out.currentModeId) | .name) | first) // "")
+                })
+            ]
+        '
+    else
+        printf '[]\n'
+    fi
+}
+
+list_outputs() {
+    if [[ -n "$DRIVER_NAME" ]]; then
+        driver_list_outputs_json
+    else
+        printf '[]\n'
+    fi
 }
 
 main "$@"
