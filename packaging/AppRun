@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# AppRun for the Open Couch AppImage.
+#
+# Single source of truth: both packaging/build-appimage.sh and
+# .github/workflows/release.yml install this file over the AppRun that
+# linuxdeploy generates. A real script (not a symlink) is required so the
+# environment is also set when the AppImage is extracted and run directly.
+
+# APPDIR is set by the AppImage runtime in FUSE mode.
+# Fall back to resolving from $0 for extracted-mode runs.
+: "${APPDIR:=$(dirname "$(readlink -f "$0")")}"
+
+export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+export QT_PLUGIN_PATH="${APPDIR}/usr/plugins:${QT_PLUGIN_PATH:-}"
+
+# linuxdeploy's generated AppRun set these; this one must too, or the bundled
+# QML modules (Kirigami, org.kde.desktop) are not found.
+export QML2_IMPORT_PATH="${APPDIR}/usr/qml:${QML2_IMPORT_PATH:-}"
+export QML_IMPORT_PATH="${APPDIR}/usr/qml:${QML_IMPORT_PATH:-}"
+
+export QT_QUICK_CONTROLS_STYLE="${QT_QUICK_CONTROLS_STYLE:-org.kde.desktop}"
+
+# NOTE: do NOT force QT_QPA_PLATFORMTHEME. Pinning it to "desktopportal" makes
+# QIcon::themeName() report "hicolor" and styleHints()->colorScheme() report
+# Unknown, which breaks icon lookup and dark-mode detection. Inheriting the host
+# value works better; main.cpp selects the style and icon theme itself.
+
+exec "${APPDIR}/usr/bin/opencouch" "$@"

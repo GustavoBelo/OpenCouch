@@ -44,6 +44,12 @@ fi
 RELEASE_DATE="$(date -u +%Y-%m-%d)"
 printf 'VERSION=%s\nRELEASE_DATE=%s\n' "$VERSION" "$RELEASE_DATE" > "$VERSION_FILE"
 
+# Rebuild the concatenated engine from lib/ + drivers/ + dispatcher.
+# This also syncs ENGINE_VERSION (from app/version.txt, written just above) and
+# MIN_VERSION (from kMinEngineVersion) into backend/lib/common.sh, so a later
+# rebuild can never revert them.
+"${SCRIPT_DIR}/build-engine.sh"
+
 # Sync version into host installer files
 INSTALL_FILE="${SCRIPT_DIR}/host/install.sh"
 sed -i -e "s/^SELF_VERSION=\"[^\"]*\"/SELF_VERSION=\"${VERSION}\"/" "$INSTALL_FILE"
@@ -52,10 +58,9 @@ if ! grep -q "^SELF_VERSION=\"${VERSION}\"" "$INSTALL_FILE"; then
     exit 1
 fi
 
-sed -i -e "s/^ENGINE_VERSION=\"[^\"]*\"/ENGINE_VERSION=\"${VERSION}\"/" \
-    "${PROJECT_DIR}/backend/open-couch-engine"
+# build-engine.sh already wrote ENGINE_VERSION; verify it landed.
 if ! grep -q "^ENGINE_VERSION=\"${VERSION}\"" "${PROJECT_DIR}/backend/open-couch-engine"; then
-    printf 'Error: failed to update ENGINE_VERSION in backend/open-couch-engine.\n' >&2
+    printf 'Error: ENGINE_VERSION in backend/open-couch-engine is not %s.\n' "${VERSION}" >&2
     exit 1
 fi
 
@@ -78,11 +83,9 @@ if ! [[ "$MIN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     printf 'Error: invalid MIN_VERSION "%s" extracted from app/src/engineclient.cpp.\n' "$MIN_VERSION" >&2
     exit 1
 fi
-sed -i "/^MIN_VERSION=/d" "${PROJECT_DIR}/backend/open-couch-engine"
-sed -i "/^ENGINE_VERSION=/a MIN_VERSION=\"${MIN_VERSION}\"" \
-    "${PROJECT_DIR}/backend/open-couch-engine"
+# build-engine.sh already wrote MIN_VERSION; verify it landed.
 if ! grep -q "^MIN_VERSION=\"${MIN_VERSION}\"" "${PROJECT_DIR}/backend/open-couch-engine"; then
-    printf 'Error: failed to insert MIN_VERSION=%s into backend/open-couch-engine.\n' "$MIN_VERSION" >&2
+    printf 'Error: MIN_VERSION in backend/open-couch-engine is not %s.\n' "$MIN_VERSION" >&2
     exit 1
 fi
 
@@ -109,6 +112,10 @@ fi
 
 git -C "$PROJECT_DIR" add "$VERSION_FILE" "$INSTALL_FILE" \
     "${BACKEND_DIR}/open-couch-engine" "${BACKEND_DIR}/SHA256SUMS" \
+    "${BACKEND_DIR}/open-couch-log-viewer" \
+    "${BACKEND_DIR}/lib/" "${BACKEND_DIR}/drivers/" "${BACKEND_DIR}/dispatcher.sh" \
+    "${SCRIPT_DIR}/AppRun" \
+    "${SCRIPT_DIR}/build-engine.sh" \
     "$FLATPAK_MANIFEST"
 git -C "$PROJECT_DIR" commit -m "Release ${TAG}"
 

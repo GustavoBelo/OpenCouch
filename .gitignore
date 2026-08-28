@@ -25,6 +25,7 @@ AppDir/
 *.AppImage
 build-fedora/
 test-appdir/
+squashfs-root/
 
 # IDE / editor
 .vscode/
