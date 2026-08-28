@@ -13,11 +13,48 @@ fi
 mkdir -p "$STATE_DIR"
 touch "$LOG_FILE"
 
-exec konsole --hold -e bash -c "
-    echo '=== Current display status (open-couch-engine status) ===';
-    '${ENGINE_BIN}' status;
-    echo;
-    echo '=== Log (${LOG_FILE}) - Ctrl+C to exit live mode ===';
-    tail -n 100 -f '${LOG_FILE}'
-"
+CMD="echo '=== Current display status (open-couch-engine status) ==='; '${ENGINE_BIN}' status; echo; echo '=== Log (${LOG_FILE}) - Ctrl+C to exit live mode ==='; tail -n 100 -f '${LOG_FILE}'"
 
+find_terminal() {
+    if [[ -n "${TERMINAL:-}" ]] && command -v "$TERMINAL" >/dev/null 2>&1; then
+        printf '%s' "$TERMINAL"
+        return
+    fi
+    if command -v xdg-terminal-exec >/dev/null 2>&1; then
+        printf 'xdg-terminal-exec'
+        return
+    fi
+    for t in konsole kitty foot alacritty wezterm gnome-terminal xterm; do
+        if command -v "$t" >/dev/null 2>&1; then
+            printf '%s' "$t"
+            return
+        fi
+    done
+    printf ''
+}
+
+TERM_BIN="$(find_terminal)"
+if [[ -z "$TERM_BIN" ]]; then
+    echo "Error: no terminal emulator found. Install one of: konsole, kitty, foot, alacritty." >&2
+    exit 1
+fi
+
+# The flag that introduces the command differs per terminal: xdg-terminal-exec
+# takes it directly, gnome-terminal needs `--`, wezterm needs `start --`.
+case "$(basename "$TERM_BIN")" in
+    konsole)
+        exec konsole --hold -e bash -c "$CMD"
+        ;;
+    xdg-terminal-exec)
+        exec xdg-terminal-exec bash -c "$CMD"
+        ;;
+    gnome-terminal)
+        exec gnome-terminal -- bash -c "$CMD"
+        ;;
+    wezterm)
+        exec wezterm start -- bash -c "$CMD"
+        ;;
+    *)
+        exec "$TERM_BIN" -e bash -c "$CMD"
+        ;;
+esac
