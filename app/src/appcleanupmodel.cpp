@@ -24,13 +24,34 @@
 #include <unistd.h>
 
 namespace {
+// Never offered to the user and never closed. Keep in sync with
+// PROTECTED_PROCESSES in backend/lib/common.sh.
 const QStringList kProtectedProcesses = {
+    // KDE Plasma
     QStringLiteral("plasmashell"),
     QStringLiteral("kwin_wayland"),
     QStringLiteral("kwin_x11"),
     QStringLiteral("kwin_wayland_wrapper"),
     QStringLiteral("ksmserver"),
     QStringLiteral("systemsettings"),
+    // Hyprland and its usual session components
+    QStringLiteral("Hyprland"),
+    QStringLiteral("hyprpaper"),
+    QStringLiteral("hypridle"),
+    QStringLiteral("hyprlock"),
+    QStringLiteral("hyprsunset"),
+    QStringLiteral("hyprpolkitagent"),
+    QStringLiteral("waybar"),
+    QStringLiteral("swaync"),
+    QStringLiteral("mako"),
+    QStringLiteral("wofi"),
+    QStringLiteral("rofi"),
+    QStringLiteral("uwsm"),
+    QStringLiteral("xdg-desktop-portal-hyprland"),
+    // Shared
+    QStringLiteral("xdg-desktop-portal"),
+    QStringLiteral("xdg-desktop-portal-gtk"),
+    QStringLiteral("xdg-desktop-portal-kde"),
     QStringLiteral("steam"),
     QStringLiteral("steamwebhelper"),
     QStringLiteral("open-couch"),
