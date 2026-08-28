@@ -14,6 +14,12 @@
 #include <QLocale>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QFile>
+#include <QTextStream>
+#include <QThread>
+
+#include <csignal>
+#include <cstdio>
 
 #include "appcleanupmodel.h"
 #include "appinfomodel.h"
@@ -127,17 +133,160 @@ void configureIconTheme(bool dark)
     qWarning("Breeze icons not found; UI icons will be missing. Install breeze-icons.");
 }
 
+// --- Single instance -------------------------------------------------------
+//
+// The socket lives in QDir::tempPath() (honours TMPDIR). Alongside it we keep a
+// small info file naming the process that owns the socket, so a second launch
+// can say *who* it is handing over to instead of exiting silently — a silent
+// exit is indistinguishable from "my rebuild did not take effect", which is
+// exactly how it was misdiagnosed twice.
+//
+// The info file is deliberately not part of the IPC protocol: reading it works
+// even when the running instance is wedged and would not answer on the socket.
+
+const char *const kInstanceName = "OpenCouchInstance";
+
+QString instanceInfoPath()
+{
+    return QDir::tempPath() + QStringLiteral("/") + QLatin1String(kInstanceName)
+        + QStringLiteral(".info");
+}
+
+struct InstanceInfo {
+    qint64 pid = 0;
+    QString executable;   // resolved binary; inside an AppImage this is the extracted copy
+    QString appImage;     // $APPIMAGE, i.e. the path the user actually typed
+
+    bool isValid() const { return pid > 0; }
+    // What to show the user: the .AppImage path when there is one.
+    QString displayPath() const { return appImage.isEmpty() ? executable : appImage; }
+};
+
+void writeInstanceInfo()
+{
+    QFile file(instanceInfoPath());
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        return; // purely diagnostic; never block startup over it
+    }
+    QTextStream out(&file);
+    out << QCoreApplication::applicationPid() << "\n"
+        << QCoreApplication::applicationFilePath() << "\n"
+        << QString::fromLocal8Bit(qgetenv("APPIMAGE")) << "\n";
+}
+
+void removeInstanceInfo()
+{
+    QFile::remove(instanceInfoPath());
+}
+
+// Returns the recorded instance only if that process is still alive, so a stale
+// file left behind by a crash is treated as "no instance".
+InstanceInfo readLiveInstanceInfo()
+{
+    InstanceInfo info;
+    QFile file(instanceInfoPath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return info;
+    }
+    QTextStream in(&file);
+    bool ok = false;
+    const qint64 pid = in.readLine().toLongLong(&ok);
+    if (!ok || pid <= 0 || ::kill(static_cast<pid_t>(pid), 0) != 0) {
+        return info;
+    }
+    info.pid = pid;
+    info.executable = in.readLine();
+    info.appImage = in.readLine();
+    return info;
+}
+
+bool waitForProcessExit(qint64 pid, int milliseconds)
+{
+    for (int waited = 0; waited < milliseconds; waited += 50) {
+        if (::kill(static_cast<pid_t>(pid), 0) != 0) {
+            return true;
+        }
+        QThread::msleep(50);
+    }
+    return ::kill(static_cast<pid_t>(pid), 0) != 0;
+}
+
+// Terminates the running instance so this build can take over. SIGTERM first,
+// SIGKILL only if it refuses to go.
+bool replaceRunningInstance(const InstanceInfo &info)
+{
+    if (!info.isValid()) {
+        fprintf(stderr,
+                "Open Couch: an instance is running but could not be identified "
+                "(%s is missing or stale), so --replace cannot terminate it.\n"
+                "Close it manually and try again.\n",
+                qPrintable(instanceInfoPath()));
+        return false;
+    }
+
+    fprintf(stderr, "Open Couch: replacing the running instance (pid %lld)...\n",
+            static_cast<long long>(info.pid));
+
+    ::kill(static_cast<pid_t>(info.pid), SIGTERM);
+    if (!waitForProcessExit(info.pid, 3000)) {
+        fprintf(stderr, "Open Couch: it did not exit on SIGTERM; sending SIGKILL.\n");
+        ::kill(static_cast<pid_t>(info.pid), SIGKILL);
+        if (!waitForProcessExit(info.pid, 2000)) {
+            fprintf(stderr, "Open Couch: pid %lld is still alive; giving up.\n",
+                    static_cast<long long>(info.pid));
+            return false;
+        }
+    }
+
+    removeInstanceInfo();
+    fprintf(stderr, "Open Couch: previous instance stopped.\n");
+    return true;
+}
+
+// Tells the running instance to show its window, and reports which one that is.
+void reportHandoff(const InstanceInfo &info)
+{
+    if (info.isValid()) {
+        fprintf(stderr,
+                "Open Couch is already running (pid %lld, %s).\n"
+                "Brought the existing window to the front.\n",
+                static_cast<long long>(info.pid), qPrintable(info.displayPath()));
+    } else {
+        fprintf(stderr, "Open Couch is already running.\n"
+                        "Brought the existing window to the front.\n");
+    }
+    fprintf(stderr, "To replace it with this build, run again with --replace.\n");
+}
+
 } // namespace
 
 int main(int argc, char *argv[])
 {
+    // Parsed by hand: this runs before QApplication exists, so there is no
+    // QCommandLineParser yet. QApplication ignores the unknown argument later.
+    bool replaceRunning = false;
+    for (int i = 1; i < argc; ++i) {
+        if (qstrcmp(argv[i], "--replace") == 0) {
+            replaceRunning = true;
+        }
+    }
+
     QLocalSocket socket;
-    socket.connectToServer(QStringLiteral("OpenCouchInstance"));
+    socket.connectToServer(QLatin1String(kInstanceName));
     if (socket.waitForConnected(500)) {
-        socket.write("WAKEUP");
-        socket.flush();
-        socket.waitForBytesWritten(500);
-        return 0;
+        const InstanceInfo running = readLiveInstanceInfo();
+        if (!replaceRunning) {
+            socket.write("WAKEUP");
+            socket.flush();
+            socket.waitForBytesWritten(500);
+            socket.disconnectFromServer();
+            reportHandoff(running);
+            return 0;
+        }
+        socket.disconnectFromServer();
+        if (!replaceRunningInstance(running)) {
+            return 1;
+        }
     }
 
     QApplication app(argc, argv);
@@ -182,8 +331,20 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("appInfo"), &appInfoModel);
 
     QLocalServer server;
-    server.removeServer(QStringLiteral("OpenCouchInstance"));
-    server.listen(QStringLiteral("OpenCouchInstance"));
+    server.removeServer(QLatin1String(kInstanceName));
+    if (server.listen(QLatin1String(kInstanceName))) {
+        writeInstanceInfo();
+        QObject::connect(&app, &QCoreApplication::aboutToQuit, &app, removeInstanceInfo);
+    } else {
+        // Not fatal, but it means the single-instance guard is off: a second
+        // launch will start a whole second app. Worth saying out loud — the
+        // usual cause is a temp path too long for a unix socket (sun_path is
+        // limited to ~107 bytes).
+        fprintf(stderr,
+                "Open Couch: could not listen on the single-instance socket in %s (%s).\n"
+                "Multiple instances may run at the same time.\n",
+                qPrintable(QDir::tempPath()), qPrintable(server.errorString()));
+    }
 
     QObject::connect(&server, &QLocalServer::newConnection, [&backend, &server]() {
         QLocalSocket *client = server.nextPendingConnection();
