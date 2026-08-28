@@ -15,122 +15,33 @@ jobs:
     container:
       image: fedora:latest
     steps:
-        - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-        - name: Check version vs tag
-          id: version
-          env:
-            TAG: ${{ github.ref_name }}
-          run: |
-            VERSION="${TAG#v}"
-            FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
-            if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
-              echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${TAG}." >&2
-              exit 1
-            fi
-            echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+      - name: Check version vs tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
+          if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
+            echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${TAG}." >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
-        - name: Install build dependencies
-          run: |
-            dnf update -y
-            dnf install -y \
-              gcc-c++ cmake ninja-build wget patchelf \
-              qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
-              qt6-qtwayland \
-              kf6-kirigami-devel kf6-kcoreaddons-devel kf6-ki18n-devel \
-              kf6-qqc2-desktop-style breeze-icon-theme \
-              extra-cmake-modules \
-              fuse file
+      # Shared with ci.yml so the release artifact and the PR artifact are
+      # built by exactly the same steps.
+      - uses: ./.github/actions/build-appimage
+        with:
+          version: ${{ steps.version.outputs.version }}
 
-        - name: Build app
-          run: |
-            cmake -S app -B app-build \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DINSTALL_ENGINE_BUNDLE=ON \
-              -DCMAKE_INSTALL_PREFIX=/usr
-            cmake --build app-build --parallel $(nproc)
-            DESTDIR="${GITHUB_WORKSPACE}/AppDir" cmake --install app-build
-
-        - name: Download linuxdeploy
-          run: |
-            wget --no-verbose https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-            wget --no-verbose https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-            chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
-
-            ./linuxdeploy-x86_64.AppImage --appimage-extract
-            mv squashfs-root linuxdeploy-ext
-            ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract
-            mv squashfs-root qt-plugin-ext
-
-            cp /usr/bin/patchelf linuxdeploy-ext/usr/bin/patchelf
-            cp /usr/bin/patchelf qt-plugin-ext/usr/bin/patchelf
-
-            ln -s $GITHUB_WORKSPACE/qt-plugin-ext/AppRun linuxdeploy-ext/usr/bin/linuxdeploy-plugin-qt
-
-        - name: Build AppImage
-          env:
-            VERSION: ${{ steps.version.outputs.version }}
-            QMAKE: qmake6
-            QML_SOURCES_PATHS: ${{ github.workspace }}/app/qml
-            EXTRA_QT_PLUGINS: wayland
-            APPIMAGE_EXTRACT_AND_RUN: 1
-            NO_STRIP: 1
-          run: |
-            mkdir -p AppDir/usr/plugins/{platforms,styles,iconengines,imageformats}
-            cp -a /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
-            test -f AppDir/usr/plugins/platforms/libqwayland.so
-            cp -a /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
-            cp -a /usr/lib64/qt6/plugins/styles/* AppDir/usr/plugins/styles/ || true
-            cp -a /usr/lib64/qt6/plugins/iconengines/* AppDir/usr/plugins/iconengines/ || true
-            cp -a /usr/lib64/qt6/plugins/imageformats/* AppDir/usr/plugins/imageformats/ || true
-
-            test -f AppDir/usr/bin/opencouch
-            test -f AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
-            test -f AppDir/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
-
-            mkdir -p AppDir/usr/qml
-            cp -a /usr/lib64/qt6/qml/* AppDir/usr/qml/
-
-            mkdir -p AppDir/usr/share/icons
-            cp -a /usr/share/icons/breeze AppDir/usr/share/icons/
-            cp -a /usr/share/icons/breeze-dark AppDir/usr/share/icons/
-
-            echo "export XDG_DATA_DIRS=\"\${APPDIR}/usr/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}\"" \
-              >> "${GITHUB_WORKSPACE}/AppDir/AppRun.env" || true
-            echo "export QT_PLUGIN_PATH=\"\${APPDIR}/usr/plugins:\${QT_PLUGIN_PATH:-}\"" \
-              >> "${GITHUB_WORKSPACE}/AppDir/AppRun.env" || true
-
-            # Roda o linuxdeploy extraído (ele agora vai rastrear e empacotar TUDO isso)
-            ./linuxdeploy-ext/AppRun \
-              --appdir AppDir \
-              --plugin qt \
-              --output appimage \
-              --icon-file packaging/icons/io.github.gustavobelo.opencouch.svg \
-              --desktop-file AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
-
-            APPIMAGE_FILE=$(ls Open_Couch-*-x86_64.AppImage 2>/dev/null | head -1)
-            if [[ -z "${APPIMAGE_FILE}" ]]; then
-              echo "::error::No AppImage file found after build" >&2
-              exit 1
-            fi
-            mv "${APPIMAGE_FILE}" OpenCouch-x86_64.AppImage
-
-            mkdir appimage-check
-            (
-              cd appimage-check
-              ../OpenCouch-x86_64.AppImage --appimage-extract
-              test -f squashfs-root/usr/bin/opencouch
-              test -f squashfs-root/usr/plugins/platforms/libqwayland.so
-              test -f squashfs-root/usr/share/applications/io.github.gustavobelo.opencouch.desktop
-              test -f squashfs-root/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
-            )
-
-        - name: Upload AppImage
-          uses: actions/upload-artifact@v4
-          with:
-            name: OpenCouch-x86_64.AppImage
-            path: OpenCouch-x86_64.AppImage
-            if-no-files-found: error
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCouch-x86_64.AppImage
+          path: OpenCouch-x86_64.AppImage
+          if-no-files-found: error
 
   release:
     name: Create GitHub Release

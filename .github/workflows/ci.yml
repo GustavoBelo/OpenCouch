@@ -1,0 +1,37 @@
+name: CI
+
+# Builds the AppImage for every pull request and feature-branch push, so a
+# packaging regression is caught in review instead of at release time — and so
+# reviewers can download and run the build without checking it out.
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  appimage:
+    name: Build AppImage
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/build-appimage
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenCouch-x86_64.AppImage-${{ github.sha }}
+          path: OpenCouch-x86_64.AppImage
+          if-no-files-found: error
+          retention-days: 14

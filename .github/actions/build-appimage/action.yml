@@ -1,0 +1,213 @@
+name: Build AppImage
+description: >-
+  Builds the Open Couch AppImage on Fedora and verifies that everything the app
+  needs at runtime actually made it into the artifact. Shared by the release
+  workflow and the PR workflow so the two can never drift.
+
+inputs:
+  version:
+    description: Version string stamped into the AppImage. Defaults to app/version.txt.
+    required: false
+    default: ''
+
+outputs:
+  appimage:
+    description: Path to the produced AppImage.
+    value: OpenCouch-x86_64.AppImage
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve version
+      id: resolved
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+      run: |
+        VERSION="${INPUT_VERSION}"
+        if [[ -z "${VERSION}" ]]; then
+          VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
+        fi
+        [[ -n "${VERSION}" ]] || { echo "::error::could not resolve a version" >&2; exit 1; }
+        echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        dnf update -y
+        dnf install -y \
+          gcc-c++ cmake ninja-build wget patchelf \
+          qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
+          qt6-qtwayland \
+          kf6-kirigami-devel kf6-kcoreaddons-devel kf6-ki18n-devel \
+          kf6-qqc2-desktop-style breeze-icon-theme \
+          kf6-kiconthemes-devel kf6-kcolorscheme-devel kf6-kguiaddons-devel \
+          extra-cmake-modules \
+          fuse file
+
+    - name: Verify engine artifact matches its sources
+      shell: bash
+      run: |
+        # backend/open-couch-engine is generated from backend/lib,
+        # backend/drivers and backend/dispatcher.sh. Fail loudly if the
+        # committed artifact drifted from them.
+        cp backend/open-couch-engine /tmp/engine-committed
+        bash packaging/build-engine.sh
+        diff -u /tmp/engine-committed backend/open-couch-engine
+        bash -n backend/open-couch-engine
+
+    - name: Build app
+      shell: bash
+      run: |
+        cmake -S app -B app-build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DINSTALL_ENGINE_BUNDLE=ON \
+          -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build app-build --parallel $(nproc)
+        DESTDIR="${GITHUB_WORKSPACE}/AppDir" cmake --install app-build
+
+    - name: Download linuxdeploy
+      shell: bash
+      run: |
+        wget --no-verbose https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        wget --no-verbose https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+        ./linuxdeploy-x86_64.AppImage --appimage-extract
+        mv squashfs-root linuxdeploy-ext
+        ./linuxdeploy-plugin-qt-x86_64.AppImage --appimage-extract
+        mv squashfs-root qt-plugin-ext
+
+        cp /usr/bin/patchelf linuxdeploy-ext/usr/bin/patchelf
+        cp /usr/bin/patchelf qt-plugin-ext/usr/bin/patchelf
+
+        ln -s $GITHUB_WORKSPACE/qt-plugin-ext/AppRun linuxdeploy-ext/usr/bin/linuxdeploy-plugin-qt
+
+    - name: Build AppImage
+      shell: bash
+      env:
+        VERSION: ${{ steps.resolved.outputs.version }}
+        QMAKE: qmake6
+        QML_SOURCES_PATHS: ${{ github.workspace }}/app/qml
+        EXTRA_QT_PLUGINS: wayland
+        APPIMAGE_EXTRACT_AND_RUN: 1
+        NO_STRIP: 1
+      run: |
+        mkdir -p AppDir/usr/plugins/{platforms,styles,iconengines,imageformats,platformthemes}
+        cp -a /usr/lib64/qt6/plugins/platforms/libqwayland*.so AppDir/usr/plugins/platforms/
+        test -f AppDir/usr/plugins/platforms/libqwayland.so
+        cp -a /usr/lib64/qt6/plugins/wayland-* AppDir/usr/plugins/
+        cp -a /usr/lib64/qt6/plugins/styles/* AppDir/usr/plugins/styles/ || true
+        cp -a /usr/lib64/qt6/plugins/iconengines/* AppDir/usr/plugins/iconengines/ || true
+        cp -a /usr/lib64/qt6/plugins/imageformats/* AppDir/usr/plugins/imageformats/ || true
+        cp -a /usr/lib64/qt6/plugins/platformthemes/* AppDir/usr/plugins/platformthemes/ || true
+
+        # Kirigami loads its platform theme from
+        # plugins/kf6/kirigami/platform/<style>.so, selected by the QtQuick
+        # Controls style name. Without org.kde.desktop.so the UI falls back
+        # to Kirigami's hardcoded light BasicTheme regardless of
+        # QT_QUICK_CONTROLS_STYLE. linuxdeploy cannot trace it because
+        # nothing links against it.
+        mkdir -p AppDir/usr/plugins/kf6/kirigami/platform AppDir/usr/lib
+        cp -a /usr/lib64/qt6/plugins/kf6/kirigami/platform/*.so \
+              AppDir/usr/plugins/kf6/kirigami/platform/
+        test -f AppDir/usr/plugins/kf6/kirigami/platform/org.kde.desktop.so
+        # Its dependency closure is added AFTER linuxdeploy's deploy pass:
+        # linuxdeploy prunes usr/lib to the libraries it traced, so anything
+        # put there beforehand is silently deleted again.
+
+        # Ensure SVG icon engine and its dependency are bundled
+        if [[ ! -f AppDir/usr/plugins/iconengines/libqsvgicon.so ]]; then
+          cp -a /usr/lib64/qt6/plugins/iconengines/libqsvgicon.so \
+                AppDir/usr/plugins/iconengines/ 2>/dev/null || true
+        fi
+
+        test -f AppDir/usr/bin/opencouch
+        test -f AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+        test -f AppDir/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
+
+        # hicolor/index.theme for Breeze icon inheritance chain
+        if [[ ! -f AppDir/usr/share/icons/hicolor/index.theme ]] \
+           && [[ -f /usr/share/icons/hicolor/index.theme ]]; then
+          cp /usr/share/icons/hicolor/index.theme AppDir/usr/share/icons/hicolor/
+        fi
+
+        # Symlink engine to bin/ so QProcess finds it by bare name
+        ln -sf ../share/open-couch/open-couch-engine AppDir/usr/bin/open-couch-engine
+
+        mkdir -p AppDir/usr/qml
+        cp -a /usr/lib64/qt6/qml/* AppDir/usr/qml/
+
+        mkdir -p AppDir/usr/share/icons
+        cp -a /usr/share/icons/breeze AppDir/usr/share/icons/
+        cp -a /usr/share/icons/breeze-dark AppDir/usr/share/icons/
+
+        # linuxdeploy runs in two passes. It prunes AppDir/usr/lib to the
+        # libraries it can trace, and --output appimage packs the artifact
+        # in the same invocation — so untraced files have to be added in
+        # between: earlier they get pruned, later the AppImage already exists.
+        echo "linuxdeploy: deploy pass"
+        ./linuxdeploy-ext/AppRun \
+          --appdir AppDir \
+          --plugin qt \
+          --icon-file packaging/icons/io.github.gustavobelo.opencouch.svg \
+          --desktop-file AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+
+        # Libraries nothing links against, so linuxdeploy cannot trace them.
+        # The Kirigami platform plugin is dlopen()ed by name; without this
+        # closure the UI falls back to Kirigami's hardcoded light theme.
+        for lib in libKF6IconThemes libKF6ColorScheme libKF6ConfigCore \
+                   libKF6ConfigGui libKF6GuiAddons libKF6BreezeIcons \
+                   libKF6Archive libKF6I18n libKF6Codecs libKF6WidgetsAddons \
+                   libQt6Svg libQt6SvgWidgets; do
+          if compgen -G "AppDir/usr/lib/${lib}.so.*" >/dev/null; then continue; fi
+          src="$(find /usr/lib64 -maxdepth 1 -name "${lib}.so.*" 2>/dev/null | head -1)"
+          if [[ -n "$src" ]]; then
+            # -L dereferences the soname symlink; cp -a would copy a dangling link.
+            cp -aL "$src" AppDir/usr/lib/
+          else
+            echo "::warning::${lib} not found on the runner; not bundled"
+          fi
+        done
+        test -f AppDir/usr/lib/libKF6ColorScheme.so.6
+        test -f AppDir/usr/lib/libKF6IconThemes.so.6
+
+        echo "linuxdeploy: packaging pass"
+        ./linuxdeploy-ext/AppRun \
+          --appdir AppDir \
+          --custom-apprun packaging/AppRun \
+          --output appimage \
+          --icon-file packaging/icons/io.github.gustavobelo.opencouch.svg \
+          --desktop-file AppDir/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+        rm -f AppDir/AppRun.env
+
+        APPIMAGE_FILE=$(ls Open_Couch-*-x86_64.AppImage 2>/dev/null | head -1)
+        if [[ -z "${APPIMAGE_FILE}" ]]; then
+          echo "::error::No AppImage file found after build" >&2
+          exit 1
+        fi
+        mv "${APPIMAGE_FILE}" OpenCouch-x86_64.AppImage
+
+    - name: Verify AppImage contents
+      shell: bash
+      env:
+        APPIMAGE_EXTRACT_AND_RUN: 1
+      run: |
+        mkdir appimage-check
+        cd appimage-check
+        ../OpenCouch-x86_64.AppImage --appimage-extract
+        test -f squashfs-root/usr/bin/opencouch
+        test -f squashfs-root/usr/bin/open-couch-engine
+        test -f squashfs-root/usr/plugins/platforms/libqwayland.so
+        test -f squashfs-root/usr/plugins/iconengines/libqsvgicon.so
+        test -f squashfs-root/usr/plugins/kf6/kirigami/platform/org.kde.desktop.so
+        test -f squashfs-root/usr/lib/libKF6ColorScheme.so.6
+        test -f squashfs-root/usr/lib/libKF6IconThemes.so.6
+        # AppRun must be our script, not linuxdeploy's symlink to the binary
+        test -f squashfs-root/AppRun && ! test -L squashfs-root/AppRun
+        grep -q QML2_IMPORT_PATH squashfs-root/AppRun
+        test -d squashfs-root/usr/qml/org/kde/desktop
+        test -f squashfs-root/usr/share/applications/io.github.gustavobelo.opencouch.desktop
+        test -f squashfs-root/usr/share/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
+        test -f squashfs-root/usr/share/icons/hicolor/index.theme
+        test -f squashfs-root/usr/share/open-couch/open-couch-engine
