@@ -71,6 +71,8 @@
 <message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>Si cette option est activée, l'écran du PC reste allumé pendant que vous jouez sur la TV.</translation></message>
 <message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>Lorsque vous lancez Big Picture depuis une manette (bouton PS ou XBOX), l'application bascule automatiquement sur la TV et ne revient sur l'écran du PC que lorsque vous quittez Steam ou le mode Big Picture.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Lance Open Couch automatiquement dès l'ouverture de votre session.</translation></message>
+<message id="settings.autostart_unsupported"><source>settings.autostart_unsupported</source><translation>Cette session ne lance pas les applications depuis le dossier de démarrage automatique. Ajoutez plutôt Open Couch à la configuration de votre compositeur (par exemple une ligne exec-once dans hyprland.conf).</translation></message>
+<message id="settings.tray_unavailable"><source>settings.tray_unavailable</source><translation>Aucune zone de notification n'est active dans cette session : la fenêtre disparaîtrait sans moyen de revenir. Lancez un hôte de zone de notification (par exemple Waybar avec le module tray) ou laissez cette option désactivée.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>En fermant la fenêtre, l'application reste active près de l'horloge pour surveiller Steam. Utilisez cette icône pour rouvrir ou quitter.</translation></message>
 <message id="settings.displays"><source>settings.displays</source><translation>Écrans et affichage</translation></message>
 <message id="settings.displays_description"><source>settings.displays_description</source><translation>Définissez quel écran se trouve sur le bureau et lequel est la TV du salon pour basculer facilement.</translation></message>
@@ -140,6 +142,5 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
 </context>
 </TS>

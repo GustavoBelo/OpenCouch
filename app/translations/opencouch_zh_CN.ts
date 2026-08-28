@@ -71,6 +71,8 @@
 <message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>开启后，在电视上玩游戏时电脑屏幕也会保持点亮。</translation></message>
 <message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>当你用手柄打开大画面模式时（通常是按下 PS 或 XBOX 键），应用会立即切换到电视，直到你退出 Steam 或退出大画面模式才会切回电脑。</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>登录系统后自动启动 Open Couch。</translation></message>
+<message id="settings.autostart_unsupported"><source>settings.autostart_unsupported</source><translation>此会话不会从自启动文件夹启动应用程序。请改为将 Open Couch 添加到合成器配置中（例如 hyprland.conf 中的 exec-once 行）。</translation></message>
+<message id="settings.tray_unavailable"><source>settings.tray_unavailable</source><translation>此会话中没有运行系统托盘，窗口将消失且无法恢复。请启动托盘宿主（例如带 tray 模块的 Waybar），或关闭此选项。</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>关闭窗口后，应用会在系统托盘常驻后台以监听 Steam。可通过托盘图标重新打开或退出。</translation></message>
 <message id="settings.displays"><source>settings.displays</source><translation>显示器与屏幕</translation></message>
 <message id="settings.displays_description"><source>settings.displays_description</source><translation>指定哪台是桌上的显示器、哪台是客厅电视，以便一键轻松切换。</translation></message>
@@ -140,6 +142,5 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
 </context>
 </TS>

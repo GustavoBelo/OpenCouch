@@ -71,6 +71,8 @@
 <message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>Wenn aktiviert, bleibt der PC-Monitor an, während du auf dem TV zockst.</translation></message>
 <message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>Wenn du Big Picture über den Controller öffnest (meist per PS- oder Xbox-Taste), wechselt die App sofort zum TV und springt erst zurück zum PC, wenn du Steam schließt oder Big Picture beendest.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Startet Open Couch automatisch nach dem Anmelden.</translation></message>
+<message id="settings.autostart_unsupported"><source>settings.autostart_unsupported</source><translation>Diese Sitzung startet keine Anwendungen aus dem Autostart-Ordner. Tragen Sie Open Couch stattdessen in die Konfiguration Ihres Compositors ein (zum Beispiel eine exec-once-Zeile in hyprland.conf).</translation></message>
+<message id="settings.tray_unavailable"><source>settings.tray_unavailable</source><translation>In dieser Sitzung läuft kein System-Tray, das Fenster würde also ohne Rückweg verschwinden. Starten Sie einen Tray-Host (zum Beispiel Waybar mit dem Tray-Modul) oder lassen Sie diese Option aus.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Beim Schließen des Fensters läuft die App im System-Tray weiter, um Steam zu überwachen. Nutze das Tray-Icon, um sie wieder zu öffnen oder zu beenden.</translation></message>
 <message id="settings.displays"><source>settings.displays</source><translation>Monitore &amp; Bildschirme</translation></message>
 <message id="settings.displays_description"><source>settings.displays_description</source><translation>Lege fest, welcher Bildschirm am Schreibtisch steht und welcher der Wohnzimmer-TV ist, um schnell dazwischen zu wechseln.</translation></message>
@@ -140,6 +142,5 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
 </context>
 </TS>

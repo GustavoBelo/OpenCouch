@@ -20,6 +20,12 @@ Kirigami.ScrollablePage {
     property string liveLogCache: ""
     property bool bannerIsEngineWarning: false
     property bool bannerIsEngineOutdated: false
+    // Kirigami.Theme has no separatorColor (it is not among the Theme color
+    // properties in KF6), so derive one from the text color: this follows the
+    // system palette in both light and dark themes.
+    readonly property color safeSeparatorColor: Qt.rgba(Kirigami.Theme.textColor.r,
+                                                        Kirigami.Theme.textColor.g,
+                                                        Kirigami.Theme.textColor.b, 0.22)
 
     function showBanner(type, text, autoHide, isEngineWarning, outdated) {
         banner.type = type;
@@ -128,7 +134,7 @@ Kirigami.ScrollablePage {
             Layout.preferredHeight: Kirigami.Units.gridUnit * 4.5
             radius: Kirigami.Units.largeSpacing
             color: backend.running ? Kirigami.Theme.positiveBackgroundColor : Kirigami.Theme.alternateBackgroundColor
-            border.color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.separatorColor
+            border.color: backend.running ? Kirigami.Theme.positiveTextColor : page.safeSeparatorColor
             border.width: 1
 
             Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.InOutQuad } }
@@ -172,7 +178,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: actionRow.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -223,7 +229,7 @@ Kirigami.ScrollablePage {
             Layout.topMargin: Kirigami.Units.smallSpacing
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: statusCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -247,6 +253,20 @@ Kirigami.ScrollablePage {
                         text: qsTrId("dashboard.display_status")
                         level: 3
                         Layout.fillWidth: true
+                    }
+
+                    Controls.Label {
+                        id: compositorBadge
+                        visible: text !== ""
+                        text: {
+                            var name = backend.detectCompositor();
+                            if (!name || name === "unknown" || name === "") return "";
+                            var map = { "kde": "KDE Plasma", "hyprland": "Hyprland", "gnome": "GNOME", "generic-x11": "X11" };
+                            return map[name] || name;
+                        }
+                        font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        color: Kirigami.Theme.disabledTextColor
+                        opacity: 0.7
                     }
                 }
 
@@ -288,7 +308,7 @@ Kirigami.ScrollablePage {
                         if (rMissing || rOutdated) {
                             if (backend.canAutoInstallEngine()) {
                                 var installError = backend.tryAutoInstallEngine();
-                                if (installError.length > 0) {
+                                if (installError.length === 0) {
                                     backend.refreshStatus();
                                     page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
                                 } else if (rMissing) {
@@ -313,7 +333,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: logCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -502,7 +522,7 @@ Kirigami.ScrollablePage {
                         width: Kirigami.Units.gridUnit * 3
                         height: parent.height
                         radius: height / 2
-                        color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
+                        color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : page.safeSeparatorColor
                         opacity: logResizeHandle.pressed ? 0.9 : (logResizeHandle.containsMouse ? 0.7 : 0.5)
 
                         Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -544,7 +564,7 @@ Kirigami.ScrollablePage {
             Layout.topMargin: Kirigami.Units.smallSpacing
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.alternateBackgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: supportColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 

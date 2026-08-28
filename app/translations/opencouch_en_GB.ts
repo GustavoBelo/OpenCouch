@@ -71,6 +71,8 @@
 <message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>If enabled, your PC screen stays on while you game on the TV.</translation></message>
 <message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>When launching Big Picture with a controller (usually by pressing the PS or Xbox button), the app switches to the TV straight away and only reverts to your PC monitor once you exit Steam or leave Big Picture mode.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Launches Open Couch automatically as soon as you log in.</translation></message>
+<message id="settings.autostart_unsupported"><source>settings.autostart_unsupported</source><translation>This session does not start apps from the autostart folder. Add Open Couch to your compositor config instead (for example an exec-once line in hyprland.conf).</translation></message>
+<message id="settings.tray_unavailable"><source>settings.tray_unavailable</source><translation>No system tray is running in this session, so the window would disappear with no way back. Start a tray host (for example Waybar with the tray module) or keep this off.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>When closing the window, the app stays running in the system tray to keep an eye on Steam. Use the tray icon to reopen or quit.</translation></message>
 <message id="settings.displays"><source>settings.displays</source><translation>Displays &amp; Monitors</translation></message>
 <message id="settings.displays_description"><source>settings.displays_description</source><translation>Set which screen is on your desk and which is the living room TV to switch between them effortlessly.</translation></message>
@@ -140,6 +142,5 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
 </context>
 </TS>

@@ -71,6 +71,8 @@
 <message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>Se ativado, a tela do PC continua ligada enquanto você joga na TV.</translation></message>
 <message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>Ao abrir o Big Picture pelo controle (geralmente ativa ao clicar no botão PS ou XBOX), o app muda pra TV na hora e só volta pro monitor do PC quando você fechar a Steam ou quiser sair do modo Big Picture.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Abre o Open Couch sozinho assim que você faz login no sistema.</translation></message>
+<message id="settings.autostart_unsupported"><source>settings.autostart_unsupported</source><translation>Esta sessão não inicia aplicativos pela pasta de autostart. Adicione o Open Couch à configuração do seu compositor (por exemplo, uma linha exec-once no hyprland.conf).</translation></message>
+<message id="settings.tray_unavailable"><source>settings.tray_unavailable</source><translation>Não há bandeja do sistema nesta sessão, então a janela sumiria sem forma de voltar. Inicie um host de bandeja (por exemplo, o Waybar com o módulo tray) ou mantenha esta opção desligada.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Ao fechar a janela, o app continua rodando perto do relógio pra monitorar a Steam. Use o ícone de lá para reabrir ou sair.</translation></message>
 <message id="settings.displays"><source>settings.displays</source><translation>Monitores e Telas</translation></message>
 <message id="settings.displays_description"><source>settings.displays_description</source><translation>Defina qual monitor fica na mesa e qual é a TV da sala para alternar facilmente.</translation></message>
@@ -140,6 +142,5 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation>Nenhum aplicativo encontrado.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation>Aplicativos em execução</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation>Nenhum aplicativo em execução detectado.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation>A detecção de apps em execução precisa do pacote opcional `wmctrl` instalado no sistema.</translation></message>
 </context>
 </TS>

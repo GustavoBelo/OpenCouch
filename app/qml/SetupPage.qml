@@ -6,11 +6,42 @@ import org.kde.kirigami as Kirigami
 Kirigami.ScrollablePage {
     id: page
     title: qsTrId("app.settings")
+    // Kirigami.Theme has no separatorColor (it is not among the Theme color
+    // properties in KF6), so derive one from the text color: this follows the
+    // system palette in both light and dark themes.
+    readonly property color safeSeparatorColor: Qt.rgba(Kirigami.Theme.textColor.r,
+                                                        Kirigami.Theme.textColor.g,
+                                                        Kirigami.Theme.textColor.b, 0.22)
+
+    // Optional first-run suggestion from main.qml. Only fills fields the saved
+    // config left empty; the user still has to review and save.
+    property var suggestion: ({})
+
+    // What the running compositor actually supports, reported by the engine.
+    // Used to warn instead of silently offering something that cannot work.
+    readonly property var caps: backend.capabilities()
+
+    function applySuggestion() {
+        if (!suggestion || !suggestion.DESK_OUTPUT || !suggestion.TV_OUTPUT) {
+            return;
+        }
+        if (displaySettingsModel.desktopOutput || displaySettingsModel.tvOutput) {
+            return;
+        }
+        displaySettingsModel.desktopOutput = suggestion.DESK_OUTPUT;
+        displaySettingsModel.tvOutput = suggestion.TV_OUTPUT;
+        displaySettingsModel.desktopMode = suggestion.FALLBACK_DESK_MODE || "";
+        displaySettingsModel.tvMode = suggestion.FALLBACK_TV_MODE || "";
+        displaySettingsModel.desktopScale = suggestion.FALLBACK_DESK_SCALE || "1";
+        displaySettingsModel.tvScale = suggestion.FALLBACK_TV_SCALE || "1";
+        displaySettingsModel.tvPosition = suggestion.FALLBACK_TV_POS || "0,0";
+    }
 
     Component.onCompleted: {
         displaySettingsModel.bindBackend(backend);
         appCleanupModel.bindBackend(backend);
         displaySettingsModel.refreshOutputs();
+        page.applySuggestion();
     }
 
     Timer {
@@ -82,7 +113,7 @@ Kirigami.ScrollablePage {
         for (var i = 0; i < modes.length; i++) {
             var parts = String(modes[i]).split('@');
             if (parts[0] === resolution && parts.length > 1) {
-                var rateStr = parts[1] + " Hz";
+                var rateStr = parseFloat(parts[1]) + " Hz";
                 if (rates.indexOf(rateStr) === -1) rates.push(rateStr);
             }
         }
@@ -94,6 +125,16 @@ Kirigami.ScrollablePage {
         });
         
         return rates;
+    }
+
+    function findRateIndex(rateList, modeStr) {
+        var parts = String(modeStr).split('@');
+        if (parts.length <= 1) return -1;
+        var target = parseFloat(parts[1]);
+        for (var i = 0; i < rateList.length; i++) {
+            if (parseFloat(rateList[i]) === target) return i;
+        }
+        return -1;
     }
 
     ColumnLayout {
@@ -116,7 +157,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: desktopEnvColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -188,11 +229,7 @@ Kirigami.ScrollablePage {
                         model: rateList
                         visible: rateList.length > 0
                         
-                        currentIndex: {
-                            var parts = String(displaySettingsModel.desktopMode).split('@');
-                            if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
-                            return -1;
-                        }
+                        currentIndex: page.findRateIndex(rateList, displaySettingsModel.desktopMode)
                         
                         onActivated: {
                             var cleanRate = currentText.replace(" Hz", "");
@@ -226,7 +263,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: couchEnvColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -298,11 +335,7 @@ Kirigami.ScrollablePage {
                         model: rateList
                         visible: rateList.length > 0
                         
-                        currentIndex: {
-                            var parts = String(displaySettingsModel.tvMode).split('@');
-                            if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
-                            return -1;
-                        }
+                        currentIndex: page.findRateIndex(rateList, displaySettingsModel.tvMode)
                         
                         onActivated: {
                             var cleanRate = currentText.replace(" Hz", "");
@@ -336,7 +369,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: couchBehaviorColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -468,7 +501,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: resourceControlColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -623,7 +656,7 @@ Kirigami.ScrollablePage {
                             Layout.preferredHeight: Kirigami.Units.gridUnit * 10
                             radius: Kirigami.Units.smallSpacing
                             color: Kirigami.Theme.alternateBackgroundColor
-                            border.color: Kirigami.Theme.separatorColor
+                            border.color: page.safeSeparatorColor
                             border.width: 1
 
                             Controls.BusyIndicator {
@@ -718,7 +751,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.safeSeparatorColor
             border.width: 1
             implicitHeight: startupColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -771,6 +804,14 @@ Kirigami.ScrollablePage {
                             opacity: 0.7
                             font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
                         }
+                        Kirigami.InlineMessage {
+                            Layout.fillWidth: true
+                            Layout.topMargin: Kirigami.Units.smallSpacing
+                            type: Kirigami.MessageType.Warning
+                            visible: page.caps && page.caps.autostart
+                                     && page.caps.autostart !== "desktop_entry"
+                            text: qsTrId("settings.autostart_unsupported")
+                        }
                     }
 
                     ColumnLayout {
@@ -792,6 +833,15 @@ Kirigami.ScrollablePage {
                             text: qsTrId("settings.background_on_close_description")
                             opacity: 0.7
                             font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                        }
+                        Kirigami.InlineMessage {
+                            Layout.fillWidth: true
+                            Layout.topMargin: Kirigami.Units.smallSpacing
+                            type: Kirigami.MessageType.Warning
+                            visible: backgroundOnCloseCheck.checked && page.caps
+                                     && page.caps.tray && page.caps.tray !== "available"
+                                     && page.caps.tray !== "native"
+                            text: qsTrId("settings.tray_unavailable")
                         }
                     }
                 }
