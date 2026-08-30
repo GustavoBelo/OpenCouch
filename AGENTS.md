@@ -9,6 +9,7 @@ Guia de integração para agentes de IA que trabalham neste repositório.
 - Host é Arch Linux (toolchain instalada direto no sistema, sem distrobox/container).
 - Editar o engine em `backend/lib/`, `backend/drivers/` e `backend/dispatcher.sh` — **nunca** em `backend/open-couch-engine`, que é gerado. Depois: `bash packaging/build-engine.sh` (já roda `bash -n` no resultado).
 - Lógica de exibição/monitor vive no **engine bash** (`backend/`), não na GUI (`app/`).
+- Mudou o engine ou o core C++? Rode `tests/run.sh` e o `ctest`. Uma mudança em `lib/` ou em qualquer driver **precisa** passar nos dois compositores — a suíte cobre os dois com shims.
 - Se a mudança tocar em algo documentado aqui (build, versionamento, traduções, arquitetura), **atualize este arquivo na mesma mudança**.
 
 ```sh
@@ -18,6 +19,11 @@ cmake --build app-build --parallel "$(nproc)"
 
 # Regenerar o engine a partir das fontes (valida sintaxe e versões)
 bash packaging/build-engine.sh
+
+# Testes (não precisam de KDE nem de Hyprland: tudo é shim)
+tests/run.sh                                   # suíte do engine (bash)
+cmake -S app -B app-build -DBUILD_TESTING=ON && cmake --build app-build
+ctest --test-dir app-build --output-on-failure # core C++
 
 # Release (cria tag; push separado)
 packaging/release.sh X.Y.Z && git push origin main --tags
@@ -36,12 +42,18 @@ O projeto é dividido em três partes:
 | `app/` | GUI em Qt6 + Kirigami (C++17 + QML). Ponte entre a UI e o engine. |
 | `backend/` | O "engine": scripts bash que controlam os displays e monitoram o Steam. |
 | `packaging/` | Scripts de release, Flatpak, instalador host e metadados AppStream. |
+| `tests/` | Suíte do engine (bats + shims dos comandos de host). |
+| `app/tests/` | Testes do core C++ (Qt Test), fora da UI. |
 
 A GUI é apenas uma camada: toda a lógica de exibição vive no engine bash (`backend/open-couch-engine`), que é invocado pela aplicação via `QProcess`.
 
 ## Arquitetura
 
 ### app/ — GUI Qt6/QML
+
+Tudo menos `src/main.cpp` é compilado na biblioteca estática **`opencouch_core`**;
+o executável é `main.cpp` + essa biblioteca, e os testes de `app/tests/` linkam
+exatamente os mesmos objetos.
 
 - `src/main.cpp` — bootstrap: instância única (QLocalServer), **estilo QtQuick Controls + tema de ícones**, tradutores, engine QML, context properties (`backend`, `displaySettingsModel`, `appCleanupModel`, `appInfo`).
   - **Instância única se anuncia.** Se já houver instância, o segundo lançamento manda `WAKEUP`, **imprime no stderr o pid e o caminho da instância viva** e sai com 0. Sair calado fazia isso parecer "o build não pegou" — já custou duas rodadas de depuração. A flag **`--replace`** encerra a instância existente (SIGTERM, SIGKILL como último recurso) e assume o lugar.
@@ -297,8 +309,69 @@ Acompanhar `gh run list --limit 5` e `gh run view <id> --log-failed`. Warnings `
 
 ## Testes e verificação
 
-- **Não há suíte de testes nem lint/typecheck** no repositório.
-- Validação padrão: compilar com o CMake direto no host, conferir que o build passa e pedir ao usuário para testar na prática.
+Há duas suítes, e nenhuma precisa de uma sessão KDE ou Hyprland: todo comando de
+host (`kscreen-doctor`, `hyprctl`, `wmctrl`, `pgrep`, `pkill`, `steam`) é um shim.
+
+```sh
+tests/run.sh                    # engine (bash), ~1 min
+tests/run.sh unit               # só os testes de unidade
+tests/run.sh unit/kde_driver.bats
+
+cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+cmake --build app-build --parallel "$(nproc)"
+ctest --test-dir app-build --output-on-failure
+```
+
+`tests/run.sh` usa o `bats` instalado; se não houver, baixa o bats-core uma vez
+para `tests/.bats/` (gitignored) — sem root e sem pacote de sistema.
+
+**Como a suíte do engine é construída** (`tests/`):
+
+| Caminho | Papel |
+|---|---|
+| `tests/helpers/common.bash` | sandbox (XDG, PATH, DRM, /dev/input), `oc_load_engine`, asserções |
+| `tests/helpers/bin/` | shims dos comandos de host; cada um **registra o argv** em `$OC_CALLLOG` |
+| `tests/fixtures/` | saídas de `kscreen-doctor -j`, `hyprctl -j monitors all`, `clients -j`, árvore DRM |
+| `tests/unit/` | dá `source` em `lib/` + `drivers/` e chama funções direto |
+| `tests/e2e/` | roda o engine como subprocesso |
+
+Duas coisas dão à suíte o valor que ela tem:
+
+- **A asserção é sobre a linha de comando emitida**, não sobre o código de saída.
+  `oc_assert_called "kscreen-doctor output.HDMI-A-1.enable … output.DP-1.disable"`
+  é o que pega posição em formato errado, modo `0x0@60` reinjetado e escala vazia.
+- **A suíte e2e roda duas vezes**: contra `backend/dispatcher.sh` e contra o
+  `backend/open-couch-engine` concatenado. A concatenação é onde as regressões
+  entre compositores se escondem; passar num não prova nada sobre o outro.
+
+O shim de `sleep` comprime o tempo (`OC_SLEEP_CAP`, 0,05 s por padrão): os laços
+de retry do engine dormem em segundos inteiros e a suíte levaria minutos de
+espera pura. A ordem dos eventos é preservada; o relógio não.
+
+Seams no código de produção, com default idêntico ao valor real:
+`OC_DRM_ROOT` (`/sys/class/drm`) e `OC_INPUT_ROOT` (`/dev/input`), em
+`lib/common.sh`. Nada mais deve defini-los.
+
+**Core C++** (`app/tests/`): tudo menos `main.cpp` vive na biblioteca estática
+`opencouch_core`, e os testes linkam os mesmos objetos que o app publica.
+`BUILD_TESTING` é `OFF` por padrão — o build de empacotamento não muda. Cobrem
+`DisplaySettingsValidator`, `EngineClient` (linha de comando, `kMinEngineVersion`,
+`capabilities`), `ConfigStore` (ida e volta do `config.env`) e `AppCleanupModel`
+(varredura de `.desktop`). A UI (QML) não é testada.
+
+- `tests/unit/protected_processes.bats` compara `PROTECTED_PROCESSES`
+  (`lib/common.sh`) com `kProtectedProcesses` (`app/src/appcleanupmodel.cpp`). A
+  sincronia entre as duas listas era exigida por este documento e não era
+  verificada por nada — foi assim que o Hyprland virou candidato a ser morto pelo
+  "controle de recursos".
+- `tests/unit/build_engine.bats` verifica a guarda de prefixo do
+  `build-engine.sh` (injetando uma função sem prefixo em cada driver) e que o
+  `backend/open-couch-engine` commitado é exatamente o que as fontes geram.
+- Lint: `shellcheck --severity=error` passa hoje e é bloqueante no CI;
+  `--severity=warning` é informativo (as sobras são `SC2034`/`SC1090`, inerentes
+  a um engine montado por concatenação).
+- Validação que a suíte **não** substitui: compilar no host e exercitar `play`,
+  `restore`, `watch` e Ctrl-C numa sessão Plasma de verdade.
 - **Ao testar uma build nova da GUI, encerre a instância anterior.** Uma instância viva segura o socket de instância única e o lançamento novo apenas traz a janela *antiga* para frente — indistinguível de "o build não pegou". O app agora avisa, e `--replace` resolve:
   ```sh
   ./OpenCouch-x86_64.AppImage --replace   # encerra a anterior e assume

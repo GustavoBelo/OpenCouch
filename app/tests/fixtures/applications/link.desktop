@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Link
+Name=Some Link
+URL=https://example.com
+Exec=/usr/bin/some-link

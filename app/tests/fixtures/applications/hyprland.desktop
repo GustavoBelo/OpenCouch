@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Hyprland
+Exec=/usr/bin/Hyprland
+Icon=hyprland

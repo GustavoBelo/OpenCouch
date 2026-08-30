@@ -1,4 +1,5 @@
 # drivers/hyprland.sh — Hyprland driver for open-couch-engine.
+# shellcheck shell=bash
 
 HYPRLAND_REQUIRED_HOST_COMMANDS=(jq hyprctl pgrep)
 HYPRLAND_OPTIONAL_HOST_COMMANDS=()
@@ -97,7 +98,7 @@ hyprland_monitors_json() {
 hyprland_connected_outputs_json() {
     local names="[]"
     local connector_dir connector_name
-    for connector_dir in /sys/class/drm/card[0-9]*-*; do
+    for connector_dir in "${OC_DRM_ROOT}"/card[0-9]*-*; do
         [[ -f "${connector_dir}/status" ]] || continue
         [[ "$(cat "${connector_dir}/status" 2>/dev/null)" == "connected" ]] || continue
         connector_name="${connector_dir##*/}"
@@ -113,7 +114,7 @@ hyprland_list_outputs_json() {
     # hyprctl monitors only returns the current mode; /sys/class/drm has all.
     local drm_modes="{}"
     local connector_dir modes_file connector_name modes_json
-    for connector_dir in /sys/class/drm/card[0-9]*-*; do
+    for connector_dir in "${OC_DRM_ROOT}"/card[0-9]*-*; do
         [[ -f "${connector_dir}/status" ]] || continue
         [[ "$(cat "${connector_dir}/status" 2>/dev/null)" == "connected" ]] || continue
         modes_file="${connector_dir}/modes"

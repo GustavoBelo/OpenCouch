@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/_shim.bash"
+oc_record "hyprctl $*"
+case "$*" in
+    "-j monitors all") cat "${OC_HYPR_MONITORS:?OC_HYPR_MONITORS is not set}"; exit 0 ;;
+    "clients -j"|"-j clients") cat "${OC_HYPR_CLIENTS:-/dev/null}"; exit 0 ;;
+esac
+case "${1:-}" in
+    eval|repl)
+        # The capability probe and a real layout command answer differently.
+        if [[ "${2:-}" == *"type(hl.monitor)"* ]]; then
+            printf '%s\n' "${OC_HYPR_API_PROBE-function}"
+            exit "${OC_HYPR_API_PROBE_RC:-0}"
+        fi
+        printf '%s\n' "${OC_HYPR_EVAL_OUT-ok}"
+        exit "${OC_HYPR_EVAL_RC:-0}"
+        ;;
+    --batch)
+        printf '%s\n' "${OC_HYPR_BATCH_OUT-ok}"
+        exit "${OC_HYPR_BATCH_RC:-0}"
+        ;;
+esac
+exit 0

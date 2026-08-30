@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/_shim.bash"
+oc_record "pgrep $*"
+[[ -n "${OC_PGREP_OUT-}" ]] || exit 1
+printf '%s\n' "${OC_PGREP_OUT}"

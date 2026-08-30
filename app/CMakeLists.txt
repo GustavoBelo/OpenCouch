@@ -68,8 +68,10 @@ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Qml Quick QuickControls2 DBus)
 find_package(KF6Kirigami REQUIRED)
 
-qt_add_executable(opencouch
-    src/main.cpp
+# Everything except main.cpp lives in a static core library, so the unit tests
+# can link the same objects the application ships. The UI itself (QML) is not
+# under test; this is the logic behind it.
+add_library(opencouch_core STATIC
     src/applicationicon.cpp
     src/applicationicon.h
     src/backend.cpp
@@ -86,6 +88,27 @@ qt_add_executable(opencouch
     src/appinfomodel.h
     src/appcleanupmodel.cpp
     src/appcleanupmodel.h
+)
+
+target_link_libraries(opencouch_core PUBLIC
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Qml
+    Qt6::Quick
+    Qt6::QuickControls2
+    Qt6::DBus
+)
+
+target_include_directories(opencouch_core PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
+)
+
+set_target_properties(opencouch_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+qt_add_executable(opencouch
+    src/main.cpp
 )
 
 qt_add_qml_module(opencouch
@@ -118,19 +141,7 @@ qt_add_translations(opencouch
         translations/opencouch_zh_CN.ts
 )
 
-target_link_libraries(opencouch PRIVATE
-    Qt6::Core
-    Qt6::Gui
-    Qt6::Widgets
-    Qt6::Qml
-    Qt6::Quick
-    Qt6::QuickControls2
-    Qt6::DBus
-)
-
-target_include_directories(opencouch PRIVATE
-    "${CMAKE_CURRENT_BINARY_DIR}/generated"
-)
+target_link_libraries(opencouch PRIVATE opencouch_core)
 
 include(GNUInstallDirs)
 
@@ -149,4 +160,12 @@ if(INSTALL_ENGINE_BUNDLE)
         "${CMAKE_SOURCE_DIR}/../backend/open-couch-log-viewer"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/open-couch"
     )
+endif()
+
+# Unit tests for the core library. Off by default so packaging builds are
+# unchanged; the CI test job turns it on.
+option(BUILD_TESTING "Build the core unit tests" OFF)
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
 endif()

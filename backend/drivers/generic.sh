@@ -1,4 +1,5 @@
 # drivers/generic.sh — Generic X11 fallback driver for open-couch-engine.
+# shellcheck shell=bash
 # Basic xrandr-based driver for X11 sessions without a recognized DE.
 
 GENERIC_REQUIRED_HOST_COMMANDS=(jq xrandr pgrep)

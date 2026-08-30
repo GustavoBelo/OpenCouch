@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Plasma Shell
+Exec=/usr/bin/plasmashell
+Icon=plasmashell

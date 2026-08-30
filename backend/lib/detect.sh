@@ -1,4 +1,5 @@
 # detect.sh — compositor detection and driver dispatch for open-couch-engine.
+# shellcheck shell=bash
 
 detect_compositor() {
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then

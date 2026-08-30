@@ -1,0 +1,18 @@
+[
+  {
+    "address": "0x1",
+    "class": "steam",
+    "title": "Steam Big Picture Mode",
+    "monitor": 1,
+    "fullscreen": 2,
+    "fullscreenClient": 2
+  },
+  {
+    "address": "0x2",
+    "class": "foot",
+    "title": "belo@desk",
+    "monitor": 0,
+    "fullscreen": 0,
+    "fullscreenClient": 0
+  }
+]

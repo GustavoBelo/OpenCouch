@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/_shim.bash"
+oc_record "systemctl $*"
+[[ -n "${OC_SYSTEMCTL_OUT-}" ]] && printf '%s\n' "${OC_SYSTEMCTL_OUT}"
+exit "${OC_SYSTEMCTL_RC:-0}"

@@ -146,37 +146,100 @@ saindo em silêncio — indistinguível de "o build não pegou". Custou duas rod
 
 ---
 
+---
+
+## Suíte de testes automatizados
+
+O maior problema desta branch não era um bug — era não haver como saber se ela quebrava o KDE. Todas
+as regressões corrigidas acima são **silenciosas**: nada falha, o comportamento só some. Agora existem
+duas suítes, e nenhuma precisa de uma sessão KDE ou Hyprland.
+
+**Engine (bash, `tests/`, 156 testes, ~1 min).** `bats`, com shim para cada comando de host
+(`kscreen-doctor`, `hyprctl`, `wmctrl`, `pgrep`, `pkill`, `steam`, `busctl`, `systemctl`). Cada shim
+**registra o argv** num call log, e é sobre ele que a maioria das asserções é feita: o que importa não é
+"a função retornou 0", é *"o driver mandou exatamente estes argumentos"*. Config, estado, DRM sysfs e
+`/dev/input` são redirecionados para um diretório temporário por teste.
+
+A suíte e2e roda **duas vezes**: contra `backend/dispatcher.sh` e contra o `backend/open-couch-engine`
+concatenado. A concatenação é justamente onde as regressões entre compositores se esconderam.
+
+Cada armadilha da tabela "Armadilhas por compositor" virou teste:
+
+| Teste | Regressão que ele guarda |
+|---|---|
+| `driver_contract.bats` | KDE não pode herdar `big_picture_window_present` do Hyprland; os 14 nomes do contrato ficam ligados nos 4 compositores |
+| `build_engine.bats` | a guarda de prefixo falha o build (injetando função sem prefixo em **cada** driver); o artefato commitado é o que as fontes geram |
+| `play_restore.bats` | Ctrl-C e SIGTERM no meio do `play` trazem o monitor da mesa de volta — nos dois compositores |
+| `hyprland_driver.bats` | `hyprctl` que recusa e **sai 0** faz `apply_monitors` falhar; `XxY` vs `X,Y`; `fullscreen` inteiro; `0x0@60` nunca reinjetado; `connected` vem do DRM |
+| `kde_driver.bats` | os argumentos exatos do `kscreen-doctor` nos três modos (mesa desligada, mesa ao lado, espelhado) |
+| `watch.bats` | `watch` reage ao Big Picture e não mexe no layout enquanto existe sessão de `play` |
+| `protected_processes.bats` | `PROTECTED_PROCESSES` (bash) e `kProtectedProcesses` (C++) são o mesmo conjunto |
+| `session.bats` | debounce dos controles, sessão stale, e `close_tracked_apps` nunca matando processo protegido |
+
+O shim de `sleep` comprime o tempo (`OC_SLEEP_CAP`): os laços de retry do engine dormem em segundos
+inteiros e a suíte levaria minutos de espera pura.
+
+**Core C++ (`app/tests/`, Qt Test).** Tudo menos `main.cpp` passou para a biblioteca estática
+`opencouch_core`; os testes linkam os mesmos objetos que o app publica. `BUILD_TESTING=OFF` por padrão —
+o build de empacotamento não muda em nada. Cobrem `DisplaySettingsValidator`, `EngineClient`,
+`ConfigStore` e a varredura de `.desktop` do `AppCleanupModel`. A UI (QML) não é testada.
+
+**Seams no código de produção** — dois, ambos com default idêntico ao valor de hoje:
+`OC_DRM_ROOT` (`/sys/class/drm`) e `OC_INPUT_ROOT` (`/dev/input`).
+
+### Dois bugs que a suíte encontrou
+
+**`saveConfig()` apagava a configuração de limpeza de apps.** `ConfigStore::saveConfig` truncava o
+`config.env` e escrevia só o mapa recebido; `DisplaySettingsModel::toConfigMap()` não inclui
+`CLOSE_APPS_ENABLED`, `CLOSE_APPS_WAIT_SECONDS` nem `APPS_TO_CLOSE`. Ou seja: configurar os apps a fechar
+e depois salvar qualquer coisa no Setup apagava a lista, em silêncio. `saveConfig` agora **mescla** sobre
+o que já está no disco — o engine lê o arquivo com `source`, então uma chave só é escrita, nunca removida.
+
+**`desktop_process_names` perdia o `--command=` do flatpak.** O nome só era aceito se contivesse `/`, e
+`--command=spotify` (a forma comum) era descartado; sobrava `Client`, de `com.spotify.Client`, que
+`pkill -x` nunca casa. Afeta o caminho de fallback do engine, não a GUI (que faz a varredura em C++).
+
+---
+
 ## Estado
 
 | Frente | Estado |
 |---|---|
-| Regressões do KDE | Corrigidas; **faltam testes numa sessão Plasma** |
-| Driver Hyprland | Corrigido e verificado no host (0.56.2) |
+| Regressões do KDE | Corrigidas e **cobertas por teste automatizado**; falta exercitar numa sessão Plasma real |
+| Driver Hyprland | Corrigido, verificado no host (0.56.2) e coberto por teste |
 | Tema e ícones | Verificados no binário nativo e no AppImage |
-| Empacotamento | AppImage reconstruído e verificado |
+| Empacotamento | AppImage reconstruído e verificado; build de release não mudou com a extração do `opencouch_core` |
 | Instância única | Verificado ponta a ponta |
-| CI de PR | Adicionado; ainda não executado no GitHub |
+| Testes | 156 testes de engine + 4 binários de teste do core C++; `shellcheck --severity=error` limpo |
+| CI de PR | Job `test` roda antes do AppImage e o bloqueia; ainda não executado no GitHub |
 
 ## Antes de release
 
-1. **Testar no KDE Plasma.** As correções de maior risco são as que não pude exercitar aqui: `play`,
-   `restore`, `watch` com Big Picture, e Ctrl-C no meio do `play`.
+1. **Testar no KDE Plasma.** A suíte cobre o que os shims conseguem provar — a ordem das chamadas e os
+   argumentos exatos. Não substitui `play`, `restore`, `watch` e Ctrl-C contra um Big Picture de verdade
+   numa sessão Plasma.
 2. **Decidir o `kMinEngineVersion`.** Está em `1.7.0`, igual ao `main`. O engine mudou de forma que **exige
    reinstalação** (nova API de layout, comandos novos, contrato de driver novo), então deveria subir junto
    com a release — senão quem tiver engine antigo continua com os bugs corrigidos aqui. Não foi bumpado
    agora de propósito: com `app/version.txt` ainda em `1.7.0`, um `MIN_VERSION` maior faria o Dashboard
    acusar "engine desatualizado" durante o desenvolvimento da própria branch.
-3. Versionar apenas com `packaging/release.sh X.Y.Z`.
+   `tst_engineclient` lê o valor da fonte, então acompanha o bump sozinho.
+3. **Decidir o destino do `backend/drivers/hyprland.sh`.** O Couch Mode do Hyprland/Omarchy passou a
+   morar no `hyprmoncfg` (Go, com CLI e o painel `omarchy-hyprmoncfg`), então as 706 linhas do driver bash
+   competem com uma implementação melhor posicionada. A decisão fica para depois do item 1 — agora com
+   evidência, e sabendo que remover o driver também remove a segunda implementação do contrato.
+4. Versionar apenas com `packaging/release.sh X.Y.Z`.
 
 ## Verificação rápida
 
 ```sh
 bash packaging/build-engine.sh          # regenera, valida sintaxe e a regra de prefixo
-cmake --build app-build --parallel "$(nproc)"
 
-# nenhuma função de driver sem prefixo (sequestraria os outros compositores)
-for f in backend/drivers/*.sh; do d=$(basename "$f" .sh); \
-  grep -nE '^[a-z_][a-z0-9_]*\(\) *\{' "$f" | grep -vE ":${d}_" && echo "VAZANDO: $f"; done
+tests/run.sh                            # suíte do engine (unit + e2e nas duas variantes)
+
+cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+cmake --build app-build --parallel "$(nproc)"
+ctest --test-dir app-build --output-on-failure
 
 backend/open-couch-engine detect capabilities outputs check
 ```

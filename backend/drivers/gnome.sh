@@ -1,4 +1,5 @@
 # drivers/gnome.sh — GNOME stub driver for open-couch-engine.
+# shellcheck shell=bash
 # Not yet implemented — fails gracefully.
 
 gnome_check_deps() {

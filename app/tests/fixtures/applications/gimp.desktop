@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=GNU Image Manipulation Program
+Exec=/usr/bin/gimp-2.10 %U
+Icon=gimp

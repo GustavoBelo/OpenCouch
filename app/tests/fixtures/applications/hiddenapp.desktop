@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Removed App
+Exec=/usr/bin/hidden-app
+Icon=hiddenapp
+Hidden=true

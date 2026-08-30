@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/_shim.bash"
+oc_record "pkill $*"
+exit "${OC_PKILL_RC:-0}"

@@ -1,8 +1,8 @@
 name: CI
 
-# Builds the AppImage for every pull request and feature-branch push, so a
-# packaging regression is caught in review instead of at release time — and so
-# reviewers can download and run the build without checking it out.
+# Runs the test suite and then builds the AppImage for every pull request and
+# feature-branch push, so a regression is caught in review instead of at release
+# time — and so reviewers can download and run the build without checking it out.
 on:
   pull_request:
   push:
@@ -18,9 +18,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install test dependencies
+        run: |
+          dnf install -y \
+            bats ShellCheck jq git \
+            gcc-c++ cmake ninja-build \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
+            kf6-kirigami-devel extra-cmake-modules
+
+      - name: Engine sources lint
+        run: |
+          # Advisory for now: the engine predates the linter. Errors fail;
+          # style and info findings are reported without blocking.
+          shellcheck --severity=warning \
+            backend/dispatcher.sh backend/lib/*.sh backend/drivers/*.sh \
+            packaging/*.sh tests/run.sh tests/helpers/bin/* || true
+          shellcheck --severity=error \
+            backend/dispatcher.sh backend/lib/*.sh backend/drivers/*.sh \
+            packaging/*.sh
+
+      - name: Engine test suite
+        run: tests/run.sh
+
+      - name: Core unit tests
+        run: |
+          cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON
+          cmake --build app-build --parallel "$(nproc)"
+          ctest --test-dir app-build --output-on-failure
+
   appimage:
     name: Build AppImage
     runs-on: ubuntu-latest
+    needs: test
     container:
       image: fedora:latest
     steps:

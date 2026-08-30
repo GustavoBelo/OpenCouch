@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/_shim.bash"
+oc_record "kscreen-doctor $*"
+if [[ "${1:-}" == "-j" ]]; then
+    cat "${OC_KSCREEN_JSON:?OC_KSCREEN_JSON is not set}"
+    exit 0
+fi
+exit "${OC_KSCREEN_RC:-0}"

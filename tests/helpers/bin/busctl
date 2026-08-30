@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+source "$(dirname "${BASH_SOURCE[0]}")/_shim.bash"
+oc_record "busctl $*"
+[[ -n "${OC_BUSCTL_OUT-}" ]] && printf '%s\n' "${OC_BUSCTL_OUT}"
+exit "${OC_BUSCTL_RC:-0}"

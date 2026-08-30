@@ -27,6 +27,9 @@ build-fedora/
 test-appdir/
 squashfs-root/
 
+# Test tooling fetched on demand by tests/run.sh
+tests/.bats/
+
 # IDE / editor
 .vscode/
 .idea/

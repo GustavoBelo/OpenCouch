@@ -1,0 +1,28 @@
+{
+  "outputs": [
+    {
+      "name": "DP-1",
+      "connected": true,
+      "enabled": false,
+      "priority": null,
+      "pos": { "x": 0, "y": 0 },
+      "scale": 1,
+      "currentModeId": "d1",
+      "modes": [
+        { "id": "d1", "name": "1920x1080@300", "refreshRate": 300 }
+      ]
+    },
+    {
+      "name": "HDMI-A-1",
+      "connected": true,
+      "enabled": true,
+      "priority": 1,
+      "pos": { "x": 0, "y": 0 },
+      "scale": 1.7,
+      "currentModeId": "t1",
+      "modes": [
+        { "id": "t1", "name": "3840x2160@120", "refreshRate": 120 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Inkscape
+Exec=env GDK_BACKEND=wayland /usr/bin/inkscape %f
+Icon=inkscape

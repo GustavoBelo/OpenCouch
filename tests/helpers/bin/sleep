@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Time compression. The engine's retry loops sleep in whole seconds
+# (wait_for_big_picture_window, kde_move_steam_to_desk_monitor, the watch
+# loop), which would make the suite take minutes of pure waiting. Every sleep
+# is capped instead, so the ORDER of events is preserved but the wall clock is
+# not. Not recorded in the call log: it is noise, not behaviour.
+cap="${OC_SLEEP_CAP:-0.05}"
+duration="${1:-0}"
+if awk -v a="$duration" -v b="$cap" 'BEGIN { exit !(a + 0 > b + 0) }'; then
+    duration="$cap"
+fi
+exec /usr/bin/sleep "$duration"

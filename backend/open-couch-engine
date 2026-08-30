@@ -6,6 +6,7 @@ set -euo pipefail
 # and backend/dispatcher.sh. Edit those instead.
 
 # common.sh — shared functions for the open-couch-engine dispatcher.
+# shellcheck shell=bash
 # Sourced by the dispatcher and all drivers.
 
 # Both are synced by packaging/build-engine.sh — ENGINE_VERSION from
@@ -13,6 +14,12 @@ set -euo pipefail
 # Do not edit manually.
 ENGINE_VERSION="1.7.0"
 MIN_VERSION="1.7.0"
+
+# Device trees the engine reads directly. Overridable so the test suite can
+# point them at fixtures; the defaults are the real paths and nothing else
+# should ever set them.
+OC_DRM_ROOT="${OC_DRM_ROOT:-/sys/class/drm}"
+OC_INPUT_ROOT="${OC_INPUT_ROOT:-/dev/input}"
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-couch-engine"
@@ -419,7 +426,7 @@ default_big_picture_window_present() {
 }
 
 controllers_connected() {
-    local -a devices=(/dev/input/js*)
+    local -a devices=("${OC_INPUT_ROOT}"/js*)
     if [[ -e "${devices[0]:-}" ]]; then
         printf '%s\n' "${#devices[@]}"
     else
@@ -514,11 +521,13 @@ desktop_process_names() {
             cmd="${cmd%\"}"
             cmd="${cmd#\'}"
             cmd="${cmd%\'}"
-            if [[ "$cmd" == *"/"* ]]; then
-                cmd="$(basename "$cmd" 2>/dev/null || printf '%s' "$cmd")"
-                cmd="$(printf '%s' "$cmd" | xargs 2>/dev/null || printf '%s' "$cmd")"
-                [[ -n "$cmd" ]] && names+=("$cmd")
-            fi
+            # --command= carries the real process name. It is usually a bare
+            # name (--command=spotify); requiring a slash here dropped it and
+            # left only the app-id tail ("Client"), which pkill -x never
+            # matches.
+            [[ "$cmd" == *"/"* ]] && cmd="$(basename "$cmd" 2>/dev/null || printf '%s' "$cmd")"
+            cmd="$(printf '%s' "$cmd" | xargs 2>/dev/null || printf '%s' "$cmd")"
+            [[ -n "$cmd" ]] && names+=("$cmd")
         fi
         local appid
         appid="$(printf '%s' "$exec_line" | grep -oE '[A-Za-z0-9_-]+\.[A-Za-z0-9._-]+' 2>/dev/null | grep -E '\.' | head -n1 || true)"
@@ -1066,6 +1075,7 @@ print_detect() {
 }
 
 # detect.sh — compositor detection and driver dispatch for open-couch-engine.
+# shellcheck shell=bash
 
 detect_compositor() {
     if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
@@ -1172,6 +1182,7 @@ load_driver() {
 
 
 # drivers/generic.sh — Generic X11 fallback driver for open-couch-engine.
+# shellcheck shell=bash
 # Basic xrandr-based driver for X11 sessions without a recognized DE.
 
 GENERIC_REQUIRED_HOST_COMMANDS=(jq xrandr pgrep)
@@ -1270,6 +1281,7 @@ generic_watch() {
 
 
 # drivers/gnome.sh — GNOME stub driver for open-couch-engine.
+# shellcheck shell=bash
 # Not yet implemented — fails gracefully.
 
 gnome_check_deps() {
@@ -1317,6 +1329,7 @@ gnome_watch() {
 
 
 # drivers/hyprland.sh — Hyprland driver for open-couch-engine.
+# shellcheck shell=bash
 
 HYPRLAND_REQUIRED_HOST_COMMANDS=(jq hyprctl pgrep)
 HYPRLAND_OPTIONAL_HOST_COMMANDS=()
@@ -1415,7 +1428,7 @@ hyprland_monitors_json() {
 hyprland_connected_outputs_json() {
     local names="[]"
     local connector_dir connector_name
-    for connector_dir in /sys/class/drm/card[0-9]*-*; do
+    for connector_dir in "${OC_DRM_ROOT}"/card[0-9]*-*; do
         [[ -f "${connector_dir}/status" ]] || continue
         [[ "$(cat "${connector_dir}/status" 2>/dev/null)" == "connected" ]] || continue
         connector_name="${connector_dir##*/}"
@@ -1431,7 +1444,7 @@ hyprland_list_outputs_json() {
     # hyprctl monitors only returns the current mode; /sys/class/drm has all.
     local drm_modes="{}"
     local connector_dir modes_file connector_name modes_json
-    for connector_dir in /sys/class/drm/card[0-9]*-*; do
+    for connector_dir in "${OC_DRM_ROOT}"/card[0-9]*-*; do
         [[ -f "${connector_dir}/status" ]] || continue
         [[ "$(cat "${connector_dir}/status" 2>/dev/null)" == "connected" ]] || continue
         modes_file="${connector_dir}/modes"
@@ -2025,6 +2038,7 @@ hyprland_watch() {
 
 
 # drivers/kde.sh — KDE Plasma driver for open-couch-engine.
+# shellcheck shell=bash
 # Extracted from the original monolithic engine without behavior changes.
 
 KDE_REQUIRED_HOST_COMMANDS=(jq kscreen-doctor pgrep)

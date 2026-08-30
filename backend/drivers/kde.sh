@@ -1,4 +1,5 @@
 # drivers/kde.sh — KDE Plasma driver for open-couch-engine.
+# shellcheck shell=bash
 # Extracted from the original monolithic engine without behavior changes.
 
 KDE_REQUIRED_HOST_COMMANDS=(jq kscreen-doctor pgrep)

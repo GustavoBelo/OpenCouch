@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Hidden Helper
+Exec=/usr/bin/nodisplay-app
+Icon=nodisplay
+NoDisplay=true

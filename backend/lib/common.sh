@@ -1,4 +1,5 @@
 # common.sh — shared functions for the open-couch-engine dispatcher.
+# shellcheck shell=bash
 # Sourced by the dispatcher and all drivers.
 
 # Both are synced by packaging/build-engine.sh — ENGINE_VERSION from
@@ -6,6 +7,12 @@
 # Do not edit manually.
 ENGINE_VERSION="1.7.0"
 MIN_VERSION="1.7.0"
+
+# Device trees the engine reads directly. Overridable so the test suite can
+# point them at fixtures; the defaults are the real paths and nothing else
+# should ever set them.
+OC_DRM_ROOT="${OC_DRM_ROOT:-/sys/class/drm}"
+OC_INPUT_ROOT="${OC_INPUT_ROOT:-/dev/input}"
 
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/open-couch-engine"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/open-couch-engine"
@@ -412,7 +419,7 @@ default_big_picture_window_present() {
 }
 
 controllers_connected() {
-    local -a devices=(/dev/input/js*)
+    local -a devices=("${OC_INPUT_ROOT}"/js*)
     if [[ -e "${devices[0]:-}" ]]; then
         printf '%s\n' "${#devices[@]}"
     else
@@ -507,11 +514,13 @@ desktop_process_names() {
             cmd="${cmd%\"}"
             cmd="${cmd#\'}"
             cmd="${cmd%\'}"
-            if [[ "$cmd" == *"/"* ]]; then
-                cmd="$(basename "$cmd" 2>/dev/null || printf '%s' "$cmd")"
-                cmd="$(printf '%s' "$cmd" | xargs 2>/dev/null || printf '%s' "$cmd")"
-                [[ -n "$cmd" ]] && names+=("$cmd")
-            fi
+            # --command= carries the real process name. It is usually a bare
+            # name (--command=spotify); requiring a slash here dropped it and
+            # left only the app-id tail ("Client"), which pkill -x never
+            # matches.
+            [[ "$cmd" == *"/"* ]] && cmd="$(basename "$cmd" 2>/dev/null || printf '%s' "$cmd")"
+            cmd="$(printf '%s' "$cmd" | xargs 2>/dev/null || printf '%s' "$cmd")"
+            [[ -n "$cmd" ]] && names+=("$cmd")
         fi
         local appid
         appid="$(printf '%s' "$exec_line" | grep -oE '[A-Za-z0-9_-]+\.[A-Za-z0-9._-]+' 2>/dev/null | grep -E '\.' | head -n1 || true)"
