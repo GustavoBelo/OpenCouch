@@ -19,10 +19,8 @@ public:
 
     bool isRunning() const { return m_running; }
 
-    Q_INVOKABLE QVariantList listOutputs();
     Q_INVOKABLE QVariantMap loadConfig();
     Q_INVOKABLE bool saveConfig(const QVariantMap &config);
-    Q_INVOKABLE QString validateDisplaySettings(const QVariantMap &config) const;
     Q_INVOKABLE bool autostartEnabled();
     Q_INVOKABLE bool setAutostart(bool enabled);
     Q_INVOKABLE bool backgroundOnClose() const;
@@ -31,11 +29,17 @@ public:
     Q_INVOKABLE void showWindow();
     Q_INVOKABLE void showTray();
 
-    Q_INVOKABLE void play();
-    Q_INVOKABLE void restore();
-    Q_INVOKABLE void refreshStatus();
-    Q_INVOKABLE bool watcherEnabled();
-    Q_INVOKABLE void startWatcher();
+    // Console mode. Every display decision belongs to the engine and to
+    // gamescope; what is left for the app is choosing the television, asking to
+    // switch, and saying why it cannot.
+    Q_INVOKABLE QVariantMap consoleStatus();
+    Q_INVOKABLE QVariantList listDisplays();
+    Q_INVOKABLE void enterConsole();
+    Q_INVOKABLE bool cancelEntry();
+    Q_INVOKABLE QString runSetup();
+    Q_INVOKABLE bool setTv(const QString &connector);
+    Q_INVOKABLE bool setBootMode(const QString &mode);
+    Q_INVOKABLE void closeTrackedApps(const QStringList &processNames);
 
     Q_INVOKABLE bool engineAvailable();
     Q_INVOKABLE bool engineNeedsUpdate();
@@ -60,11 +64,9 @@ public:
 signals:
     void logLine(const QString &line);
     void actionFinished(bool success, const QString &message);
-    void statusUpdated(const QString &statusText);
     void runningChanged();
 
 private:
-    bool validateSettings(const QVariantMap &config, QString *error = nullptr) const;
     QString engineCommand() const;
     QString runEngineSync(const QStringList &args, bool *ok = nullptr);
     void runEngineAsync(const QStringList &args);
@@ -72,7 +74,6 @@ private:
 
     bool m_running = false;
     QProcess *m_asyncProcess = nullptr;
-    QProcess *m_watcherProcess = nullptr;
     class QSystemTrayIcon *m_trayIcon = nullptr;
     class QWindow *m_window = nullptr;
 

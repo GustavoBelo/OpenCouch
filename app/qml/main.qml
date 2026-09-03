@@ -44,8 +44,10 @@ Kirigami.ApplicationWindow {
         Qt.callLater(function() {
             backend.ensureEngine();
 
-            var config = backend.loadConfig();
-            var configured = !!(config.DESK_OUTPUT && config.TV_OUTPUT);
+            // "Configured" is the engine's answer, not a pair of settings keys:
+            // console mode needs a gamescope session, a hosting login and a
+            // television, and only the engine checks all three.
+            var configured = backend.consoleStatus().ready === true;
 
             var setupPage;
             var dashboard = Qt.createComponent(Qt.resolvedUrl("DashboardPage.qml")).createObject(null);

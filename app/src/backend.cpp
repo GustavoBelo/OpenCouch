@@ -2,7 +2,6 @@
 
 #include "applicationicon.h"
 #include "configstore.h"
-#include "displaysettingsvalidator.h"
 #include "engineclient.h"
 
 #include <QApplication>
@@ -28,34 +27,6 @@ QIcon trayIcon()
     return applicationIcon();
 }
 
-QString formatOutputLine(const QJsonObject &out)
-{
-    const QString roleLabel = out.value(QStringLiteral("role")).toString() == QLatin1String("desk")
-        ? qtTrId("status.desktop")
-        : qtTrId("status.couch");
-    const QString name = out.value(QStringLiteral("name")).toString();
-    const bool connected = out.value(QStringLiteral("connected")).toBool();
-    const bool enabled = out.value(QStringLiteral("enabled")).toBool();
-    const QString mode = out.value(QStringLiteral("mode")).toString();
-    const double scale = out.value(QStringLiteral("scale")).toDouble(1.0);
-
-    QString state;
-    if (!connected) {
-        state = qtTrId("status.disconnected");
-    } else if (!enabled) {
-        state = qtTrId("status.disabled");
-    } else {
-        state = qtTrId("status.enabled");
-        if (!mode.isEmpty()) {
-            state += QStringLiteral(", %1").arg(mode);
-        }
-        if (scale != 1.0) {
-            state += qtTrId("status.scale").arg(scale);
-        }
-    }
-
-    return qtTrId("status.format").arg(roleLabel, name, state);
-}
 }
 
 Backend::Backend(QObject *parent)
@@ -135,40 +106,6 @@ void Backend::runEngineAsync(const QStringList &args)
     m_asyncProcess->start(command.first(), command.mid(1));
 }
 
-bool Backend::watcherEnabled()
-{
-    return loadConfig().value(QStringLiteral("WATCH_BIG_PICTURE")).toString() == QLatin1String("true");
-}
-
-void Backend::startWatcher()
-{
-    if (m_watcherProcess && m_watcherProcess->state() != QProcess::NotRunning) {
-        return;
-    }
-
-    m_watcherProcess = new QProcess(this);
-    m_watcherProcess->setProcessChannelMode(QProcess::MergedChannels);
-    connect(m_watcherProcess, &QProcess::readyReadStandardOutput, this, [this]() {
-        const QByteArray chunk = m_watcherProcess->readAllStandardOutput();
-        for (const QByteArray &line : chunk.split('\n')) {
-            if (!line.isEmpty()) {
-                emit logLine(QString::fromUtf8(line));
-            }
-        }
-    });
-    connect(m_watcherProcess, qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus status) {
-        if (status == QProcess::CrashExit || (status == QProcess::NormalExit && exitCode != 0)) {
-            runEngineSync({QStringLiteral("append-log"),
-                           QStringLiteral("ERROR: Big Picture watcher exited unexpectedly (code %1)").arg(exitCode)});
-            emit logLine(qtTrId("watcher.failed").arg(exitCode));
-        }
-    });
-
-    const QStringList command = m_engineClient->commandLine({QStringLiteral("watch")});
-    m_watcherProcess->start(command.first(), command.mid(1));
-}
-
 bool Backend::engineAvailable()
 {
     return m_engineClient->engineAvailable();
@@ -215,7 +152,7 @@ QString Backend::ensureEngine()
     return QString();
 }
 
-QVariantList Backend::listOutputs()
+QVariantList Backend::listDisplays()
 {
     bool ok = false;
     const QString output = runEngineSync({QStringLiteral("outputs")}, &ok);
@@ -240,23 +177,8 @@ QVariantMap Backend::loadConfig()
     return m_configStore->loadConfig();
 }
 
-bool Backend::validateSettings(const QVariantMap &config, QString *error) const
-{
-    return DisplaySettingsValidator::validate(config, error);
-}
-
-QString Backend::validateDisplaySettings(const QVariantMap &config) const
-{
-    QString error;
-    return validateSettings(config, &error) ? QString() : error;
-}
-
 bool Backend::saveConfig(const QVariantMap &config)
 {
-    QString error;
-    if (!validateSettings(config, &error)) {
-        return false;
-    }
     return m_configStore->saveConfig(config);
 }
 
@@ -312,40 +234,74 @@ void Backend::showTray()
     }
 }
 
-void Backend::play()
-{
-    emit logLine(qtTrId("engine.start_couch"));
-    runEngineAsync({QStringLiteral("play")});
-}
-
-void Backend::restore()
-{
-    emit logLine(qtTrId("engine.restore_desktop"));
-    runEngineAsync({QStringLiteral("restore")});
-}
-
-void Backend::refreshStatus()
+QVariantMap Backend::consoleStatus()
 {
     bool ok = false;
     const QString output = runEngineSync({QStringLiteral("status")}, &ok);
     if (!ok) {
-        emit statusUpdated(qtTrId("status.unavailable"));
-        return;
+        return {};
     }
-
     const QJsonDocument doc = QJsonDocument::fromJson(output.toUtf8());
-    if (!doc.isArray()) {
-        emit statusUpdated(output);
+    if (!doc.isObject()) {
+        return {};
+    }
+    return doc.object().toVariantMap();
+}
+
+// There is deliberately no leaveConsole() here. Entering ends this session, so
+// while the console runs there is no window to press a button in; the way home
+// is Steam's own "Switch to Desktop", or `open-couch-engine leave` over ssh.
+void Backend::enterConsole()
+{
+    // --yes because the countdown belongs to the window the user is looking at.
+    // The engine has one of its own for the launcher entry and the command
+    // line, which have nowhere to draw a button; here there is somewhere
+    // better, and two countdowns would race each other.
+    emit logLine(qtTrId("engine.enter_console"));
+    runEngineAsync({QStringLiteral("enter"), QStringLiteral("--yes")});
+}
+
+bool Backend::cancelEntry()
+{
+    bool ok = false;
+    runEngineSync({QStringLiteral("cancel")}, &ok);
+    return ok;
+}
+
+QString Backend::runSetup()
+{
+    bool ok = false;
+    const QString output = runEngineSync({QStringLiteral("setup")}, &ok);
+    return ok ? output : QString();
+}
+
+bool Backend::setTv(const QString &connector)
+{
+    bool ok = false;
+    runEngineSync({QStringLiteral("tv"), connector}, &ok);
+    return ok;
+}
+
+bool Backend::setBootMode(const QString &mode)
+{
+    bool ok = false;
+    runEngineSync({QStringLiteral("boot"), mode}, &ok);
+    return ok;
+}
+
+void Backend::closeTrackedApps(const QStringList &processNames)
+{
+    if (processNames.isEmpty()) {
         return;
     }
-
-    QStringList lines;
-    for (const QJsonValue &value : doc.array()) {
-        if (value.isObject()) {
-            lines << formatOutputLine(value.toObject());
-        }
+    // Synchronous on purpose: this runs on the way into console mode, and the
+    // point is that the applications have been asked to quit before the session
+    // they are running in ends.
+    bool ok = false;
+    const QString output = runEngineSync(QStringList{QStringLiteral("close-apps")} + processNames, &ok);
+    for (const QString &line : output.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+        emit logLine(line);
     }
-    emit statusUpdated(lines.join(QStringLiteral("\n")));
 }
 
 void Backend::copyLogToClipboard()

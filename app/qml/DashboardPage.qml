@@ -21,6 +21,16 @@ Kirigami.ScrollablePage {
     property bool bannerIsEngineWarning: false
     property bool bannerIsEngineOutdated: false
 
+    property var status: ({})
+
+    // Kirigami.Theme.separatorColor does not exist in KF6: every card that
+    // asked for it drew no border at all.
+    readonly property color cardBorderColor: Qt.rgba(Kirigami.Theme.textColor.r,
+                                                     Kirigami.Theme.textColor.g,
+                                                     Kirigami.Theme.textColor.b, 0.15)
+
+    readonly property bool consoleReady: page.status.ready === true
+
     function showBanner(type, text, autoHide, isEngineWarning, outdated) {
         banner.type = type;
         banner.text = text;
@@ -30,6 +40,30 @@ Kirigami.ScrollablePage {
         statusFeedbackTimer.stop();
         if (autoHide) {
             statusFeedbackTimer.restart();
+        }
+    }
+
+    function reload() {
+        page.status = backend.consoleStatus();
+        // The engine leaves word when a console session could not start: the
+        // desktop it fell back to came up with no notification server yet, so
+        // this window is the first thing able to say what happened.
+        if (page.status.failure) {
+            page.showBanner(Kirigami.MessageType.Error, page.status.failure, false, false, false);
+        }
+    }
+
+    function loadLogIntoView() {
+        let rawContent = backend.readLog();
+        if (rawContent !== undefined && rawContent !== "") {
+            let lines = rawContent.split('\n');
+            let formattedLines = [];
+            for (let i = 0; i < lines.length; i++) {
+                if (i === lines.length - 1 && lines[i] === "") continue;
+                formattedLines.push(logArea.getFormattedLine(lines[i]));
+            }
+            logArea.text = formattedLines.join("<br/>");
+            logArea.cursorPosition = logArea.length;
         }
     }
 
@@ -48,32 +82,15 @@ Kirigami.ScrollablePage {
 
     Component.onCompleted: {
         backend.clearLog();
-        backend.refreshStatus();
+        page.reload();
+        page.loadLogIntoView();
 
-        let rawContent = backend.readLog();
-        if (rawContent !== undefined && rawContent !== "") {
-            let lines = rawContent.split('\n');
-            let formattedLines = [];
-            for (let i = 0; i < lines.length; i++) {
-                if (i === lines.length - 1 && lines[i] === "") continue;
-                formattedLines.push(logArea.getFormattedLine(lines[i]));
-            }
-            logArea.text = formattedLines.join("<br/>");
-            logArea.cursorPosition = logArea.length;
-        }
-
-        if (backend.watcherEnabled()) {
-            backend.startWatcher();
-        }
-        
         var engineMissing = !backend.engineAvailable();
         var engineOutdated = !engineMissing && backend.engineNeedsUpdate();
-        if (engineMissing || engineOutdated) {
-            if (engineMissing) {
-                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-            } else {
-                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-            }
+        if (engineMissing) {
+            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+        } else if (engineOutdated) {
+            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
         }
     }
 
@@ -90,11 +107,86 @@ Kirigami.ScrollablePage {
         }
         function onActionFinished(success, message) {
             page.showBanner(success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error, message, false, false, false);
-            backend.refreshStatus();
+            page.reload();
         }
-        function onStatusUpdated(text) {
-            statusArea.text = text;
+    }
+
+    // Entering ends this session, so the warning has to come before the button
+    // does anything -- there is no undo, and nothing left on screen to undo it
+    // with. The engine has a countdown of its own for the launcher entry and
+    // the command line; here there is a window to draw in, which is better.
+    Kirigami.PromptDialog {
+        id: countdownDialog
+        title: qsTrId("dashboard.countdown_title")
+        standardButtons: Kirigami.Dialog.Cancel
+
+        property int remaining: 10
+
+        onRejected: countdownTimer.stop()
+
+        ColumnLayout {
+            spacing: Kirigami.Units.largeSpacing
+
+            Controls.Label {
+                Layout.fillWidth: true
+                wrapMode: Text.Wrap
+                text: qsTrId("dashboard.countdown_body").arg(page.status.tv_description || page.status.tv_name || "")
+            }
+
+            Controls.Label {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 2
+                text: countdownDialog.remaining
+            }
+
+            Controls.ProgressBar {
+                Layout.fillWidth: true
+                from: 0
+                to: 10
+                value: 10 - countdownDialog.remaining
+            }
         }
+
+        Timer {
+            id: countdownTimer
+            interval: 1000
+            repeat: true
+            onTriggered: {
+                countdownDialog.remaining -= 1;
+                if (countdownDialog.remaining <= 0) {
+                    stop();
+                    countdownDialog.close();
+                    page.enterConsoleNow();
+                }
+            }
+        }
+    }
+
+    function askToEnterConsole() {
+        if (!backend.engineAvailable()) {
+            permissionPopup.open();
+            return;
+        }
+        banner.visible = false;
+        countdownDialog.remaining = 10;
+        countdownDialog.open();
+        countdownTimer.restart();
+    }
+
+    function enterConsoleNow() {
+        // Asked to quit before the session they live in ends, not after: this
+        // is the difference between an editor saving its buffers and one being
+        // killed along with the desktop.
+        if (appCleanupModel.enabled) {
+            var names = [];
+            var apps = appCleanupModel.appsToClose;
+            for (var i = 0; i < apps.length; i++) {
+                names.push(apps[i].processName);
+            }
+            backend.closeTrackedApps(names);
+        }
+        backend.enterConsole();
     }
 
     ColumnLayout {
@@ -127,8 +219,8 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             Layout.preferredHeight: Kirigami.Units.gridUnit * 4.5
             radius: Kirigami.Units.largeSpacing
-            color: backend.running ? Kirigami.Theme.positiveBackgroundColor : Kirigami.Theme.alternateBackgroundColor
-            border.color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.separatorColor
+            color: page.consoleReady ? Kirigami.Theme.positiveBackgroundColor : Kirigami.Theme.alternateBackgroundColor
+            border.color: page.consoleReady ? Kirigami.Theme.positiveTextColor : page.cardBorderColor
             border.width: 1
 
             Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.InOutQuad } }
@@ -140,7 +232,7 @@ Kirigami.ScrollablePage {
                 spacing: Kirigami.Units.largeSpacing
 
                 Kirigami.Icon {
-                    source: backend.running ? "video-display" : "computer"
+                    source: page.consoleReady ? "video-television" : "computer"
                     Layout.preferredWidth: Kirigami.Units.iconSizes.large
                     Layout.preferredHeight: Kirigami.Units.iconSizes.large
                     Layout.alignment: Qt.AlignVCenter
@@ -153,16 +245,19 @@ Kirigami.ScrollablePage {
 
                     Kirigami.Heading {
                         level: 3
-                        text: backend.running ? qsTrId("status.couch") : qsTrId("status.desktop")
-                        color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
+                        text: page.consoleReady ? qsTrId("dashboard.console_ready") : qsTrId("dashboard.console_not_ready")
+                        color: page.consoleReady ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
                     }
 
                     Controls.Label {
-                        visible: backend.running
-                        text: qsTrId("dashboard.couch_active")
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
                         opacity: 0.85
                         font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        color: Kirigami.Theme.positiveTextColor
+                        color: page.consoleReady ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
+                        text: page.consoleReady
+                            ? qsTrId("dashboard.console_ready_body").arg(page.status.tv_description || page.status.tv_name || "")
+                            : qsTrId("dashboard.console_not_ready_body")
                     }
                 }
             }
@@ -172,7 +267,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
             implicitHeight: actionRow.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -182,38 +277,27 @@ Kirigami.ScrollablePage {
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.largeSpacing
 
+                // There is no button back. Console mode ends this session, so
+                // while it runs there is no window to press one in; the way
+                // home is Steam's own "Switch to Desktop", or `leave` over ssh.
                 Controls.Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Kirigami.Units.gridUnit * 3.2
-                    text: qsTrId("dashboard.enter_couch")
-                    icon.name: "media-playback-start"
+                    text: qsTrId("dashboard.enter_console")
+                    icon.name: "video-television"
                     icon.width: Kirigami.Units.iconSizes.medium
                     icon.height: Kirigami.Units.iconSizes.medium
-                    highlighted: !backend.running
-                    enabled: !backend.running
-                    onClicked: {
-                        if(!backend.engineAvailable()) {
-                            permissionPopup.open();
-                            return;
-                        }
-                        banner.visible = false;
-                        backend.play();
-                    }
+                    highlighted: page.consoleReady
+                    enabled: page.consoleReady && !backend.running
+                    onClicked: page.askToEnterConsole()
                 }
 
                 Controls.Button {
-                    Layout.fillWidth: true
                     Layout.preferredHeight: Kirigami.Units.gridUnit * 3.2
-                    text: qsTrId("dashboard.return_desktop")
-                    icon.name: "go-home"
-                    icon.width: Kirigami.Units.iconSizes.medium
-                    icon.height: Kirigami.Units.iconSizes.medium
-                    enabled: backend.running
-                    highlighted: backend.running
-                    onClicked: {
-                        banner.visible = false;
-                        backend.restore();
-                    }
+                    text: qsTrId("app.settings")
+                    icon.name: "configure"
+                    visible: !page.consoleReady
+                    onClicked: page.reconfigureRequested()
                 }
             }
         }
@@ -223,7 +307,7 @@ Kirigami.ScrollablePage {
             Layout.topMargin: Kirigami.Units.smallSpacing
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
             implicitHeight: statusCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -244,26 +328,40 @@ Kirigami.ScrollablePage {
                     }
 
                     Kirigami.Heading {
-                        text: qsTrId("dashboard.display_status")
+                        text: qsTrId("dashboard.console_status")
                         level: 3
                         Layout.fillWidth: true
                     }
                 }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: statusArea.implicitHeight + Kirigami.Units.smallSpacing * 2
-                    radius: Kirigami.Units.smallSpacing
-                    color: Kirigami.Theme.alternateBackgroundColor
+                Repeater {
+                    model: page.status.requirements || []
 
-                    Controls.Label {
-                        id: statusArea
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        wrapMode: Text.Wrap
-                        text: qsTrId("common.loading")
-                        opacity: 0.85
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Kirigami.Units.smallSpacing
+
+                        Kirigami.Icon {
+                            source: modelData.ok ? "dialog-ok" : "dialog-cancel"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                        }
+
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            opacity: modelData.ok ? 0.7 : 1
+                            text: modelData.ok ? modelData.have : modelData.want
+                        }
                     }
+                }
+
+                Controls.Label {
+                    Layout.fillWidth: true
+                    visible: !page.status.requirements
+                    wrapMode: Text.Wrap
+                    opacity: 0.85
+                    text: qsTrId("common.loading")
                 }
 
                 Controls.Button {
@@ -271,36 +369,20 @@ Kirigami.ScrollablePage {
                     text: qsTrId("dashboard.refresh_status")
                     icon.name: "view-refresh"
                     onClicked: {
-                        backend.refreshStatus();
-                        let rawContent = backend.readLog();
-                        if (rawContent !== undefined && rawContent !== "") {
-                            let lines = rawContent.split('\n');
-                            let formattedLines = [];
-                            for (let i = 0; i < lines.length; i++) {
-                                if (i === lines.length - 1 && lines[i] === "") continue;
-                                formattedLines.push(logArea.getFormattedLine(lines[i]));
-                            }
-                            logArea.text = formattedLines.join("<br/>");
-                            logArea.cursorPosition = logArea.length;
-                        }
+                        page.reload();
+                        page.loadLogIntoView();
                         var rMissing = !backend.engineAvailable();
                         var rOutdated = !rMissing && backend.engineNeedsUpdate();
-                        if (rMissing || rOutdated) {
-                            if (backend.canAutoInstallEngine()) {
-                                var installError = backend.tryAutoInstallEngine();
-                                if (installError.length > 0) {
-                                    backend.refreshStatus();
-                                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
-                                } else if (rMissing) {
-                                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                                } else {
-                                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-                                }
-                            } else if (rMissing) {
-                                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                            } else {
-                                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-                            }
+                        if ((rMissing || rOutdated) && backend.canAutoInstallEngine()) {
+                            backend.tryAutoInstallEngine();
+                            rMissing = !backend.engineAvailable();
+                            rOutdated = !rMissing && backend.engineNeedsUpdate();
+                            page.reload();
+                        }
+                        if (rMissing) {
+                            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
+                        } else if (rOutdated) {
+                            page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
                         } else {
                             page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
                         }
@@ -313,7 +395,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
             implicitHeight: logCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -502,7 +584,7 @@ Kirigami.ScrollablePage {
                         width: Kirigami.Units.gridUnit * 3
                         height: parent.height
                         radius: height / 2
-                        color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
+                        color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : page.cardBorderColor
                         opacity: logResizeHandle.pressed ? 0.9 : (logResizeHandle.containsMouse ? 0.7 : 0.5)
 
                         Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -544,7 +626,7 @@ Kirigami.ScrollablePage {
             Layout.topMargin: Kirigami.Units.smallSpacing
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.alternateBackgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
             implicitHeight: supportColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -787,7 +869,7 @@ Kirigami.ScrollablePage {
                             if (err === "") {
                                 permissionPopup.installResult = "ok";
                                 banner.visible = false;
-                                backend.refreshStatus();
+                                page.reload();
                             } else {
                                 permissionPopup.installResult = err;
                             }

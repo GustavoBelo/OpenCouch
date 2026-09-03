@@ -7,10 +7,41 @@ Kirigami.ScrollablePage {
     id: page
     title: qsTrId("app.settings")
 
+    property var status: ({})
+    property var displays: []
+
+    // Kirigami.Theme.separatorColor does not exist in KF6: every card that
+    // asked for it drew no border at all. This is the blend the platform styles
+    // use in its place, and it follows the theme in both light and dark.
+    readonly property color cardBorderColor: Qt.rgba(Kirigami.Theme.textColor.r,
+                                                     Kirigami.Theme.textColor.g,
+                                                     Kirigami.Theme.textColor.b, 0.15)
+
     Component.onCompleted: {
-        displaySettingsModel.bindBackend(backend);
         appCleanupModel.bindBackend(backend);
-        displaySettingsModel.refreshOutputs();
+        page.reload();
+    }
+
+    function reload() {
+        page.status = backend.consoleStatus();
+        page.displays = backend.listDisplays();
+    }
+
+    // The connector is what gamescope takes; the description is what a person
+    // recognises. Both are shown, because a machine with two HDMI ports gives no
+    // other way to tell which one the cable is in.
+    function displayLabel(display) {
+        if (!display) return "";
+        return display.description === display.connector
+            ? display.connector
+            : display.description + "  (" + display.connector + ")";
+    }
+
+    function chosenDisplayIndex() {
+        for (var i = 0; i < page.displays.length; i++) {
+            if (page.displays[i].connector === page.status.tv_name) return i;
+        }
+        return -1;
     }
 
     Timer {
@@ -19,109 +50,35 @@ Kirigami.ScrollablePage {
         onTriggered: statusLabel.visible = false
     }
 
-    Timer {
-        id: outputsFeedbackTimer
-        interval: 2500
-        onTriggered: statusLabel.visible = false
-    }
-
-    Connections {
-        target: displaySettingsModel
-        function onOutputsChanged() {
-            if (displaySettingsModel.outputs.length === 0) {
-                statusLabel.type = Kirigami.MessageType.Warning;
-                statusLabel.text = displaySettingsModel.lastError || qsTrId("settings.no_monitors");
-                statusLabel.visible = true;
-            } else {
-                statusLabel.visible = false;
-            }
-        }
-
-        function onLastErrorChanged() {
-            if (displaySettingsModel.lastError.length > 0 && displaySettingsModel.outputs.length === 0) {
-                statusLabel.type = Kirigami.MessageType.Warning;
-                statusLabel.text = displaySettingsModel.lastError;
-                statusLabel.visible = true;
-            }
-        }
-    }
-
-    function outputModes(name) {
-        return displaySettingsModel.outputModes(name);
-    }
-
-    function uniqueResolutions(modes) {
-        if (!modes) return [];
-        var res = [];
-        for (var i = 0; i < modes.length; i++) {
-            var r = String(modes[i]).split('@')[0];
-            if (res.indexOf(r) === -1) res.push(r);
-        }
-        
-        res.sort(function(a, b) {
-            var partsA = a.split('x');
-            var partsB = b.split('x');
-            var widthA = parseInt(partsA[0]) || 0;
-            var widthB = parseInt(partsB[0]) || 0;
-            
-            if (widthA !== widthB) {
-                return widthB - widthA; 
-            }
-            
-            var heightA = parseInt(partsA[1]) || 0;
-            var heightB = parseInt(partsB[1]) || 0;
-            return heightB - heightA; 
-        });
-        
-        return res;
-    }
-
-    function ratesForResolution(modes, resolution) {
-        if (!modes || !resolution) return [];
-        var rates = [];
-        for (var i = 0; i < modes.length; i++) {
-            var parts = String(modes[i]).split('@');
-            if (parts[0] === resolution && parts.length > 1) {
-                var rateStr = parts[1] + " Hz";
-                if (rates.indexOf(rateStr) === -1) rates.push(rateStr);
-            }
-        }
-        
-        rates.sort(function(a, b) {
-            var valA = parseFloat(a) || 0;
-            var valB = parseFloat(b) || 0;
-            return valB - valA; 
-        });
-        
-        return rates;
-    }
-
     ColumnLayout {
-        width: page.width
+        Layout.fillWidth: true
         spacing: Kirigami.Units.largeSpacing
 
         Controls.Label {
             Layout.fillWidth: true
             wrapMode: Text.Wrap
-            text: qsTrId("settings.displays_description")
             opacity: 0.8
+            text: qsTrId("settings.console_description")
         }
 
         Kirigami.Heading {
-            text: qsTrId("settings.displays")
+            text: qsTrId("settings.console")
             level: 3
+            Layout.fillWidth: true
         }
 
+        // What is still missing. The engine answers this in one place so the
+        // page and the command line cannot disagree about what "ready" means.
         Rectangle {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
-            implicitHeight: desktopEnvColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            implicitHeight: requirementsColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
             ColumnLayout {
-                id: desktopEnvColumn
+                id: requirementsColumn
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
@@ -131,7 +88,7 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.largeSpacing
 
                     Kirigami.Icon {
-                        source: "computer"
+                        source: page.status.ready ? "checkmark" : "dialog-warning"
                         Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                         Layout.preferredHeight: Kirigami.Units.iconSizes.medium
                         Kirigami.Theme.colorSet: Kirigami.Theme.Button
@@ -139,99 +96,57 @@ Kirigami.ScrollablePage {
                     }
 
                     Kirigami.Heading {
-                        text: qsTrId("settings.desktop_environment")
+                        text: page.status.ready ? qsTrId("settings.ready") : qsTrId("settings.not_ready")
                         level: 4
                         Layout.fillWidth: true
                     }
+
+                    Controls.Button {
+                        text: qsTrId("settings.recheck")
+                        icon.name: "view-refresh"
+                        onClicked: page.reload()
+                    }
                 }
 
-                Kirigami.FormLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
-
-                    Controls.ComboBox {
-                        Kirigami.FormData.label: qsTrId("settings.desktop_display")
-                        model: displaySettingsModel.outputs.map(function(o) { return o.name; })
-                        currentIndex: model.indexOf(displaySettingsModel.desktopOutput)
-                        onActivated: displaySettingsModel.desktopOutput = currentText
-                    }
-
-                    Controls.ComboBox {
-                        id: deskResCombo
-                        Kirigami.FormData.label: qsTrId("settings.resolution")
-                        
-                        property var allModes: {
-                            var _trigger = displaySettingsModel.outputs;
-                            return page.outputModes(displaySettingsModel.desktopOutput);
-                        }
-                        property var resList: page.uniqueResolutions(allModes)
-                        
-                        model: resList
-                        currentIndex: resList.indexOf(String(displaySettingsModel.desktopMode).split('@')[0])
-                        
-                        onActivated: {
-                            var newRes = currentText;
-                            var availableRates = page.ratesForResolution(allModes, newRes);
-                            var bestRate = availableRates.length > 0 ? availableRates[0].replace(" Hz", "") : "";
-                            displaySettingsModel.desktopMode = bestRate ? (newRes + "@" + bestRate) : newRes;
-                        }
-                    }
-
-                    Controls.ComboBox {
-                        id: deskRateCombo
-                        Kirigami.FormData.label: qsTrId("settings.refresh_rate")
-                        
-                        property var allModes: deskResCombo.allModes
-                        property string currentRes: String(displaySettingsModel.desktopMode).split('@')[0]
-                        property var rateList: page.ratesForResolution(allModes, currentRes)
-                        
-                        model: rateList
-                        visible: rateList.length > 0
-                        
-                        currentIndex: {
-                            var parts = String(displaySettingsModel.desktopMode).split('@');
-                            if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
-                            return -1;
-                        }
-                        
-                        onActivated: {
-                            var cleanRate = currentText.replace(" Hz", "");
-                            displaySettingsModel.desktopMode = currentRes + "@" + cleanRate;
-                        }
-                    }
+                Repeater {
+                    model: page.status.requirements || []
 
                     RowLayout {
-                        Kirigami.FormData.label: qsTrId("settings.desktop_scale")
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.gridUnit
                         spacing: Kirigami.Units.smallSpacing
 
-                        Controls.TextField {
-                            id: deskScaleField
-                            text: displaySettingsModel.desktopScale
-                            onTextEdited: displaySettingsModel.desktopScale = text
-                            Layout.preferredWidth: Kirigami.Units.gridUnit * 4
+                        Kirigami.Icon {
+                            source: modelData.ok ? "dialog-ok" : "dialog-cancel"
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
                         }
 
-                        Controls.ToolButton {
-                            icon.name: "help-hint"
-                            display: Controls.ToolButton.IconOnly
-                            Controls.ToolTip.visible: hovered
-                            Controls.ToolTip.text: qsTrId("settings.desktop_scale_tooltip")
+                        Controls.Label {
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            opacity: modelData.ok ? 0.7 : 1
+                            text: modelData.ok ? modelData.have : modelData.want
                         }
                     }
                 }
             }
         }
 
+        // The hosting session. This is the one step that needs root, and the
+        // page prints the command rather than running it: getting it wrong
+        // leaves a machine that will not present a desktop at all, which is a
+        // bad thing to inflict on someone who has not seen it coming.
         Rectangle {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
-            implicitHeight: couchEnvColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            implicitHeight: hostingColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
             ColumnLayout {
-                id: couchEnvColumn
+                id: hostingColumn
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
@@ -241,7 +156,7 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.largeSpacing
 
                     Kirigami.Icon {
-                        source: "video-display"
+                        source: "system-switch-user"
                         Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                         Layout.preferredHeight: Kirigami.Units.iconSizes.medium
                         Kirigami.Theme.colorSet: Kirigami.Theme.Button
@@ -249,99 +164,71 @@ Kirigami.ScrollablePage {
                     }
 
                     Kirigami.Heading {
-                        text: qsTrId("settings.couch_environment")
+                        text: qsTrId("settings.hosting_session")
                         level: 4
                         Layout.fillWidth: true
                     }
                 }
 
-                Kirigami.FormLayout {
+                Controls.Label {
                     Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                    wrapMode: Text.Wrap
+                    opacity: 0.8
+                    text: qsTrId("settings.hosting_description")
+                }
 
-                    Controls.ComboBox {
-                        Kirigami.FormData.label: qsTrId("settings.couch_display")
-                        model: displaySettingsModel.outputs.map(function(o) { return o.name; })
-                        currentIndex: model.indexOf(displaySettingsModel.tvOutput)
-                        onActivated: displaySettingsModel.tvOutput = currentText
-                    }
+                RowLayout {
+                    Layout.fillWidth: true
 
-                    Controls.ComboBox {
-                        id: tvResCombo
-                        Kirigami.FormData.label: qsTrId("settings.resolution")
-                        
-                        property var allModes: {
-                            var _trigger = displaySettingsModel.outputs;
-                            return page.outputModes(displaySettingsModel.tvOutput);
-                        }
-                        property var resList: page.uniqueResolutions(allModes)
-                        
-                        model: resList
-                        currentIndex: resList.indexOf(String(displaySettingsModel.tvMode).split('@')[0])
-                        
-                        onActivated: {
-                            var newRes = currentText;
-                            var availableRates = page.ratesForResolution(allModes, newRes);
-                            var bestRate = availableRates.length > 0 ? availableRates[0].replace(" Hz", "") : "";
-                            displaySettingsModel.tvMode = bestRate ? (newRes + "@" + bestRate) : newRes;
+                    Controls.Button {
+                        text: qsTrId("settings.run_setup")
+                        icon.name: "run-build-configure"
+                        onClicked: {
+                            var instructions = backend.runSetup();
+                            if (instructions.length > 0) {
+                                setupInstructions.text = instructions;
+                                setupInstructions.visible = true;
+                            } else {
+                                statusLabel.type = Kirigami.MessageType.Error;
+                                statusLabel.text = qsTrId("settings.setup_failed");
+                                statusLabel.visible = true;
+                            }
+                            page.reload();
                         }
                     }
 
-                    Controls.ComboBox {
-                        id: tvRateCombo
-                        Kirigami.FormData.label: qsTrId("settings.refresh_rate")
-                        
-                        property var allModes: tvResCombo.allModes
-                        property string currentRes: String(displaySettingsModel.tvMode).split('@')[0]
-                        property var rateList: page.ratesForResolution(allModes, currentRes)
-                        
-                        model: rateList
-                        visible: rateList.length > 0
-                        
-                        currentIndex: {
-                            var parts = String(displaySettingsModel.tvMode).split('@');
-                            if (parts.length > 1) return rateList.indexOf(parts[1] + " Hz");
-                            return -1;
-                        }
-                        
-                        onActivated: {
-                            var cleanRate = currentText.replace(" Hz", "");
-                            displaySettingsModel.tvMode = currentRes + "@" + cleanRate;
-                        }
+                    Item { Layout.fillWidth: true }
+
+                    Controls.Button {
+                        visible: setupInstructions.visible
+                        text: qsTrId("common.copy")
+                        icon.name: "edit-copy"
+                        onClicked: setupInstructions.selectAll(), setupInstructions.copy()
                     }
+                }
 
-                    RowLayout {
-                        Kirigami.FormData.label: qsTrId("settings.couch_scale")
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Controls.TextField {
-                            id: tvScaleField
-                            text: displaySettingsModel.tvScale
-                            onTextEdited: displaySettingsModel.tvScale = text
-                            Layout.preferredWidth: Kirigami.Units.gridUnit * 4
-                        }
-
-                        Controls.ToolButton {
-                            icon.name: "help-hint"
-                            display: Controls.ToolButton.IconOnly
-                            Controls.ToolTip.visible: hovered
-                            Controls.ToolTip.text: qsTrId("settings.couch_scale_tooltip")
-                        }
-                    }
+                Controls.TextArea {
+                    id: setupInstructions
+                    Layout.fillWidth: true
+                    visible: false
+                    readOnly: true
+                    wrapMode: Text.Wrap
+                    font.family: "monospace"
                 }
             }
         }
 
+        // The television.
         Rectangle {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
-            implicitHeight: couchBehaviorColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            implicitHeight: televisionColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
             ColumnLayout {
-                id: couchBehaviorColumn
+                id: televisionColumn
                 anchors.fill: parent
                 anchors.margins: Kirigami.Units.largeSpacing
                 spacing: Kirigami.Units.smallSpacing
@@ -351,7 +238,7 @@ Kirigami.ScrollablePage {
                     spacing: Kirigami.Units.largeSpacing
 
                     Kirigami.Icon {
-                        source: "preferences-system"
+                        source: "video-television"
                         Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                         Layout.preferredHeight: Kirigami.Units.iconSizes.medium
                         Kirigami.Theme.colorSet: Kirigami.Theme.Button
@@ -359,7 +246,91 @@ Kirigami.ScrollablePage {
                     }
 
                     Kirigami.Heading {
-                        text: qsTrId("settings.couch_behavior")
+                        text: qsTrId("settings.television")
+                        level: 4
+                        Layout.fillWidth: true
+                    }
+                }
+
+                Controls.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    opacity: 0.8
+                    text: qsTrId("settings.television_description")
+                }
+
+                Kirigami.FormLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
+
+                    Controls.ComboBox {
+                        id: televisionCombo
+                        Kirigami.FormData.label: qsTrId("settings.television_display")
+                        Layout.fillWidth: true
+                        model: page.displays.map(page.displayLabel)
+                        currentIndex: page.chosenDisplayIndex()
+                        onActivated: {
+                            var display = page.displays[currentIndex];
+                            if (display && backend.setTv(display.connector)) {
+                                page.reload();
+                            }
+                        }
+                    }
+
+                    Controls.Label {
+                        Kirigami.FormData.label: qsTrId("settings.television_state")
+                        visible: page.chosenDisplayIndex() >= 0
+                        wrapMode: Text.Wrap
+                        opacity: 0.7
+                        text: {
+                            var display = page.displays[page.chosenDisplayIndex()];
+                            if (!display) return "";
+                            return display.connected
+                                ? qsTrId("settings.television_connected")
+                                : qsTrId("settings.television_waiting");
+                        }
+                    }
+                }
+
+                Controls.Label {
+                    Layout.fillWidth: true
+                    visible: page.displays.length === 0
+                    wrapMode: Text.Wrap
+                    color: Kirigami.Theme.negativeTextColor
+                    text: qsTrId("settings.no_displays")
+                }
+            }
+        }
+
+        // Where a fresh login lands, and whether a controller may ask.
+        Rectangle {
+            Layout.fillWidth: true
+            radius: Kirigami.Units.largeSpacing
+            color: Kirigami.Theme.backgroundColor
+            border.color: page.cardBorderColor
+            border.width: 1
+            implicitHeight: behaviourColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+
+            ColumnLayout {
+                id: behaviourColumn
+                anchors.fill: parent
+                anchors.margins: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.smallSpacing
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Kirigami.Icon {
+                        source: "preferences-desktop-gaming"
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
+                        Kirigami.Theme.inherit: false
+                    }
+
+                    Kirigami.Heading {
+                        text: qsTrId("settings.console_behavior")
                         level: 4
                         Layout.fillWidth: true
                     }
@@ -371,69 +342,32 @@ Kirigami.ScrollablePage {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Kirigami.FormData.label: qsTrId("settings.desktop_display_label")
+                        Kirigami.FormData.label: qsTrId("settings.boot_label")
                         spacing: 0
 
-                        Controls.CheckBox {
-                            id: keepDeskEnabledCheck
+                        Controls.ComboBox {
+                            id: bootCombo
                             Layout.fillWidth: true
-                            text: qsTrId("settings.keep_desktop_enabled")
-                            checked: displaySettingsModel.keepDeskEnabled
-                            onToggled: displaySettingsModel.keepDeskEnabled = checked
+                            textRole: "label"
+                            valueRole: "value"
+                            model: [
+                                { value: "desktop", label: qsTrId("settings.boot_desktop") },
+                                { value: "console", label: qsTrId("settings.boot_console") },
+                                { value: "last", label: qsTrId("settings.boot_last") }
+                            ]
+                            currentIndex: {
+                                var boot = page.status.boot || "desktop";
+                                return boot === "console" ? 1 : (boot === "last" ? 2 : 0);
+                            }
+                            onActivated: {
+                                if (backend.setBootMode(currentValue)) page.reload();
+                            }
                         }
                         Controls.Label {
                             Layout.fillWidth: true
                             Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
                             wrapMode: Text.Wrap
-                            text: qsTrId("settings.keep_desktop_description")
-                            opacity: 0.7
-                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Layout.maximumHeight: keepDeskEnabledCheck.checked ? -1 : 0
-                        Kirigami.FormData.label: qsTrId("settings.mirroring")
-                        opacity: keepDeskEnabledCheck.checked ? 1 : 0
-                        enabled: keepDeskEnabledCheck.checked
-                        clip: true
-                        spacing: 0
-
-                        Controls.CheckBox {
-                            id: mirrorDeskToTvCheck
-                            Layout.fillWidth: true
-                            text: qsTrId("settings.mirror_desktop")
-                            checked: displaySettingsModel.mirrorDeskToTv
-                            onToggled: displaySettingsModel.mirrorDeskToTv = checked
-                        }
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                            wrapMode: Text.Wrap
-                            text: qsTrId("settings.mirror_desktop_description")
-                            opacity: 0.7
-                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Kirigami.FormData.label: qsTrId("settings.big_picture_label")
-                        spacing: 0
-
-                        Controls.CheckBox {
-                            id: watchBigPictureCheck
-                            Layout.fillWidth: true
-                            text: qsTrId("settings.watch_big_picture")
-                            checked: displaySettingsModel.watchBigPicture
-                            onToggled: displaySettingsModel.watchBigPicture = checked
-                        }
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                            wrapMode: Text.Wrap
-                            text: qsTrId("settings.watch_big_picture_description")
+                            text: qsTrId("settings.boot_description")
                             opacity: 0.7
                             font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
                         }
@@ -445,17 +379,20 @@ Kirigami.ScrollablePage {
                         spacing: 0
 
                         Controls.CheckBox {
-                            id: exitOnControllersOffCheck
                             Layout.fillWidth: true
-                            text: qsTrId("settings.exit_on_controllers_off")
-                            checked: displaySettingsModel.exitOnControllersOff
-                            onToggled: displaySettingsModel.exitOnControllersOff = checked
+                            text: qsTrId("settings.enter_on_controller")
+                            checked: page.status.enter_on_controller_connect === true
+                            onToggled: {
+                                var config = backend.loadConfig();
+                                config["ENTER_ON_CONTROLLER_CONNECT"] = checked ? "true" : "false";
+                                backend.saveConfig(config);
+                            }
                         }
                         Controls.Label {
                             Layout.fillWidth: true
                             Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
                             wrapMode: Text.Wrap
-                            text: qsTrId("settings.exit_on_controllers_off_description")
+                            text: qsTrId("settings.enter_on_controller_description")
                             opacity: 0.7
                             font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
                         }
@@ -468,7 +405,7 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
             implicitHeight: resourceControlColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -623,7 +560,7 @@ Kirigami.ScrollablePage {
                             Layout.preferredHeight: Kirigami.Units.gridUnit * 10
                             radius: Kirigami.Units.smallSpacing
                             color: Kirigami.Theme.alternateBackgroundColor
-                            border.color: Kirigami.Theme.separatorColor
+                            border.color: page.cardBorderColor
                             border.width: 1
 
                             Controls.BusyIndicator {
@@ -714,11 +651,12 @@ Kirigami.ScrollablePage {
             }
         }
 
+
         Rectangle {
             Layout.fillWidth: true
             radius: Kirigami.Units.largeSpacing
             color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
+            border.color: page.cardBorderColor
             border.width: 1
             implicitHeight: startupColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
 
@@ -760,8 +698,8 @@ Kirigami.ScrollablePage {
                             id: autostartCheck
                             Layout.fillWidth: true
                             text: qsTrId("settings.autostart")
-                            checked: displaySettingsModel.autostart
-                            onToggled: displaySettingsModel.autostart = checked
+                            checked: backend.autostartEnabled()
+                            onToggled: backend.setAutostart(checked)
                         }
                         Controls.Label {
                             Layout.fillWidth: true
@@ -782,8 +720,8 @@ Kirigami.ScrollablePage {
                             id: backgroundOnCloseCheck
                             Layout.fillWidth: true
                             text: qsTrId("settings.background_on_close")
-                            checked: displaySettingsModel.backgroundOnClose
-                            onToggled: displaySettingsModel.backgroundOnClose = checked
+                            checked: backend.backgroundOnClose()
+                            onToggled: backend.setBackgroundOnClose(checked)
                         }
                         Controls.Label {
                             Layout.fillWidth: true
@@ -812,48 +750,25 @@ Kirigami.ScrollablePage {
 
             Item { Layout.fillWidth: true }
 
-            Controls.Button {
-                text: qsTrId("settings.detect_again")
-                icon.name: "view-refresh"
-                onClicked: {
-                    displaySettingsModel.refreshOutputs();
-                    if (displaySettingsModel.outputs.length > 0) {
-                        statusLabel.type = Kirigami.MessageType.Positive;
-                        statusLabel.text = qsTrId("settings.outputs_detected");
-                        statusLabel.visible = true;
-                        outputsFeedbackTimer.restart();
-                    }
-                }
-            }
-            
+            // The television, the boot mode and the hosting session are saved
+            // by the engine the moment they are chosen, because each is one
+            // call and a half-applied console is worse than a slow one. This
+            // button is only for the application list, which is edited in
+            // several steps before it means anything.
             Controls.Button {
                 text: qsTrId("common.save")
                 icon.name: "dialog-ok"
                 highlighted: true
-                enabled: displaySettingsModel.desktopOutput.length > 0
-                         && displaySettingsModel.tvOutput.length > 0
-                         && displaySettingsModel.desktopOutput !== displaySettingsModel.tvOutput
                 onClicked: {
-                    var validationMessage = displaySettingsModel.validate();
-                    if (validationMessage.length > 0) {
-                        statusLabel.type = Kirigami.MessageType.Error;
-                        statusLabel.text = validationMessage;
-                        statusLabel.visible = true;
-                        return;
-                    }
-
-                    var ok = displaySettingsModel.save();
-                    var ok2 = appCleanupModel.save();
-                    if (ok && ok2) {
+                    if (appCleanupModel.save()) {
                         statusLabel.type = Kirigami.MessageType.Positive;
                         statusLabel.text = qsTrId("settings.saved");
-                        statusLabel.visible = true;
-                        saveFeedbackTimer.restart();
                     } else {
                         statusLabel.type = Kirigami.MessageType.Error;
-                        statusLabel.text = displaySettingsModel.lastError || qsTrId("settings.error.save_failed");
-                        statusLabel.visible = true;
+                        statusLabel.text = qsTrId("settings.error.save_failed");
                     }
+                    statusLabel.visible = true;
+                    saveFeedbackTimer.restart();
                 }
             }
         }

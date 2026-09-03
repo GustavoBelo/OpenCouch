@@ -8,30 +8,15 @@
 <message id="tray.quit"><source>tray.quit</source><translation>Beenden</translation></message>
 <message id="engine.completed"><source>engine.completed</source><translation>Alles startklar!</translation></message>
 <message id="engine.failed"><source>engine.failed</source><translation>Fehlgeschlagen (Code %1)</translation></message>
-<message id="watcher.failed"><source>watcher.failed</source><translation>FEHLER: Big-Picture-Monitor ist deaktiviert (Code %1)</translation></message>
-<message id="engine.start_couch"><source>engine.start_couch</source><translation>Couch-Modus wird aktiviert...</translation></message>
-<message id="engine.restore_desktop"><source>engine.restore_desktop</source><translation>Zurück zum PC-Monitor...</translation></message>
-<message id="status.desktop"><source>status.desktop</source><translation>PC-Monitor</translation></message>
-<message id="status.couch"><source>status.couch</source><translation>Wohnzimmer-TV</translation></message>
-<message id="status.disconnected"><source>status.disconnected</source><translation>getrennt</translation></message>
-<message id="status.disabled"><source>status.disabled</source><translation>aus</translation></message>
-<message id="status.enabled"><source>status.enabled</source><translation>an</translation></message>
-<message id="status.format"><source>status.format</source><translation>%1: %2 — %3</translation></message>
-<message id="status.unavailable"><source>status.unavailable</source><translation>Status konnte nicht geladen werden (Dienst nicht erreichbar).</translation></message>
 <message id="app.settings"><source>app.settings</source><translation>Einstellungen</translation></message>
-<message id="common.back"><source>common.back</source><translation>Zurück</translation></message>
 <message id="common.got_it"><source>common.got_it</source><translation>Alles klar</translation></message>
 <message id="common.loading"><source>common.loading</source><translation>Wird geladen...</translation></message>
 <message id="common.log"><source>common.log</source><translation>Logs</translation></message>
 <message id="common.save"><source>common.save</source><translation>Speichern</translation></message>
 <message id="dashboard.copy_log"><source>dashboard.copy_log</source><translation>Logs kopieren</translation></message>
-<message id="dashboard.couch_active"><source>dashboard.couch_active</source><translation>Couch-Modus aktiv</translation></message>
 <message id="dashboard.download_log"><source>dashboard.download_log</source><translation>Logs herunterladen</translation></message>
-<message id="dashboard.display_status"><source>dashboard.display_status</source><translation>Bildschirmstatus</translation></message>
-<message id="dashboard.enter_couch"><source>dashboard.enter_couch</source><translation>Ab zum TV</translation></message>
 <message id="dashboard.help"><source>dashboard.help</source><translation>Wie funktioniert's?</translation></message>
 <message id="dashboard.refresh_status"><source>dashboard.refresh_status</source><translation>Aktualisieren</translation></message>
-<message id="dashboard.return_desktop"><source>dashboard.return_desktop</source><translation>Zurück zum PC</translation></message>
 <message id="dashboard.status_updated"><source>dashboard.status_updated</source><translation>Bildschirmstatus aktualisiert.</translation></message>
 <message id="dashboard.log_copied"><source>dashboard.log_copied</source><translation>Logs in die Zwischenablage kopiert.</translation></message>
 <message id="dashboard.log_saved"><source>dashboard.log_saved</source><translation>Log gespeichert unter: %1</translation></message>
@@ -60,61 +45,22 @@
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Erforderliche Berechtigung</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Damit Open Couch die Bildschirme wechseln und Steam steuern kann, wird ein kleiner Helfer-Dienst direkt im Betriebssystem benötigt.</translation></message>
 <message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Öffne das Terminal im Projektordner, füge folgenden Befehl ein und drücke Enter:</translation></message>
-<message id="settings.desktop_display"><source>settings.desktop_display</source><translation>PC-Monitor:</translation></message>
-<message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>PC-Monitor:</translation></message>
-<message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Auflösung und Bildwiederholrate (PC):</translation></message>
-<message id="settings.desktop_scale"><source>settings.desktop_scale</source><translation>Skalierung/Zoom (PC):</translation></message>
-<message id="settings.couch_display"><source>settings.couch_display</source><translation>Wohnzimmer-TV:</translation></message>
-<message id="settings.couch_mode"><source>settings.couch_mode</source><translation>Auflösung und Bildwiederholrate (TV):</translation></message>
-<message id="settings.couch_scale"><source>settings.couch_scale</source><translation>Skalierung/Zoom (TV):</translation></message>
-<message id="settings.big_picture_label"><source>settings.big_picture_label</source><translation>Steam Big Picture:</translation></message>
-<message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>Wenn aktiviert, bleibt der PC-Monitor an, während du auf dem TV zockst.</translation></message>
-<message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>Wenn du Big Picture über den Controller öffnest (meist per PS- oder Xbox-Taste), wechselt die App sofort zum TV und springt erst zurück zum PC, wenn du Steam schließt oder Big Picture beendest.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Startet Open Couch automatisch nach dem Anmelden.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Beim Schließen des Fensters läuft die App im System-Tray weiter, um Steam zu überwachen. Nutze das Tray-Icon, um sie wieder zu öffnen oder zu beenden.</translation></message>
-<message id="settings.displays"><source>settings.displays</source><translation>Monitore &amp; Bildschirme</translation></message>
-<message id="settings.displays_description"><source>settings.displays_description</source><translation>Lege fest, welcher Bildschirm am Schreibtisch steht und welcher der Wohnzimmer-TV ist, um schnell dazwischen zu wechseln.</translation></message>
-<message id="settings.desktop_scale_tooltip"><source>settings.desktop_scale_tooltip</source><translation>UI-Skalierung: 1 = 100 % (Standard), 1.5 = 150 %. Im Zweifel einfach bei 1 lassen.</translation></message>
-<message id="settings.couch_scale_tooltip"><source>settings.couch_scale_tooltip</source><translation>TV-Skalierung: Erhöhe den Wert, wenn Texte und Icons von der Couch aus zu klein wirken. Im Zweifel den Linux-Standard nutzen und nach Bedarf nachjustieren.</translation></message>
-<message id="settings.couch_behavior"><source>settings.couch_behavior</source><translation>Verhalten im Couch-Modus</translation></message>
 <message id="settings.startup"><source>settings.startup</source><translation>Autostart &amp; Startverhalten</translation></message>
-<message id="settings.detect_again"><source>settings.detect_again</source><translation>Bildschirme neu erkennen</translation></message>
-<message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>PC-Monitor im TV-Modus eingeschaltet lassen</translation></message>
-<message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Aktivieren, wenn Steam per Controller gestartet wird</translation></message>
 <message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Gamecontroller</translation></message>
-<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Zum Desktop zurückkehren, wenn alle Controller ausgeschaltet werden</translation></message>
-<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>Wenn aktiviert, schließt Open Couch Big Picture und stellt das Desktop-Layout wieder her, sobald alle Controller ausgeschaltet sind. Greift erst nach mindestens einer Minute Controller-Nutzung.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Mit dem System starten</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Beim Schließen in den Infobereich (Tray) minimieren</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Dem Dev einen Kaffee spendieren</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch ist Open-Source und in meiner Freizeit entstanden. Wenn es dir den Alltag erleichtert, freue ich mich über deinen Support!</translation></message>
-<message id="status.scale"><source>status.scale</source><translation> (Skalierung: %1x)</translation></message>
-<message id="settings.error.select_desktop"><source>settings.error.select_desktop</source><translation>Wähle den PC-Monitor aus.</translation></message>
-<message id="settings.error.select_tv"><source>settings.error.select_tv</source><translation>Wähle den Wohnzimmer-TV aus.</translation></message>
-<message id="settings.error.same_output"><source>settings.error.same_output</source><translation>PC-Monitor und Fernseher dürfen nicht derselbe Bildschirm sein.</translation></message>
-<message id="settings.error.desktop_scale"><source>settings.error.desktop_scale</source><translation>Die PC-Skalierung muss eine Zahl größer als 0 sein.</translation></message>
-<message id="settings.error.tv_scale"><source>settings.error.tv_scale</source><translation>Die TV-Skalierung muss eine Zahl größer als 0 sein.</translation></message>
-<message id="settings.error.desktop_pos"><source>settings.error.desktop_pos</source><translation>Die Position des PC-Bildschirms muss das Format x,y haben.</translation></message>
-<message id="settings.error.tv_pos"><source>settings.error.tv_pos</source><translation>Die Position des Fernsehers muss das Format x,y haben.</translation></message>
-<message id="settings.error.scale_value"><source>settings.error.scale_value</source><translation>Der Wert von %1 muss größer als 0 sein.</translation></message>
-<message id="settings.error.no_outputs"><source>settings.error.no_outputs</source><translation>Keine Bildschirme gefunden oder open-couch-engine ist nicht installiert.</translation></message>
 <message id="settings.error.save_failed"><source>settings.error.save_failed</source><translation>Einstellungen konnten nicht gespeichert werden.</translation></message>
 <message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>Früheres Log wird angezeigt: %1</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Zurück zum Live-Log</translation></message>
 <message id="common.version"><source>common.version</source><translation>Version %1</translation></message>
 <message id="dashboard.view"><source>dashboard.view</source><translation>Ansehen</translation></message>
 <message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>Log konnte nicht gelesen werden oder Datei ist leer.</translation></message>
-<message id="settings.no_monitors"><source>settings.no_monitors</source><translation>Keine Monitore gefunden.</translation></message>
-<message id="settings.desktop_environment"><source>settings.desktop_environment</source><translation>PC- / Schreibtisch-Einstellungen</translation></message>
-<message id="settings.resolution"><source>settings.resolution</source><translation>Auflösung:</translation></message>
-<message id="settings.refresh_rate"><source>settings.refresh_rate</source><translation>Bildwiederholrate (Hz):</translation></message>
-<message id="settings.couch_environment"><source>settings.couch_environment</source><translation>TV- / Wohnzimmer-Einstellungen</translation></message>
-<message id="settings.mirroring"><source>settings.mirroring</source><translation>Bildschirmspiegelung</translation></message>
-<message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>PC-Bildschirm im TV-Modus auf den Fernseher spiegeln</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Wenn aktiviert, zeigt der PC-Monitor denselben Inhalt wie der Fernseher im Wohnzimmer. Da beide Bildschirme die gleiche Auflösung haben müssen, wird der größere Bildschirm verkleinert, um dem kleineren zu entsprechen.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>System</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Hintergrund</translation></message>
-<message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>Bildschirme erfolgreich neu erkannt!</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>Einstellungen erfolgreich gespeichert!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Befehl kopieren</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Berechtigung erforderlich, um den Couch-Modus zu verwenden</translation></message>
@@ -140,6 +86,39 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
+<message id="common.copy"><source>common.copy</source><translation type="unfinished"></translation></message>
+<message id="engine.enter_console"><source>engine.enter_console</source><translation type="unfinished"></translation></message>
+<message id="dashboard.enter_console"><source>dashboard.enter_console</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_status"><source>dashboard.console_status</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_ready"><source>dashboard.console_ready</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_ready_body"><source>dashboard.console_ready_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_not_ready"><source>dashboard.console_not_ready</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation type="unfinished"></translation></message>
+<message id="settings.console"><source>settings.console</source><translation type="unfinished"></translation></message>
+<message id="settings.console_description"><source>settings.console_description</source><translation type="unfinished"></translation></message>
+<message id="settings.ready"><source>settings.ready</source><translation type="unfinished"></translation></message>
+<message id="settings.not_ready"><source>settings.not_ready</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck"><source>settings.recheck</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_session"><source>settings.hosting_session</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_description"><source>settings.hosting_description</source><translation type="unfinished"></translation></message>
+<message id="settings.run_setup"><source>settings.run_setup</source><translation type="unfinished"></translation></message>
+<message id="settings.setup_failed"><source>settings.setup_failed</source><translation type="unfinished"></translation></message>
+<message id="settings.television"><source>settings.television</source><translation type="unfinished"></translation></message>
+<message id="settings.television_description"><source>settings.television_description</source><translation type="unfinished"></translation></message>
+<message id="settings.television_display"><source>settings.television_display</source><translation type="unfinished"></translation></message>
+<message id="settings.television_state"><source>settings.television_state</source><translation type="unfinished"></translation></message>
+<message id="settings.television_connected"><source>settings.television_connected</source><translation type="unfinished"></translation></message>
+<message id="settings.television_waiting"><source>settings.television_waiting</source><translation type="unfinished"></translation></message>
+<message id="settings.no_displays"><source>settings.no_displays</source><translation type="unfinished"></translation></message>
+<message id="settings.console_behavior"><source>settings.console_behavior</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_label"><source>settings.boot_label</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_desktop"><source>settings.boot_desktop</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_console"><source>settings.boot_console</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_last"><source>settings.boot_last</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_description"><source>settings.boot_description</source><translation type="unfinished"></translation></message>
+<message id="settings.enter_on_controller"><source>settings.enter_on_controller</source><translation type="unfinished"></translation></message>
+<message id="settings.enter_on_controller_description"><source>settings.enter_on_controller_description</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

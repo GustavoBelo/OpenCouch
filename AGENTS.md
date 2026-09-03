@@ -6,19 +6,20 @@ Guia de integração para agentes de IA que trabalham neste repositório.
 
 - **Nunca** editar versão manualmente → use sempre `packaging/release.sh X.Y.Z`.
 - **Nunca** fazer commit ou push sem pedido explícito do usuário.
-- Todo build roda dentro do distrobox `fedora` (o host é Silverblue imutável, sem toolchain).
-- Antes de mexer no engine: `bash -n backend/open-couch-engine` (não há suíte de testes).
-- Lógica de exibição/monitor vive no **engine bash** (`backend/`), não na GUI (`app/`).
+- O engine é um **binário Go** em `engine/`. Antes de mexer: `cd engine && go test ./... && go vet ./...`.
+- Lógica de sessão/display vive no **engine** (`engine/`), não na GUI (`app/`).
+- O app **não decide modo, resolução, HDR nem VRR** — isso é do gamescope e do Steam.
 - Se a mudança tocar em algo documentado aqui (build, versionamento, traduções, arquitetura), **atualize este arquivo na mesma mudança**.
 
 ```sh
-# Build
-distrobox enter fedora -- bash -c \
-  "cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Release -DINSTALL_ENGINE_BUNDLE=ON"
-distrobox enter fedora -- bash -c "cmake --build app-build --parallel \$(nproc)"
+# Build (o alvo `engine` compila o Go e injeta a versão via -ldflags)
+cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Release -DINSTALL_ENGINE_BUNDLE=ON
+cmake --build app-build --parallel "$(nproc)"
 
-# Checagem de sintaxe do engine
-bash -n backend/open-couch-engine
+# Testes do engine
+cd engine && go test ./... && go vet ./...
+# ou, pelo ctest, a partir da raiz:
+ctest --test-dir app-build --output-on-failure
 
 # Release
 packaging/release.sh X.Y.Z && git push origin main --tags
@@ -28,17 +29,30 @@ packaging/release.sh X.Y.Z && git push origin main --tags
 
 ## Visão geral
 
-Open Couch é um aplicativo Linux para KDE Plasma que alterna o layout de monitores entre a mesa e a TV da sala com um clique, lança o Steam Big Picture e restaura o layout do desktop automaticamente quando o jogo termina. Licença GPL-3.0-or-later. Repositório: `GustavoBelo/OpenCouch` (branch `main`).
+Open Couch entrega a máquina inteira para a sessão gamescope do Steam na TV da sala, e devolve limpo quando o usuário sai. Licença GPL-3.0-or-later. Repositório: `GustavoBelo/OpenCouch` (branch `main`).
+
+Não é um app KDE: o wrapper hospeda qualquer compositor (KDE, Hyprland, GNOME). A única coisa específica de cada desktop é **como pará-lo** — a interface `Compositor` em `engine/internal/console/compositor.go`.
+
+**O modelo é uma sessão de login hospedeira**, não um gamescope aninhado:
+
+```
+login manager (SDDM/GDM/greetd/ly/nenhum)
+└─ open-couch-engine host-session     ← vive o login inteiro
+     ├─ compositor do desktop          Exec= do .desktop escolhido
+     └─ start-gamescope-session        o entry com DesktopNames=gamescope
+```
+
+Entrar no modo console **encerra a sessão do desktop**. Não existe botão de volta na GUI porque, enquanto o console roda, não existe GUI: o caminho de volta é o "Switch to Desktop" do próprio Steam, ou `open-couch-engine leave` por ssh.
 
 O projeto é dividido em três partes:
 
 | Caminho | Papel |
 |---|---|
 | `app/` | GUI em Qt6 + Kirigami (C++17 + QML). Ponte entre a UI e o engine. |
-| `backend/` | O "engine": scripts bash que controlam os displays e monitoram o Steam. |
-| `packaging/` | Scripts de release, Flatpak, instalador host e metadados AppStream. |
+| `engine/` | O engine: binário Go que hospeda as sessões. Onde vive toda a lógica. |
+| `packaging/` | Scripts de release, instalador host e metadados AppStream. |
 
-A GUI é apenas uma camada: toda a lógica de exibição vive no engine bash (`backend/open-couch-engine`), que é invocado pela aplicação via `QProcess`.
+A GUI é apenas uma camada; ela invoca o engine via `QProcess` (`app/src/engineclient.cpp`). O contrato é estreito: `check` (exit 0) e `version` (imprime `X.Y.Z`) são o que a GUI sonda, e todo o resto imprime JSON para a GUI ou um parágrafo para uma pessoa.
 
 ## Arquitetura
 
@@ -60,31 +74,45 @@ A GUI é apenas uma camada: toda a lógica de exibição vive no engine bash (`b
 - `qml/` — `main.qml`, `SetupPage.qml`, `DashboardPage.qml`, `OnboardingSheet.qml`, `ChooseAppDialog.qml`, `RunningAppsDialog.qml` (Kirigami, `QtQuick.Controls`).
 - `translations/` — catálogos Qt Linguist (`.ts`); `opencouch_en.ts` é o catálogo base.
 
-### backend/ — engine
+### engine/ — o engine
 
-- `open-couch-engine` — script bash (com `set -euo pipefail`). Comandos core: `play`, `restore`, `status`, `outputs`, `check`, `version`, `watch`, `config-path`, `log`, `append-log`, `clear-log`, `log-history`, `print-history-log`, `export-history-log`, `export-log`, `close-tracked-apps`; legados `list-running`/`list-apps` mantidos só para CLI/host fallback.
-- Dependências de host: `jq`, `kscreen-doctor`, `pgrep`; opcional: `wmctrl` (apenas para posicionar/fechar janelas X11 do Steam — não funciona em sessões Wayland puras).
-- O `status` registra no log os componentes ausentes (obrigatórios como `ERROR`, opcionais como `WARNING`); o app usa `append-log` para persistir eventos próprios no arquivo (ex.: falha do watcher).
-- **`EXIT_ON_ALL_CONTROLLERS_OFF`** (opção de config): quando habilitada, o modo sala encerra o Big Picture e restaura o desktop quando todos os controles são desligados.
-  - Debounce de 10s antes de agir.
-  - Exige mínimo de 1 minuto de uso de controle na sessão.
-  - Detecção via `/dev/input/js*`.
-- **Controle de recursos** — `CLOSE_APPS_ENABLED` / `CLOSE_APPS_WAIT_SECONDS` / `APPS_TO_CLOSE` (lista separada por vírgula):
-  - Quando habilitado, o `play` aguarda o tempo configurado após o Big Picture abrir e encerra os apps listados via `pkill -x`.
-  - Processos em `PROTECTED_PROCESSES` **nunca** são fechados nem aparecem nas listas.
-- A GUI **não usa mais** `list-running`/`list-apps` do engine: `AppCleanupModel` faz tudo nativo em C++ (ver acima) e só usa `close-tracked-apps` do engine.
-- `open-couch-log-viewer` — abre `konsole` com status + log em modo live.
-- `SHA256SUMS` — checksums usados pelo instalador remoto.
+Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: só `godbus/dbus/v5`.
 
-Runtime do engine:
-- Config: `${XDG_CONFIG_HOME:-~/.config}/open-couch-engine/config.env` (inclui `CLOSE_APPS_ENABLED`, `CLOSE_APPS_WAIT_SECONDS`, `APPS_TO_CLOSE`)
-- Estado: `${XDG_STATE_HOME:-~/.local/state}/open-couch-engine/` (`layout.env` snapshot, `session.pid`, logs, `history/`)
+- `cmd/open-couch-engine/` — a CLI. Subcomandos: `host-session`, `enter [--yes]`, `leave`, `cancel`,
+  `status` (JSON), `doctor`, `setup`, `outputs` (JSON), `tv <CONNECTOR>`, `boot <modo>`,
+  `close-apps <nome>...`, `config-path`, `check`, `version`.
+- `internal/console/` — o núcleo. As peças que carregam o valor são as chatas:
+  - `session.go` — o loop do wrapper: `Sanitize` → `SettleJobs` → `commandFor` → `Launch`, repetindo.
+  - `systemd.go` — **`Sanitize`**. Nada mais limpa o systemd user manager na saída de uma sessão
+    gamescope; sem isso o uwsm recusa o compositor seguinte e a sessão morre no segundo em que sobe.
+  - `connector.go` — **`AwaitConnector`**. O gamescope enumera conectores uma vez e nunca reexamina;
+    entrar antes da TV acordar dá tela preta até um replug físico.
+  - `compositor.go` — a interface `Compositor` e `SessionRunning`. **O único ponto que sabe qual
+    desktop está rodando.** Desktop desconhecido **recusa** em vez de cair em `loginctl
+    terminate-session`, que mataria a sessão hospedeira junto.
+  - `live.go` — o arquivo de modo. Prova por efeito que a sessão trocou; a geração é o que distingue
+    "ainda rodando" de "trocou enquanto eu não olhava".
+  - `displays.go` — `ListDisplays` lê `/sys/class/drm` e faz parse do EDID. **Sem compositor**, o que
+    é obrigatório: o wrapper precisa da lista entre sessões, quando não há nenhum rodando.
+  - `setup.go`, `detect.go` — descoberta de `.desktop` e a entrada hospedeira.
+  - `announce.go` — countdown com botão Cancel, para os caminhos sem GUI.
+- `internal/audio/` — EDID→ELD→pin→profile→sink. O WirePlumber move *streams*, não o sink default.
+- `internal/apps/` — `close-apps`. `Protected` cobre os compositores de **todos** os desktops, não só
+  o que está rodando: a lista é escrita uma vez e carregada entre máquinas.
+- `internal/notify/`, `internal/atomicfile/`.
 
+Runtime:
+- Config: `${XDG_CONFIG_HOME:-~/.config}/open-couch/console.json`
+- Estado: `~/.cache/open-couch/` (`last-session`, `console-failure`, `console-prepared.json`, `console.log`)
+- Runtime: `$XDG_RUNTIME_DIR/open-couch-{live,hosted,next-session,cancel-entry}`
+
+Requisitos de host: systemd user manager, um pacote `gamescope-session` (o engine **não** o fornece,
+só o detecta), `gamescope`, `steam`, `pactl`, D-Bus.
 ### packaging/
 
 - `release.sh` — **única forma autorizada de versionar** (ver abaixo).
 - `build-flatpak.sh` — build local do Flatpak.
-- `build-appimage.sh` — build local do AppImage (replica o `release.yml`; rodar dentro do distrobox `fedora` via `distrobox enter fedora -- bash -c "packaging/build-appimage.sh"`).
+- `build-appimage.sh` — build local do AppImage (replica o `release.yml`).
 - `io.github.gustavobelo.opencouch.yml` — manifest Flatpak (tag sincronizada pelo release.sh).
 - `io.github.gustavobelo.opencouch.metainfo.xml` — metadados AppStream.
 - `host/install.sh` — instalador do engine no host (local ou via curl com verificação SHA256).
@@ -92,27 +120,22 @@ Runtime do engine:
 
 ## Build
 
-O host é um Fedora Silverblue imutável sem toolchain. **Todo build roda dentro do distrobox `fedora`.**
+Go e Qt6/KF6 no host. O alvo `engine` do CMake roda `go build` e injeta a versão via `-ldflags`.
 
 ```sh
-# Configurar build (apenas uma vez ou quando mudar de opções)
-distrobox enter fedora -- bash -c \
-  "cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Release -DINSTALL_ENGINE_BUNDLE=ON"
-
-# Compilar
-distrobox enter fedora -- bash -c "cmake --build app-build --parallel \$(nproc)"
+cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Release -DINSTALL_ENGINE_BUNDLE=ON
+cmake --build app-build --parallel "$(nproc)"
 ```
 
-Dependências de build: Qt6 (Core, Gui, Widgets, Qml, Quick, QuickControls2, DBus, LinguistTools), KF6 Kirigami, ECM, C++17, CMake ≥ 3.16, ninja.
-
-Dica: `distrobox enter fedora` demora; prefira `distrobox enter fedora -- bash -c "..."` para executar um comando só.
+Dependências de build: Go ≥ 1.26, Qt6 (Core, Gui, Widgets, Qml, Quick, QuickControls2, DBus,
+LinguistTools), KF6 Kirigami, ECM, C++17, CMake ≥ 3.16, ninja.
 
 ## Versionamento (CRÍTICO)
 
 A versão é sincronizada em **vários arquivos** e não deve ser editada manualmente:
 
 - `app/version.txt` (`VERSION=`, `RELEASE_DATE=`)
-- `ENGINE_VERSION` e `MIN_VERSION` em `backend/open-couch-engine`
+- a versão do engine, injetada no build por `-ldflags -X main.version=` (não há valor gravado em arquivo)
 - `SELF_VERSION` em `packaging/host/install.sh`
 - `tag:` no manifest `packaging/io.github.gustavobelo.opencouch.yml`
 - `kMinEngineVersion` em `app/src/engineclient.cpp` (fonte do `MIN_VERSION` do engine)
@@ -138,7 +161,7 @@ git status --porcelain  # limpo
 git tag --sort=-v:refname | head
 grep -n kMinEngineVersion app/src/engineclient.cpp  # fonte de MIN_VERSION
 cat app/version.txt
-bash -n backend/open-couch-engine
+(cd engine && go test ./... && go vet ./...)
 ```
 
 ### 2. Versionar (único caminho)
@@ -153,7 +176,7 @@ git log --oneline -2 && git show --stat HEAD
 sha256sum -c backend/SHA256SUMS
 ```
 
-Revisar `app/version.txt:1`, `backend/open-couch-engine:5-6`, `packaging/host/install.sh:5`, `packaging/io.github.gustavobelo.opencouch.yml:30`.
+Revisar `app/version.txt:1`, `packaging/host/install.sh:5`. Conferir com `open-couch-engine version`.
 
 ### 3. Push da tag
 
@@ -220,9 +243,16 @@ Acompanhar `gh run list --limit 5` e `gh run view <id> --log-failed`. Warnings `
 
 ## Testes e verificação
 
-- **Não há suíte de testes nem lint/typecheck** no repositório.
-- Validação padrão: compilar com o CMake (via distrobox), conferir que o build passa e pedir ao usuário para testar na prática.
-- Para mudanças no engine: executar `bash -n backend/open-couch-engine` para checar sintaxe e, se possível, rodar `open-couch-engine status`/`outputs` num host com os requisitos (`jq`, `kscreen-doctor`, `pgrep`).
+- O engine tem suíte Go (`internal/console` ~77% de cobertura). Rode sempre:
+  `cd engine && go test ./... && go vet ./... && gofmt -l ./cmd ./internal`.
+  Pelo ctest: `ctest --test-dir app-build --output-on-failure`.
+- A GUI não tem testes. Para pegar erro de QML sem sessão gráfica:
+  `QT_QPA_PLATFORM=offscreen ./app-build/opencouch` — `main.cpp` imprime todo warning de QML em
+  stderr, e sair sozinho significa que o QML não carregou.
+- **O caminho crítico não é testável em CI**: trocar de sessão exige um login de verdade. Depois de
+  mexer no wrapper, peça teste manual — entrar, voltar pelo "Switch to Desktop" do Steam, e repetir
+  **duas vezes** (o guard de restart curto só aparece na segunda volta), conferindo
+  `systemctl --user list-units --failed` vazio.
 - Após alterações no engine que exigem nova versão mínima, atualizar `kMinEngineVersion`.
 
 ## Armadilhas conhecidas e validações do `release.sh`
@@ -256,7 +286,7 @@ Para agentes de IA: isso não muda a regra existente de **nunca fazer commit ou 
 
 1. Entender a mudança dentro da divisão app/backend/packaging (a lógica de display fica no engine, não na GUI).
 2. Implementar seguindo as convenções acima.
-3. Validar com build (distrobox) e `bash -n` no engine; testar manualmente se a mudança afeta comportamento visível.
+3. Validar com `cmake --build` e `go test ./...`; testar manualmente se a mudança afeta comportamento visível.
 4. Nunca versionar manualmente; para releases seguir **Publicação de release — boa prática** (`packaging/release.sh` + push + GitHub Release idempotente).
 5. Nunca fazer commit ou push sem pedido explícito do usuário.
 6. Manter este arquivo atualizado: se a mudança afetar o que está documentado (build, versionamento, traduções, arquitetura, comandos), atualizar o AGENTS.md na mesma mudança e avisar o usuário o que e porquê alterou.

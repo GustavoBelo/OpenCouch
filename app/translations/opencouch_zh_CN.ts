@@ -8,30 +8,15 @@
 <message id="tray.quit"><source>tray.quit</source><translation>退出</translation></message>
 <message id="engine.completed"><source>engine.completed</source><translation>搞定！一切就绪！</translation></message>
 <message id="engine.failed"><source>engine.failed</source><translation>失败了（错误代码 %1）</translation></message>
-<message id="watcher.failed"><source>watcher.failed</source><translation>错误：大画面模式监听已停用（代码 %1）</translation></message>
-<message id="engine.start_couch"><source>engine.start_couch</source><translation>正在切换到客厅模式...</translation></message>
-<message id="engine.restore_desktop"><source>engine.restore_desktop</source><translation>正在切回电脑屏幕...</translation></message>
-<message id="status.desktop"><source>status.desktop</source><translation>电脑显示器</translation></message>
-<message id="status.couch"><source>status.couch</source><translation>客厅电视</translation></message>
-<message id="status.disconnected"><source>status.disconnected</source><translation>未连接</translation></message>
-<message id="status.disabled"><source>status.disabled</source><translation>已关闭</translation></message>
-<message id="status.enabled"><source>status.enabled</source><translation>已开启</translation></message>
-<message id="status.format"><source>status.format</source><translation>%1: %2 — %3</translation></message>
-<message id="status.unavailable"><source>status.unavailable</source><translation>无法获取状态（后台服务未运行）。</translation></message>
 <message id="app.settings"><source>app.settings</source><translation>设置</translation></message>
-<message id="common.back"><source>common.back</source><translation>返回</translation></message>
 <message id="common.got_it"><source>common.got_it</source><translation>知道了</translation></message>
 <message id="common.loading"><source>common.loading</source><translation>加载中...</translation></message>
 <message id="common.log"><source>common.log</source><translation>日志</translation></message>
 <message id="common.save"><source>common.save</source><translation>保存</translation></message>
 <message id="dashboard.copy_log"><source>dashboard.copy_log</source><translation>复制日志</translation></message>
-<message id="dashboard.couch_active"><source>dashboard.couch_active</source><translation>客厅模式运行中</translation></message>
 <message id="dashboard.download_log"><source>dashboard.download_log</source><translation>下载日志</translation></message>
-<message id="dashboard.display_status"><source>dashboard.display_status</source><translation>屏幕状态</translation></message>
-<message id="dashboard.enter_couch"><source>dashboard.enter_couch</source><translation>切到电视</translation></message>
 <message id="dashboard.help"><source>dashboard.help</source><translation>使用说明</translation></message>
 <message id="dashboard.refresh_status"><source>dashboard.refresh_status</source><translation>刷新</translation></message>
-<message id="dashboard.return_desktop"><source>dashboard.return_desktop</source><translation>切回电脑</translation></message>
 <message id="dashboard.status_updated"><source>dashboard.status_updated</source><translation>屏幕状态已更新。</translation></message>
 <message id="dashboard.log_copied"><source>dashboard.log_copied</source><translation>日志已复制到剪贴板。</translation></message>
 <message id="dashboard.log_saved"><source>dashboard.log_saved</source><translation>日志已保存至：%1</translation></message>
@@ -60,61 +45,22 @@
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>需要系统权限</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>为了能顺利切换屏幕并启动 Steam，Open Couch 需要在操作系统中安装一个小助手组件。</translation></message>
 <message id="onboarding.install_description"><source>onboarding.install_description</source><translation>在项目文件夹中打开终端，粘贴下面的命令并回车：</translation></message>
-<message id="settings.desktop_display"><source>settings.desktop_display</source><translation>电脑显示器：</translation></message>
-<message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>电脑显示器：</translation></message>
-<message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>分辨率与刷新率（电脑）：</translation></message>
-<message id="settings.desktop_scale"><source>settings.desktop_scale</source><translation>缩放比例（电脑）：</translation></message>
-<message id="settings.couch_display"><source>settings.couch_display</source><translation>客厅电视：</translation></message>
-<message id="settings.couch_mode"><source>settings.couch_mode</source><translation>分辨率与刷新率（电视）：</translation></message>
-<message id="settings.couch_scale"><source>settings.couch_scale</source><translation>缩放比例（电视）：</translation></message>
-<message id="settings.big_picture_label"><source>settings.big_picture_label</source><translation>Steam 大画面模式：</translation></message>
-<message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>开启后，在电视上玩游戏时电脑屏幕也会保持点亮。</translation></message>
-<message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>当你用手柄打开大画面模式时（通常是按下 PS 或 XBOX 键），应用会立即切换到电视，直到你退出 Steam 或退出大画面模式才会切回电脑。</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>登录系统后自动启动 Open Couch。</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>关闭窗口后，应用会在系统托盘常驻后台以监听 Steam。可通过托盘图标重新打开或退出。</translation></message>
-<message id="settings.displays"><source>settings.displays</source><translation>显示器与屏幕</translation></message>
-<message id="settings.displays_description"><source>settings.displays_description</source><translation>指定哪台是桌上的显示器、哪台是客厅电视，以便一键轻松切换。</translation></message>
-<message id="settings.desktop_scale_tooltip"><source>settings.desktop_scale_tooltip</source><translation>界面缩放：1 = 100%（默认），1.5 = 150%。如果不确定，保持为 1 即可。</translation></message>
-<message id="settings.couch_scale_tooltip"><source>settings.couch_scale_tooltip</source><translation>电视缩放：如果坐在沙发上觉得字和图标太小，可以调大此数值。不确定的话，保持 Linux 默认值并按需微调即可。</translation></message>
-<message id="settings.couch_behavior"><source>settings.couch_behavior</source><translation>客厅模式行为</translation></message>
 <message id="settings.startup"><source>settings.startup</source><translation>启动设置</translation></message>
-<message id="settings.detect_again"><source>settings.detect_again</source><translation>重新检测屏幕</translation></message>
-<message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>电视模式下保持电脑屏幕点亮</translation></message>
-<message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>用手柄启动 Steam 时自动切换</translation></message>
 <message id="settings.controllers_label"><source>settings.controllers_label</source><translation>游戏手柄</translation></message>
-<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>所有手柄关闭时返回桌面</translation></message>
-<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>启用后，如果在客厅模式中关闭所有手柄，Open Couch 将关闭 Big Picture 并恢复桌面布局。仅在至少使用手柄一分钟后生效。</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>开机自启动</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>关闭窗口时最小化到系统托盘</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ 请开发者喝杯咖啡</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch 是一个在业余时间完成的开源项目。如果它帮到了你，不妨支持一下！</translation></message>
-<message id="status.scale"><source>status.scale</source><translation>（缩放 %1x）</translation></message>
-<message id="settings.error.select_desktop"><source>settings.error.select_desktop</source><translation>请选择电脑显示器。</translation></message>
-<message id="settings.error.select_tv"><source>settings.error.select_tv</source><translation>请选择客厅电视。</translation></message>
-<message id="settings.error.same_output"><source>settings.error.same_output</source><translation>电脑显示器和电视不能是同一台设备。</translation></message>
-<message id="settings.error.desktop_scale"><source>settings.error.desktop_scale</source><translation>电脑缩放比例必须是大于 0 的数字。</translation></message>
-<message id="settings.error.tv_scale"><source>settings.error.tv_scale</source><translation>电视缩放比例必须是大于 0 的数字。</translation></message>
-<message id="settings.error.desktop_pos"><source>settings.error.desktop_pos</source><translation>电脑屏幕位置格式必须为：x,y</translation></message>
-<message id="settings.error.tv_pos"><source>settings.error.tv_pos</source><translation>电视位置格式必须为：x,y</translation></message>
-<message id="settings.error.scale_value"><source>settings.error.scale_value</source><translation>%1 的值必须大于 0。</translation></message>
-<message id="settings.error.no_outputs"><source>settings.error.no_outputs</source><translation>未找到任何屏幕，或 open-couch-engine 服务未正确安装。</translation></message>
 <message id="settings.error.save_failed"><source>settings.error.save_failed</source><translation>保存设置失败。</translation></message>
 <message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>正在查看历史日志：%1</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>返回实时日志</translation></message>
 <message id="common.version"><source>common.version</source><translation>版本 %1</translation></message>
 <message id="dashboard.view"><source>dashboard.view</source><translation>查看</translation></message>
 <message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>无法读取日志或文件为空。</translation></message>
-<message id="settings.no_monitors"><source>settings.no_monitors</source><translation>未检测到显示器。</translation></message>
-<message id="settings.desktop_environment"><source>settings.desktop_environment</source><translation>电脑 / 桌面环境设置</translation></message>
-<message id="settings.resolution"><source>settings.resolution</source><translation>分辨率：</translation></message>
-<message id="settings.refresh_rate"><source>settings.refresh_rate</source><translation>刷新率 (Hz)：</translation></message>
-<message id="settings.couch_environment"><source>settings.couch_environment</source><translation>电视 / 客厅环境设置</translation></message>
-<message id="settings.mirroring"><source>settings.mirroring</source><translation>屏幕镜像</translation></message>
-<message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>在客厅模式下将电脑画面镜像到电视</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>勾选后，电脑显示器将与客厅电视显示完全相同的内容。由于两块屏幕需要具有相同的分辨率，较大的屏幕将被缩小以匹配较小的屏幕。</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>系统</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>后台运行</translation></message>
-<message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>已重新识别到屏幕！</translation></message>
 <message id="settings.saved"><source>settings.saved</source><translation>设置已成功保存！</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>复制命令</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>使用客厅模式需要的权限</translation></message>
@@ -140,6 +86,39 @@
 <message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
 <message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
 <message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
+<message id="common.copy"><source>common.copy</source><translation type="unfinished"></translation></message>
+<message id="engine.enter_console"><source>engine.enter_console</source><translation type="unfinished"></translation></message>
+<message id="dashboard.enter_console"><source>dashboard.enter_console</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_status"><source>dashboard.console_status</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_ready"><source>dashboard.console_ready</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_ready_body"><source>dashboard.console_ready_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_not_ready"><source>dashboard.console_not_ready</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation type="unfinished"></translation></message>
+<message id="settings.console"><source>settings.console</source><translation type="unfinished"></translation></message>
+<message id="settings.console_description"><source>settings.console_description</source><translation type="unfinished"></translation></message>
+<message id="settings.ready"><source>settings.ready</source><translation type="unfinished"></translation></message>
+<message id="settings.not_ready"><source>settings.not_ready</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck"><source>settings.recheck</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_session"><source>settings.hosting_session</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_description"><source>settings.hosting_description</source><translation type="unfinished"></translation></message>
+<message id="settings.run_setup"><source>settings.run_setup</source><translation type="unfinished"></translation></message>
+<message id="settings.setup_failed"><source>settings.setup_failed</source><translation type="unfinished"></translation></message>
+<message id="settings.television"><source>settings.television</source><translation type="unfinished"></translation></message>
+<message id="settings.television_description"><source>settings.television_description</source><translation type="unfinished"></translation></message>
+<message id="settings.television_display"><source>settings.television_display</source><translation type="unfinished"></translation></message>
+<message id="settings.television_state"><source>settings.television_state</source><translation type="unfinished"></translation></message>
+<message id="settings.television_connected"><source>settings.television_connected</source><translation type="unfinished"></translation></message>
+<message id="settings.television_waiting"><source>settings.television_waiting</source><translation type="unfinished"></translation></message>
+<message id="settings.no_displays"><source>settings.no_displays</source><translation type="unfinished"></translation></message>
+<message id="settings.console_behavior"><source>settings.console_behavior</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_label"><source>settings.boot_label</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_desktop"><source>settings.boot_desktop</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_console"><source>settings.boot_console</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_last"><source>settings.boot_last</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_description"><source>settings.boot_description</source><translation type="unfinished"></translation></message>
+<message id="settings.enter_on_controller"><source>settings.enter_on_controller</source><translation type="unfinished"></translation></message>
+<message id="settings.enter_on_controller_description"><source>settings.enter_on_controller_description</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

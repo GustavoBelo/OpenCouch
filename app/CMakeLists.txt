@@ -78,10 +78,6 @@ qt_add_executable(opencouch
     src/configstore.h
     src/engineclient.cpp
     src/engineclient.h
-    src/displaysettingsvalidator.cpp
-    src/displaysettingsvalidator.h
-    src/displaysettingsmodel.cpp
-    src/displaysettingsmodel.h
     src/appinfomodel.cpp
     src/appinfomodel.h
     src/appcleanupmodel.cpp
@@ -142,11 +138,47 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/io.github.gustavobelo.openco
 install(FILES ${OPENCOUCH_PACKAGING_DIR}/icons/io.github.gustavobelo.opencouch.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 
-option(INSTALL_ENGINE_BUNDLE "Bundle engine scripts for Flatpak/AppImage distribution" OFF)
+# The engine is a separate Go binary rather than part of this target: it runs as
+# the login session itself, long before and long after the app, and the app only
+# ever drives it over QProcess.
+if(EXISTS "${CMAKE_SOURCE_DIR}/engine")
+    set(OPENCOUCH_ENGINE_DIR "${CMAKE_SOURCE_DIR}/engine")
+else()
+    set(OPENCOUCH_ENGINE_DIR "${CMAKE_SOURCE_DIR}/../engine")
+endif()
+set(OPENCOUCH_ENGINE_BINARY "${CMAKE_CURRENT_BINARY_DIR}/open-couch-engine")
+
+find_program(GO_EXECUTABLE go REQUIRED)
+
+# Always out of date on purpose: Go's own build cache decides what to rebuild,
+# and listing every source here would go stale the first time one is added.
+add_custom_target(engine ALL
+    COMMAND "${CMAKE_COMMAND}" -E env GOFLAGS=-mod=mod
+            "${GO_EXECUTABLE}" build -trimpath
+            -ldflags "-s -w -X main.version=${OPENCOUCH_VERSION}"
+            -o "${OPENCOUCH_ENGINE_BINARY}"
+            ./cmd/open-couch-engine
+    WORKING_DIRECTORY "${OPENCOUCH_ENGINE_DIR}"
+    COMMENT "Building open-couch-engine ${OPENCOUCH_VERSION}"
+    VERBATIM
+)
+
+option(INSTALL_ENGINE_BUNDLE "Bundle the engine for AppImage distribution" OFF)
 if(INSTALL_ENGINE_BUNDLE)
-    install(PROGRAMS
-        "${CMAKE_SOURCE_DIR}/../backend/open-couch-engine"
-        "${CMAKE_SOURCE_DIR}/../backend/open-couch-log-viewer"
+    install(PROGRAMS "${OPENCOUCH_ENGINE_BINARY}"
         DESTINATION "${CMAKE_INSTALL_DATADIR}/open-couch"
+    )
+endif()
+
+# Defines BUILD_TESTING and calls enable_testing(). Without it add_test() below
+# is accepted and silently registers nothing.
+include(CTest)
+
+if(BUILD_TESTING)
+    add_test(NAME engine
+        COMMAND "${GO_EXECUTABLE}" test ./...
+    )
+    set_tests_properties(engine PROPERTIES
+        WORKING_DIRECTORY "${OPENCOUCH_ENGINE_DIR}"
     )
 endif()

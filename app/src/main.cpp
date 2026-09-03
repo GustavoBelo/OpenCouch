@@ -11,7 +11,6 @@
 #include "appversion.h"
 #include "applicationicon.h"
 #include "backend.h"
-#include "displaysettingsmodel.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,14 +47,12 @@ int main(int argc, char *argv[])
     }
 
     Backend backend;
-    DisplaySettingsModel displaySettingsModel;
     AppCleanupModel appCleanupModel;
     AppInfoModel appInfoModel;
 
     QQmlApplicationEngine engine;
 
     engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
-    engine.rootContext()->setContextProperty(QStringLiteral("displaySettingsModel"), &displaySettingsModel);
     engine.rootContext()->setContextProperty(QStringLiteral("appCleanupModel"), &appCleanupModel);
     engine.rootContext()->setContextProperty(QStringLiteral("appInfo"), &appInfoModel);
 
