@@ -1,0 +1,347 @@
+package console
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// LoginManagerKind is which program starts the graphical session, which decides
+// where the hosting session has to be registered.
+type LoginManagerKind string
+
+const (
+	LoginSDDM    LoginManagerKind = "sddm"
+	LoginGDM     LoginManagerKind = "gdm"
+	LoginGreetd  LoginManagerKind = "greetd"
+	LoginLy      LoginManagerKind = "ly"
+	LoginLightDM LoginManagerKind = "lightdm"
+	LoginNone    LoginManagerKind = "none"
+	LoginUnknown LoginManagerKind = "unknown"
+)
+
+// LoginManager is what starts the session on this machine.
+type LoginManager struct {
+	Kind LoginManagerKind
+	// Unit is the systemd unit the manager runs as, empty when there is none.
+	Unit string
+}
+
+// DetectLoginManager asks systemd what starts the graphical session.
+//
+// A machine with no display manager is a supported answer, not a failure: a
+// plain tty login that execs a compositor is a common Hyprland setup, and it is
+// the one the hosting session suits best, since nothing else is involved.
+func DetectLoginManager(ctx context.Context, sc Runner) LoginManager {
+	if sc == nil {
+		sc = Systemctl{}
+	}
+	unit := systemDisplayManager(ctx)
+	switch {
+	case unit == "":
+		return LoginManager{Kind: LoginNone}
+	case strings.HasPrefix(unit, "sddm"):
+		return LoginManager{Kind: LoginSDDM, Unit: unit}
+	case strings.HasPrefix(unit, "gdm"):
+		return LoginManager{Kind: LoginGDM, Unit: unit}
+	case strings.HasPrefix(unit, "greetd"):
+		return LoginManager{Kind: LoginGreetd, Unit: unit}
+	case strings.HasPrefix(unit, "ly"):
+		return LoginManager{Kind: LoginLy, Unit: unit}
+	case strings.HasPrefix(unit, "lightdm"):
+		return LoginManager{Kind: LoginLightDM, Unit: unit}
+	default:
+		return LoginManager{Kind: LoginUnknown, Unit: unit}
+	}
+}
+
+// EntryContent is the session entry that points a login manager at the hosting
+// session.
+//
+// DesktopNames deliberately carries the desktop compositor's own names rather
+// than anything of ours: what logs in is the user's desktop, and applications
+// that key off XDG_CURRENT_DESKTOP should not be able to tell the difference.
+// A desktop whose own entry names nothing falls back to what this session
+// claims to be, and failing that the line is left out rather than filled with a
+// guess: naming the wrong desktop is worse than naming none, because portals and
+// polkit agents key off it and would load the wrong ones for the whole session.
+func EntryContent(name, wrapperCommand string, desktopNames []string) string {
+	names := strings.Join(desktopNames, ";")
+	if names == "" {
+		names = strings.TrimSpace(os.Getenv("XDG_CURRENT_DESKTOP"))
+	}
+	entry := fmt.Sprintf(`[Desktop Entry]
+Name=%s
+Comment=Hosts the desktop and the gamescope console session in one login session
+Exec=%s
+`, name, wrapperCommand)
+	if names != "" {
+		entry += "DesktopNames=" + names + "\n"
+	}
+	return entry + fmt.Sprintf("Type=Application\n%s=true\n", HostingMarker)
+}
+
+// HostsConsole reports whether a session entry is a hosting session -- ours or
+// an earlier one.
+//
+// It matters because the obvious way to learn which desktop to come back to is
+// to ask which session is running, and inside a hosted session the answer is the
+// hosting entry itself. Recording that would make the wrapper host itself, and
+// the user would never reach a desktop.
+// HostingEntryFile is the name `console setup` writes. Recognising it is a
+// safety net for entries generated before the marker existed: they point at a
+// wrapper script, so neither the marker nor the Exec line gives them away.
+const HostingEntryFile = "open-couch-session.desktop"
+
+func HostsConsole(e Entry) bool {
+	if e.Hosting || e.File() == HostingEntryFile {
+		return true
+	}
+	for _, arg := range e.Exec {
+		if arg == WrapperCommand {
+			return true
+		}
+	}
+	return false
+}
+
+// WrapperCommand is the subcommand that runs the wrapper, and so the token that
+// identifies it inside somebody else's argv.
+//
+// It is one made-up word rather than a natural pair like `console session`
+// because both readers below scan an argv they did not write -- a session entry
+// on disk, and /proc/<pid>/cmdline -- and a token that could plausibly appear in
+// an unrelated command line would make the wrapper host itself.
+const WrapperCommand = "host-session"
+
+// HostingEntryName names the hosting session after the desktop it hosts,
+// without stacking the suffix each time setup is run.
+func HostingEntryName(desktopName string) string {
+	const suffix = " (console switch)"
+	return strings.TrimSuffix(strings.TrimSpace(desktopName), suffix) + suffix
+}
+
+// SetupInstructions says what to change so the login manager starts the hosting
+// session, and never changes it.
+//
+// Printing rather than applying is deliberate. The set of login managers is
+// large, only one of them has been tested here, and the failure mode of getting
+// it wrong is a machine that will not present a desktop at all -- which is a bad
+// thing to inflict on someone who has not seen it coming. So the instruction is
+// exact, the rollback is stated, and the decision stays with the user.
+func SetupInstructions(lm LoginManager, entryPath, entryName, wrapperCommand string) string {
+	var b strings.Builder
+	file := filepath.Base(entryPath)
+
+	// Into the user's own directory, not /usr/local/share. The entry's Exec
+	// points at this user's binary -- typically ~/.local/bin/open-couch-engine -- so a
+	// system-wide install offers every account on the machine a session that
+	// runs a program out of someone else's home. It also needs no root.
+	fmt.Fprintf(&b, "1. Install the session entry:\n\n")
+	fmt.Fprintf(&b, "     install -Dm644 %s \\\n       ~/.local/share/wayland-sessions/%s\n\n", entryPath, file)
+	fmt.Fprintf(&b, "   For every account on this machine instead, put it in\n")
+	fmt.Fprintf(&b, "   /usr/local/share/wayland-sessions/ with sudo -- but only if the\n")
+	fmt.Fprintf(&b, "   command above points at a binary all of them can run.\n\n")
+
+	switch lm.Kind {
+	case LoginSDDM:
+		fmt.Fprintf(&b, "2. Point SDDM at it.\n\n")
+		fmt.Fprintf(&b, "   If you log in through the greeter, just pick %q there.\n\n", entryName)
+		fmt.Fprintf(&b, "   If SDDM logs you in automatically, edit the [Autologin]\n")
+		fmt.Fprintf(&b, "   section in /etc/sddm.conf.d/ so it reads:\n\n")
+		fmt.Fprintf(&b, "     Session=%s\n\n", file)
+		fmt.Fprintf(&b, "   To undo: put the previous Session= value back.\n")
+	case LoginGreetd:
+		fmt.Fprintf(&b, "2. Point greetd at it: in /etc/greetd/config.toml, set the\n")
+		fmt.Fprintf(&b, "   session's `command` to\n\n     %s\n\n", wrapperCommand)
+		fmt.Fprintf(&b, "   To undo: put the previous command back.\n")
+	case LoginNone:
+		fmt.Fprintf(&b, "2. There is no display manager here, so step 1 is optional.\n")
+		fmt.Fprintf(&b, "   Wherever your login starts the compositor -- usually a line\n")
+		fmt.Fprintf(&b, "   in ~/.bash_profile or ~/.zprofile -- run this instead:\n\n")
+		fmt.Fprintf(&b, "     %s\n\n", wrapperCommand)
+		fmt.Fprintf(&b, "   To undo: put the previous command back.\n")
+	default:
+		fmt.Fprintf(&b, "2. Point %s at it. This login manager has not been tested\n", lm.describe())
+		fmt.Fprintf(&b, "   with the console session, so check its own documentation for\n")
+		fmt.Fprintf(&b, "   how to choose a session. Whatever it starts should be:\n\n")
+		fmt.Fprintf(&b, "     %s\n\n", wrapperCommand)
+		fmt.Fprintf(&b, "   To undo: put the previous session back.\n")
+	}
+
+	fmt.Fprintf(&b, "\n3. Log out and back in, then run `open-couch-engine doctor`.\n")
+	return b.String()
+}
+
+func (lm LoginManager) describe() string {
+	if lm.Unit != "" {
+		return strings.TrimSuffix(lm.Unit, ".service")
+	}
+	return string(lm.Kind)
+}
+
+// CurrentDesktopSession names the session entry the user is logged into.
+//
+// The process environment is asked first, then the user manager's, because a
+// command run over ssh or from a service has no session environment of its own
+// while the manager always does.
+func CurrentDesktopSession(ctx context.Context, sc Runner) string {
+	name := os.Getenv("DESKTOP_SESSION")
+	if name == "" && sc != nil {
+		if out, err := sc.Output(ctx, "show-environment"); err == nil {
+			for _, line := range strings.Split(out, "\n") {
+				if value, ok := strings.CutPrefix(strings.TrimSpace(line), "DESKTOP_SESSION="); ok {
+					name = value
+					break
+				}
+			}
+		}
+	}
+	if name = strings.TrimSpace(name); name == "" {
+		return ""
+	}
+	return strings.TrimSuffix(name, ".desktop") + ".desktop"
+}
+
+// Hosted reports whether the current session is already being hosted by the
+// wrapper, which is what the doctor needs to know before promising that
+// switching will work.
+//
+// The wrapper marks its own session rather than being guessed at: the compositor
+// underneath looks identical either way.
+//
+// The marker's mere existence is not enough. A wrapper killed with SIGKILL never
+// runs its deferred cleanup, so the file survives in XDG_RUNTIME_DIR until the
+// last logout -- and every `console enter` after that believes it can switch,
+// ends the desktop, and finds no wrapper to bring it back. So the PID is read
+// and confirmed to still be a wrapper before the answer is yes.
+func Hosted(runtimeDir string) bool {
+	data, err := os.ReadFile(filepath.Join(runtimeDir, hostedMarker))
+	if err != nil {
+		return false
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil || pid <= 0 {
+		// A marker with no readable PID predates this check. Refusing is the
+		// safe direction: a wrong "no" costs a `setup` and a login, a
+		// wrong "yes" costs the desktop with everything open on it.
+		return false
+	}
+	return wrapperAlive(pid)
+}
+
+// procRoot is a variable so tests can point it at a fixture.
+var procRoot = "/proc"
+
+// wrapperAlive reports whether pid is still a `host-session` wrapper.
+//
+// Existence alone would be wrong: runtime directories outlive processes and PIDs
+// are reused, so the marker of a wrapper killed hours ago can name whatever
+// process happens to hold that number now. The command line is what settles it.
+func wrapperAlive(pid int) bool {
+	data, err := os.ReadFile(filepath.Join(procRoot, strconv.Itoa(pid), "cmdline"))
+	if err != nil {
+		return false
+	}
+	args := strings.Split(strings.TrimSuffix(string(data), "\x00"), "\x00")
+	for _, arg := range args {
+		if arg == WrapperCommand {
+			return true
+		}
+	}
+	return false
+}
+
+const hostedMarker = "open-couch-hosted"
+
+func markHosted(runtimeDir string) error {
+	return os.WriteFile(filepath.Join(runtimeDir, hostedMarker), []byte(fmt.Sprint(os.Getpid())+"\n"), 0o600)
+}
+
+func unmarkHosted(runtimeDir string) { _ = os.Remove(filepath.Join(runtimeDir, hostedMarker)) }
+
+// Autologin says whether the login manager logs the user in without asking.
+//
+// It matters for BootConsole and BootLast: a machine that boots into the console
+// but stops at a greeter first asks for a password on whatever display the
+// greeter uses -- normally the desk monitor -- while the person waiting is on the
+// sofa. That is not a broken machine, but it is not a console either, and the
+// user should hear it before they choose.
+type Autologin int
+
+const (
+	// AutologinUnknown is the honest answer for a login manager whose
+	// configuration this does not know how to read. Saying nothing beats
+	// warning wrongly.
+	AutologinUnknown Autologin = iota
+	AutologinOn
+	AutologinOff
+)
+
+// autologinRoots are where SDDM reads its configuration, later files winning.
+var autologinRoots = []string{"/etc/sddm.conf", "/etc/sddm.conf.d"}
+
+// HasAutologin reports whether the login manager will skip its greeter.
+func HasAutologin(lm LoginManager) Autologin {
+	if lm.Kind != LoginSDDM {
+		// A machine with no display manager at all has nothing to ask.
+		if lm.Kind == LoginNone {
+			return AutologinOn
+		}
+		return AutologinUnknown
+	}
+	files := []string{}
+	for _, root := range autologinRoots {
+		info, err := os.Stat(root)
+		if err != nil {
+			continue
+		}
+		if !info.IsDir() {
+			files = append(files, root)
+			continue
+		}
+		found, _ := filepath.Glob(filepath.Join(root, "*.conf"))
+		sort.Strings(found)
+		files = append(files, found...)
+	}
+
+	user := ""
+	for _, path := range files {
+		if value, ok := iniValue(path, "Autologin", "User"); ok {
+			user = value
+		}
+	}
+	if strings.TrimSpace(user) == "" {
+		return AutologinOff
+	}
+	return AutologinOn
+}
+
+// iniValue reads one key from one section of an ini-shaped file. Later keys in
+// the same section win, which is how the file itself is read.
+func iniValue(path, section, key string) (string, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	in := false
+	value, found := "", false
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "[") {
+			in = strings.EqualFold(line, "["+section+"]")
+			continue
+		}
+		if !in || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if k, v, ok := strings.Cut(line, "="); ok && strings.EqualFold(strings.TrimSpace(k), key) {
+			value, found = strings.TrimSpace(v), true
+		}
+	}
+	return value, found
+}
