@@ -10,29 +10,13 @@
 <message id="engine.failed"><source>engine.failed</source><translation>Échec (code %1)</translation></message>
 <message id="app.settings"><source>app.settings</source><translation>Paramètres</translation></message>
 <message id="common.got_it"><source>common.got_it</source><translation>Compris</translation></message>
-<message id="common.loading"><source>common.loading</source><translation>Chargement...</translation></message>
-<message id="common.log"><source>common.log</source><translation>Journaux</translation></message>
-<message id="dashboard.copy_log"><source>dashboard.copy_log</source><translation>Copier les journaux</translation></message>
-<message id="dashboard.download_log"><source>dashboard.download_log</source><translation>Télécharger les journaux</translation></message>
 <message id="dashboard.help"><source>dashboard.help</source><translation>Comment ça marche ?</translation></message>
 <message id="dashboard.refresh_status"><source>dashboard.refresh_status</source><translation>Actualiser</translation></message>
-<message id="dashboard.status_updated"><source>dashboard.status_updated</source><translation>État des écrans mis à jour.</translation></message>
-<message id="dashboard.log_copied"><source>dashboard.log_copied</source><translation>Journaux copiés dans le presse-papiers.</translation></message>
 <message id="dashboard.log_saved"><source>dashboard.log_saved</source><translation>Journal enregistré dans : %1</translation></message>
-<message id="dashboard.log_save_failed"><source>dashboard.log_save_failed</source><translation>Impossible d'enregistrer le journal.</translation></message>
-<message id="dashboard.clear_log"><source>dashboard.clear_log</source><translation>Effacer les journaux</translation></message>
-<message id="dashboard.log_cleared"><source>dashboard.log_cleared</source><translation>Journaux effacés ! L'historique précédent a été conservé.</translation></message>
 <message id="dashboard.log_history"><source>dashboard.log_history</source><translation>Historique</translation></message>
-<message id="dashboard.log_resize_hint"><source>dashboard.log_resize_hint</source><translation>Faites glisser pour redimensionner (double-clic pour réinitialiser).</translation></message>
-<message id="dashboard.history_title"><source>dashboard.history_title</source><translation>Historique des journaux</translation></message>
-<message id="dashboard.history_empty"><source>dashboard.history_empty</source><translation>Aucun journal pour le moment.</translation></message>
-<message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copier la sélection</translation></message>
-<message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Télécharger la sélection</translation></message>
-<message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>Impossible de terminer l'opération.</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>Un composant système manque pour utiliser le Mode Canapé.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>Le composant système est obsolète. Veuillez le mettre à jour pour garantir le bon fonctionnement du Mode Canapé.</translation></message>
 <message id="dashboard.install_action"><source>dashboard.install_action</source><translation>Voir comment installer</translation></message>
-<message id="dashboard.update_action"><source>dashboard.update_action</source><translation>Voir comment mettre à jour</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Bienvenue sur Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch bascule vos écrans en un clic : jouez dans le salon ou travaillez au bureau sans prise de tête.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuration</translation></message>
@@ -43,28 +27,13 @@
 <message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Cliquez sur « Basculer sur la TV » pour allumer la TV et lancer Steam en plein écran, ou sur « Revenir au PC » pour tout remettre comme avant.</translation></message>
 <message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Autorisation requise</translation></message>
 <message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Pour pouvoir basculer l'affichage et lancer Steam, Open Couch a besoin d'un utilitaire installé directement sur le système.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Ouvrez un terminal dans le dossier du projet, collez la commande ci-dessous et appuyez sur Entrée :</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Lance Open Couch automatiquement dès l'ouverture de votre session.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>En fermant la fenêtre, l'application reste active près de l'horloge pour surveiller Steam. Utilisez cette icône pour rouvrir ou quitter.</translation></message>
-<message id="settings.startup"><source>settings.startup</source><translation>Démarrage</translation></message>
-<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Manettes de jeu</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Lancer au démarrage du système</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Réduire dans la zone de notification à la fermeture</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Offrir un café au dév</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch est un projet open source développé sur mon temps libre. Si l'appli vous est utile au quotidien, un petit coup de pouce fait toujours plaisir !</translation></message>
-<message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>Consultation du journal précédent : %1</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Revenir au journal en direct</translation></message>
-<message id="common.version"><source>common.version</source><translation>Version %1</translation></message>
-<message id="dashboard.view"><source>dashboard.view</source><translation>Afficher</translation></message>
-<message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>Impossible de lire le journal ou le fichier est vide.</translation></message>
-<message id="settings.system"><source>settings.system</source><translation>Système</translation></message>
-<message id="settings.background"><source>settings.background</source><translation>Arrière-plan</translation></message>
-<message id="common.copy_command"><source>common.copy_command</source><translation>Copier la commande</translation></message>
-<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permission requise pour utiliser le Mode Salon</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Après avoir exécuté la commande, cliquez sur Actualiser l'état dans le tableau de bord pour appliquer les modifications.</translation></message>
-<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>Engine installé avec succès !</translation></message>
-<message id="engine.install_button"><source>engine.install_button</source><translation>Installer Engine</translation></message>
-<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>Le engine est déjà inclus dans cette application et sera installé automatiquement lors de la première utilisation.</translation></message>
 <message id="common.copy"><source>common.copy</source><translation type="unfinished"></translation></message>
 <message id="engine.enter_console"><source>engine.enter_console</source><translation type="unfinished"></translation></message>
 <message id="dashboard.enter_console"><source>dashboard.enter_console</source><translation type="unfinished"></translation></message>
@@ -75,7 +44,6 @@
 <message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation type="unfinished"></translation></message>
 <message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation type="unfinished"></translation></message>
 <message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation type="unfinished"></translation></message>
-<message id="settings.console"><source>settings.console</source><translation type="unfinished"></translation></message>
 <message id="settings.console_description"><source>settings.console_description</source><translation type="unfinished"></translation></message>
 <message id="settings.ready"><source>settings.ready</source><translation type="unfinished"></translation></message>
 <message id="settings.not_ready"><source>settings.not_ready</source><translation type="unfinished"></translation></message>
@@ -83,13 +51,6 @@
 <message id="settings.hosting_session"><source>settings.hosting_session</source><translation type="unfinished"></translation></message>
 <message id="settings.hosting_description"><source>settings.hosting_description</source><translation type="unfinished"></translation></message>
 <message id="settings.run_setup"><source>settings.run_setup</source><translation type="unfinished"></translation></message>
-<message id="settings.setup_failed"><source>settings.setup_failed</source><translation type="unfinished"></translation></message>
-<message id="settings.television"><source>settings.television</source><translation type="unfinished"></translation></message>
-<message id="settings.television_description"><source>settings.television_description</source><translation type="unfinished"></translation></message>
-<message id="settings.television_display"><source>settings.television_display</source><translation type="unfinished"></translation></message>
-<message id="settings.television_state"><source>settings.television_state</source><translation type="unfinished"></translation></message>
-<message id="settings.television_connected"><source>settings.television_connected</source><translation type="unfinished"></translation></message>
-<message id="settings.television_waiting"><source>settings.television_waiting</source><translation type="unfinished"></translation></message>
 <message id="settings.no_displays"><source>settings.no_displays</source><translation type="unfinished"></translation></message>
 <message id="settings.console_behavior"><source>settings.console_behavior</source><translation type="unfinished"></translation></message>
 <message id="settings.boot_label"><source>settings.boot_label</source><translation type="unfinished"></translation></message>
@@ -99,5 +60,15 @@
 <message id="settings.boot_description"><source>settings.boot_description</source><translation type="unfinished"></translation></message>
 <message id="settings.enter_on_controller"><source>settings.enter_on_controller</source><translation type="unfinished"></translation></message>
 <message id="settings.enter_on_controller_description"><source>settings.enter_on_controller_description</source><translation type="unfinished"></translation></message>
+<message id="common.cancel"><source>common.cancel</source><translation type="unfinished"></translation></message>
+<message id="dashboard.logs"><source>dashboard.logs</source><translation type="unfinished"></translation></message>
+<message id="dashboard.copy_logs"><source>dashboard.copy_logs</source><translation type="unfinished"></translation></message>
+<message id="dashboard.download_logs"><source>dashboard.download_logs</source><translation type="unfinished"></translation></message>
+<message id="dashboard.clear_logs"><source>dashboard.clear_logs</source><translation type="unfinished"></translation></message>
+<message id="settings.console_display"><source>settings.console_display</source><translation type="unfinished"></translation></message>
+<message id="settings.console_display_description"><source>settings.console_display_description</source><translation type="unfinished"></translation></message>
+<message id="settings.display_connected"><source>settings.display_connected</source><translation type="unfinished"></translation></message>
+<message id="settings.display_waiting"><source>settings.display_waiting</source><translation type="unfinished"></translation></message>
+<message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

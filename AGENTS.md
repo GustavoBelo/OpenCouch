@@ -66,7 +66,9 @@ A GUI é apenas uma camada; ela invoca o engine via `QProcess` (`app/src/enginec
 - `src/displaysettingsvalidator.{h,cpp}` — valida DESK_OUTPUT/TV_OUTPUT/scale/pos antes de salvar.
 
 - `src/appinfomodel.{h,cpp}` — nome, versão e URL do script de instalação.
-- `qml/` — `main.qml`, `SetupPage.qml`, `DashboardPage.qml`, `OnboardingSheet.qml`, `ChooseAppDialog.qml`, `RunningAppsDialog.qml` (Kirigami, `QtQuick.Controls`).
+- `qml/` — QtQuick puro, **sem Kirigami**. `theme/Colors.qml` e `theme/Metrics.qml` são singletons
+  (a paleta e a escala); `StateSurface.qml` é o **único** lugar onde a prioridade de estado é
+  declarada; `Icon.qml` + `IconData.js` desenham os 17 ícones como `Shape`.
 - `translations/` — catálogos Qt Linguist (`.ts`); `opencouch_en.ts` é o catálogo base.
 
 ### engine/ — o engine
@@ -121,7 +123,7 @@ cmake --build app-build --parallel "$(nproc)"
 ```
 
 Dependências de build: Go ≥ 1.26, Qt6 (Core, Gui, Widgets, Qml, Quick, QuickControls2, DBus,
-LinguistTools), KF6 Kirigami, ECM, C++17, CMake ≥ 3.16, ninja.
+LinguistTools), ECM, C++17, CMake ≥ 3.16, ninja.
 
 ## Versionamento (CRÍTICO)
 
@@ -274,6 +276,19 @@ Verificadas por leitura direta de `packaging/release.sh` — o script agora **mi
   que isto substituiu também tem um `check` que passa e reporta a mesma versão, e depois responde
   `status` com linhas de log em vez de JSON — o app falaria com ele e mostraria "não pronto" para
   sempre, sem nada a dizer.
+
+- **Nunca nomear um tipo QML como um tipo embutido do Qt.** `Palette` e `Style` existem no QtQuick e
+  no QtQuick.Controls: um singleton com esses nomes compila (o módulo vence na compilação) e falha em
+  runtime com `was a singleton at compile time, but is not a singleton anymore` ou lendo o tipo errado.
+  Custou uma sessão inteira. Por isso são `Colors` e `Metrics`.
+- **O módulo QML precisa de `RESOURCE_PREFIX "/qt/qml"`.** É o prefixo que o caminho de import padrão
+  do engine procura; sem ele o módulo existe no resource mas não é importável, e os tipos resolvem
+  pelo diretório como componentes comuns.
+- **Todo `.qml` que usa `Colors`/`Metrics` precisa de `import io.github.gustavobelo.opencouch`.**
+  Singletons não vêm pelo import implícito do diretório.
+- **Ícones são `Shape`, não imagem.** Tingir imagem exige efeito de shader, e shader não desenha nada
+  sob rasterizador de software — o `QT_QPA_PLATFORM=offscreen` do CI, por exemplo. Com `ShapePath` a
+  cor é propriedade comum.
 
 ## Estratégia de branch
  

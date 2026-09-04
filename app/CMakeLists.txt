@@ -62,11 +62,10 @@ configure_file(
     @ONLY
 )
 
-find_package(ECM REQUIRED NO_MODULE)
-set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-
+# No Kirigami and no ECM. Kirigami's job is to make an application look native
+# on KDE, which is the opposite of what this one needs: it has to look the same
+# on every desktop, and it cannot depend on an icon theme being installed.
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Qml Quick QuickControls2 DBus)
-find_package(KF6Kirigami REQUIRED)
 
 qt_add_executable(opencouch
     src/main.cpp
@@ -82,15 +81,38 @@ qt_add_executable(opencouch
     src/appinfomodel.h
 )
 
+# The design system is two singletons: one palette, one spacing/type scale.
+# Everything else reads from them, so a colour or a density change is one edit.
+set_source_files_properties(qml/theme/Colors.qml qml/theme/Metrics.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(opencouch
     URI io.github.gustavobelo.opencouch
     VERSION 1.0
+    # /qt/qml is the prefix the engine's default import path searches. Without
+    # it the module is in the resource but not importable, so its singletons
+    # resolve as ordinary components through the directory instead -- which
+    # fails at runtime with "was a singleton at compile time".
+    RESOURCE_PREFIX "/qt/qml"
     QML_FILES
         qml/main.qml
         qml/SetupPage.qml
         qml/DashboardPage.qml
         qml/OnboardingSheet.qml
+        qml/theme/Colors.qml
+        qml/theme/Metrics.qml
+        qml/Icon.qml
+        qml/Card.qml
+        qml/AppButton.qml
+        qml/SectionLabel.qml
+        qml/StatusDot.qml
+        qml/Select.qml
+        qml/Toggle.qml
+        qml/IconAction.qml
+        qml/SettingSwitch.qml
+        qml/StateSurface.qml
     RESOURCES
+        qml/IconData.js
 )
 
 qt_add_resources(OPENCOUCH_ICON_RESOURCES applicationicon.qrc)

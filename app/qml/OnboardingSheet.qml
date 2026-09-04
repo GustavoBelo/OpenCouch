@@ -1,214 +1,160 @@
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls as Controls
-import org.kde.kirigami as Kirigami
+import QtQuick.Layouts
+import io.github.gustavobelo.opencouch
 
+// The help sheet. Full-bleed rather than a dialog with a title bar, because
+// this is the one screen that is read rather than operated.
 Controls.Popup {
-    id: sheet
+    id: root
 
+    parent: Controls.Overlay.overlay
+    anchors.centerIn: Controls.Overlay.overlay
+    width: Math.min(parent ? parent.width - Metrics.iconButton : Metrics.sheetWidth, Metrics.sheetWidth)
+    height: Math.min(parent ? parent.height - Metrics.iconButton : Metrics.sheetHeight, Metrics.sheetHeight)
     modal: true
-    focus: true
-    dim: true
-    closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
-    anchors.centerIn: parent
-    
-    implicitWidth: Math.min(parent ? parent.width * 0.9 : 500, Kirigami.Units.gridUnit * 35)
-    
-    implicitHeight: Math.min(parent ? parent.height * 0.9 : 600, mainLayout.implicitHeight + padding * 2)
-    padding: Kirigami.Units.largeSpacing
+    padding: 0
+
+    Controls.Overlay.modal: Rectangle {
+        color: Colors.veil
+    }
 
     background: Rectangle {
-        radius: Kirigami.Units.largeSpacing
-        color: Kirigami.Theme.backgroundColor
-        border.color: Kirigami.Theme.focusColor
+        color: Colors.surface
+        radius: Metrics.radius
         border.width: 1
-        opacity: 0.95
+        border.color: Colors.edge
     }
 
     contentItem: ColumnLayout {
-        id: mainLayout
-        spacing: Kirigami.Units.largeSpacing
+        spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: Kirigami.Units.largeSpacing
+            Layout.margins: Metrics.cardPadding
+            spacing: Metrics.xl
 
-            Kirigami.Icon {
-                source: "help-about"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                Kirigami.Theme.inherit: false
+            Rectangle {
+                width: Metrics.md; height: Metrics.md
+                radius: width / 2
+                color: Colors.accent
             }
 
-            Kirigami.Heading {
-                text: qsTrId("onboarding.welcome")
-                level: 2
+            Text {
                 Layout.fillWidth: true
-                wrapMode: Text.WordWrap
+                text: qsTrId("onboarding.welcome")
+                color: Colors.foreground
+                font.pixelSize: Metrics.heading
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+
+            IconAction {
+                icon: "close"
+                onTriggered: root.close()
             }
         }
 
-        Kirigami.Separator {
+        Rectangle {
             Layout.fillWidth: true
+            height: 1
+            color: Colors.hairline
         }
 
         Controls.ScrollView {
-            id: contentScroll
             Layout.fillWidth: true
             Layout.fillHeight: true
+            contentWidth: availableWidth
             clip: true
-            Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
 
             ColumnLayout {
-                width: contentScroll.availableWidth 
-                spacing: Kirigami.Units.largeSpacing
+                width: parent.parent.width
+                spacing: Metrics.sectionGap
 
-                Controls.Label {
+                Item { Layout.preferredHeight: Metrics.xs }
+
+                Text {
                     Layout.fillWidth: true
-                    wrapMode: Text.Wrap
+                    Layout.leftMargin: Metrics.cardPadding
+                    Layout.rightMargin: Metrics.cardPadding
                     text: qsTrId("onboarding.introduction")
-                    font.pointSize: Kirigami.Theme.defaultFont.pointSize + 1
-                    opacity: 0.9
+                    color: Colors.muted
+                    font.pixelSize: Metrics.body
+                    wrapMode: Text.Wrap
                 }
 
-                component FeatureBlock : RowLayout {
-                    property string iconName
-                    property string titleText
-                    property string descText
-                    property string codeSnippet: ""
+                Repeater {
+                    model: [
+                        { icon: "warn",    title: qsTrId("onboarding.requirement_title"),     body: qsTrId("onboarding.requirement_description") },
+                        { icon: "session", title: qsTrId("onboarding.configuration_title"),   body: qsTrId("onboarding.configuration_description") },
+                        { icon: "display", title: qsTrId("onboarding.desktop_display_title"), body: qsTrId("onboarding.desktop_display_description") },
+                        { icon: "enter",   title: qsTrId("onboarding.usage_title"),           body: qsTrId("onboarding.usage_description") }
+                    ]
 
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-                    Layout.topMargin: Kirigami.Units.smallSpacing
-
-                    Kirigami.Icon {
-                        source: iconName
-                        Layout.alignment: Qt.AlignTop
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.large
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.large
-                        opacity: 0.7
-                    }
-
-                    ColumnLayout {
+                    RowLayout {
                         Layout.fillWidth: true
-                        spacing: Kirigami.Units.smallSpacing
+                        Layout.leftMargin: Metrics.cardPadding
+                        Layout.rightMargin: Metrics.cardPadding
+                        spacing: Metrics.xxl
 
-                        Kirigami.Heading {
-                            level: 4
-                            text: titleText
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                        }
-                        
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            text: descText
-                            opacity: 0.8
+                        Icon {
+                            Layout.alignment: Qt.AlignTop
+                            name: modelData.icon
+                            size: Metrics.icon
+                            color: Colors.accent
                         }
 
-                        Rectangle {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            Layout.topMargin: Kirigami.Units.smallSpacing
-                            Layout.preferredHeight: codeRow.implicitHeight + (Kirigami.Units.smallSpacing * 2)
-                            visible: codeSnippet !== ""
-                            color: Kirigami.Theme.alternateBackgroundColor
-                            radius: Kirigami.Units.smallSpacing
-                            border.color: Kirigami.Theme.focusColor
-                            border.width: 1
-                            opacity: 0.9
+                            spacing: Metrics.xs
 
-                            RowLayout {
-                                id: codeRow
-                                anchors.fill: parent
-                                anchors.margins: Kirigami.Units.smallSpacing
-                                spacing: Kirigami.Units.smallSpacing
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.title
+                                color: Colors.foreground
+                                font.pixelSize: Metrics.body
+                                font.bold: true
+                                wrapMode: Text.Wrap
+                            }
 
-                                Controls.TextArea {
-                                    id: codeField
-                                    Layout.fillWidth: true
-                                    text: codeSnippet
-                                    font.family: "monospace"
-                                    readOnly: true
-                                    wrapMode: Text.WrapAnywhere
-                                    selectByMouse: true
-                                    background: null
-                                    color: Kirigami.Theme.textColor
-                                    topPadding: 0
-                                    bottomPadding: 0
-                                }
-
-                                Controls.ToolButton {
-                                    icon.name: "edit-copy"
-                                    Layout.alignment: Qt.AlignTop
-                                    Controls.ToolTip.text: qsTrId("common.copy_command")
-                                    Controls.ToolTip.visible: hovered
-                                    onClicked: {
-                                        codeField.selectAll();
-                                        codeField.copy();
-                                        codeField.deselect();
-                                        
-                                        icon.name = "dialog-ok";
-                                        feedbackTimer.start();
-                                    }
-
-                                    Timer {
-                                        id: feedbackTimer
-                                        interval: 2000
-                                        onTriggered: parent.icon.name = "edit-copy"
-                                    }
-                                }
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.body
+                                color: Colors.muted
+                                font.pixelSize: Metrics.body
+                                wrapMode: Text.Wrap
                             }
                         }
                     }
                 }
 
-                FeatureBlock {
-                    iconName: "configure"
-                    titleText: qsTrId("onboarding.configuration_title")
-                    descText: qsTrId("onboarding.configuration_description")
-                }
-
-                FeatureBlock {
-                    iconName: "video-display"
-                    titleText: qsTrId("onboarding.desktop_display_title")
-                    descText: qsTrId("onboarding.desktop_display_description")
-                }
-
-                FeatureBlock {
-                    iconName: "media-playback-start"
-                    titleText: qsTrId("onboarding.usage_title")
-                    descText: qsTrId("onboarding.usage_description")
-                }
-
-                FeatureBlock {
-                    iconName: backend.canAutoInstallEngine() ? "dialog-ok" : "dialog-information"
-                    titleText: qsTrId("onboarding.requirement_title")
-                    descText: backend.canAutoInstallEngine() 
-                        ? qsTrId("onboarding.requirement_description") + "\n\n" + qsTrId("onboarding.auto_install_description")
-                        : qsTrId("onboarding.requirement_description") + "\n\n" + qsTrId("onboarding.install_description")
-                    codeSnippet: backend.canAutoInstallEngine() ? "" : "bash <(curl -fsSL " + appInfo.installScriptUrl + ")"
-                }
+                Item { Layout.preferredHeight: Metrics.md }
             }
         }
 
-        Kirigami.Separator {
+        Rectangle {
             Layout.fillWidth: true
+            height: 1
+            color: Colors.hairline
         }
 
         RowLayout {
             Layout.fillWidth: true
+            Layout.margins: Metrics.cardPadding
+            spacing: Metrics.md
 
-            Item { Layout.fillWidth: true }
+            Text {
+                Layout.fillWidth: true
+                text: appInfo.displayName + "  ·  v" + appInfo.version
+                color: Colors.muted
+                font.pixelSize: Metrics.caption
+            }
 
-            Controls.Button {
+            AppButton {
+                primary: true
                 text: qsTrId("common.got_it")
-                icon.name: "dialog-ok"
-                highlighted: true
-                onClicked: sheet.close()
-                
-                Component.onCompleted: forceActiveFocus() 
+                icon: "check"
+                onClicked: root.close()
             }
         }
     }

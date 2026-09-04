@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
         }
     });
 
-    const QUrl url(QStringLiteral("qrc:/io/github/gustavobelo/opencouch/qml/main.qml"));
+    const QUrl url(QStringLiteral("qrc:/qt/qml/io/github/gustavobelo/opencouch/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                       []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
     engine.load(url);

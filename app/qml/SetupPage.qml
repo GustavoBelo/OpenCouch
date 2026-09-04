@@ -1,25 +1,13 @@
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls as Controls
-import org.kde.kirigami as Kirigami
+import QtQuick.Layouts
+import io.github.gustavobelo.opencouch
 
-Kirigami.ScrollablePage {
+Item {
     id: page
-    title: qsTrId("app.settings")
 
     property var status: ({})
     property var displays: []
-
-    // Kirigami.Theme.separatorColor does not exist in KF6: every card that
-    // asked for it drew no border at all. This is the blend the platform styles
-    // use in its place, and it follows the theme in both light and dark.
-    readonly property color cardBorderColor: Qt.rgba(Kirigami.Theme.textColor.r,
-                                                     Kirigami.Theme.textColor.g,
-                                                     Kirigami.Theme.textColor.b, 0.15)
-
-    Component.onCompleted: {
-        page.reload();
-    }
 
     function reload() {
         page.status = backend.consoleStatus();
@@ -27,473 +15,348 @@ Kirigami.ScrollablePage {
     }
 
     // The connector is what gamescope takes; the description is what a person
-    // recognises. Both are shown, because a machine with two HDMI ports gives no
-    // other way to tell which one the cable is in.
+    // recognises. Both are shown, because a machine with two HDMI ports gives
+    // no other way to tell which one the cable is in.
     function displayLabel(display) {
         if (!display) return "";
         return display.description === display.connector
             ? display.connector
-            : display.description + "  (" + display.connector + ")";
+            : display.description + "  ·  " + display.connector;
     }
 
-    function chosenDisplayIndex() {
+    function chosenIndex() {
         for (var i = 0; i < page.displays.length; i++) {
             if (page.displays[i].connector === page.status.tv_name) return i;
         }
         return -1;
     }
 
-    Timer {
-        id: saveFeedbackTimer
-        interval: 2500
-        onTriggered: statusLabel.visible = false
-    }
+    Component.onCompleted: page.reload()
 
-    ColumnLayout {
-        Layout.fillWidth: true
-        spacing: Kirigami.Units.largeSpacing
+    Controls.ScrollView {
+        anchors.fill: parent
+        contentWidth: availableWidth
+        clip: true
 
-        Controls.Label {
-            Layout.fillWidth: true
-            wrapMode: Text.Wrap
-            opacity: 0.8
-            text: qsTrId("settings.console_description")
-        }
+        ColumnLayout {
+            width: parent.parent.width
+            spacing: Metrics.sectionGap
 
-        Kirigami.Heading {
-            text: qsTrId("settings.console")
-            level: 3
-            Layout.fillWidth: true
-        }
+            Item { Layout.preferredHeight: Metrics.xs }
 
-        // What is still missing. The engine answers this in one place so the
-        // page and the command line cannot disagree about what "ready" means.
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: page.cardBorderColor
-            border.width: 1
-            implicitHeight: requirementsColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            Text {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                text: qsTrId("settings.console_description")
+                color: Colors.muted
+                font.pixelSize: Metrics.body
+                wrapMode: Text.Wrap
+            }
 
-            ColumnLayout {
-                id: requirementsColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+            // Requirements ------------------------------------------------
+            Card {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                implicitHeight: reqColumn.implicitHeight + Metrics.cardPadding * 2
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-
-                    Kirigami.Icon {
-                        source: page.status.ready ? "checkmark" : "dialog-warning"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        Kirigami.Theme.inherit: false
-                    }
-
-                    Kirigami.Heading {
-                        text: page.status.ready ? qsTrId("settings.ready") : qsTrId("settings.not_ready")
-                        level: 4
-                        Layout.fillWidth: true
-                    }
-
-                    Controls.Button {
-                        text: qsTrId("settings.recheck")
-                        icon.name: "view-refresh"
-                        onClicked: page.reload()
-                    }
-                }
-
-                Repeater {
-                    model: page.status.requirements || []
+                ColumnLayout {
+                    id: reqColumn
+                    anchors.fill: parent
+                    anchors.margins: Metrics.cardPadding
+                    spacing: Metrics.rowGap
 
                     RowLayout {
                         Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.gridUnit
-                        spacing: Kirigami.Units.smallSpacing
+                        spacing: Metrics.lg
 
-                        Kirigami.Icon {
-                            source: modelData.ok ? "dialog-ok" : "dialog-cancel"
-                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                        Icon {
+                            name: page.status.ready === true ? "check" : "warn"
+                            size: Metrics.icon
+                            color: page.status.ready === true ? Colors.accent : Colors.urgent
                         }
 
-                        Controls.Label {
+                        Text {
                             Layout.fillWidth: true
+                            text: page.status.ready === true ? qsTrId("settings.ready")
+                                                             : qsTrId("settings.not_ready")
+                            color: Colors.foreground
+                            font.pixelSize: Metrics.title
+                            font.bold: true
                             wrapMode: Text.Wrap
-                            opacity: modelData.ok ? 0.7 : 1
+                        }
+
+                        AppButton {
+                            text: qsTrId("settings.recheck")
+                            icon: "refresh"
+                            onClicked: page.reload()
+                        }
+                    }
+
+                    Repeater {
+                        model: page.status.requirements || []
+                        StatusDot {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: Metrics.xs
+                            ok: modelData.ok
                             text: modelData.ok ? modelData.have : modelData.want
                         }
                     }
                 }
             }
-        }
 
-        // The hosting session. This is the one step that needs root, and the
-        // page prints the command rather than running it: getting it wrong
-        // leaves a machine that will not present a desktop at all, which is a
-        // bad thing to inflict on someone who has not seen it coming.
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: page.cardBorderColor
-            border.width: 1
-            implicitHeight: hostingColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            // Hosting session ---------------------------------------------
+            Card {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                implicitHeight: hostColumn.implicitHeight + Metrics.cardPadding * 2
 
-            ColumnLayout {
-                id: hostingColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+                ColumnLayout {
+                    id: hostColumn
+                    anchors.fill: parent
+                    anchors.margins: Metrics.cardPadding
+                    spacing: Metrics.labelGap
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-
-                    Kirigami.Icon {
-                        source: "system-switch-user"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        Kirigami.Theme.inherit: false
-                    }
-
-                    Kirigami.Heading {
-                        text: qsTrId("settings.hosting_session")
-                        level: 4
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: Metrics.lg
+                        Icon { name: "session"; size: Metrics.icon; color: Colors.foreground }
+                        SectionLabel { Layout.fillWidth: true; label: qsTrId("settings.hosting_session") }
                     }
-                }
 
-                Controls.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    opacity: 0.8
-                    text: qsTrId("settings.hosting_description")
-                }
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Metrics.xs
+                        text: qsTrId("settings.hosting_description")
+                        color: Colors.muted
+                        font.pixelSize: Metrics.body
+                        wrapMode: Text.Wrap
+                    }
 
-                RowLayout {
-                    Layout.fillWidth: true
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Metrics.md
+                        spacing: Metrics.md
 
-                    Controls.Button {
-                        text: qsTrId("settings.run_setup")
-                        icon.name: "run-build-configure"
-                        onClicked: {
-                            var instructions = backend.runSetup();
-                            if (instructions.length > 0) {
-                                setupInstructions.text = instructions;
-                                setupInstructions.visible = true;
-                            } else {
-                                statusLabel.type = Kirigami.MessageType.Error;
-                                statusLabel.text = qsTrId("settings.setup_failed");
-                                statusLabel.visible = true;
+                        AppButton {
+                            text: qsTrId("settings.run_setup")
+                            icon: "session"
+                            onClicked: {
+                                const instructions = backend.runSetup();
+                                if (instructions !== "") {
+                                    setupOutput.text = instructions;
+                                    setupOutput.visible = true;
+                                }
+                                page.reload();
                             }
-                            page.reload();
+                        }
+
+                        AppButton {
+                            visible: setupOutput.visible
+                            text: qsTrId("common.copy")
+                            icon: "copy"
+                            onClicked: { setupOutput.selectAll(); setupOutput.copy(); setupOutput.deselect(); }
+                        }
+
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    Card {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Metrics.sm
+                        visible: setupOutput.visible
+                        implicitHeight: setupOutput.implicitHeight + Metrics.x4
+
+                        Controls.TextArea {
+                            id: setupOutput
+                            anchors.fill: parent
+                            anchors.margins: Metrics.lg
+                            visible: false
+                            readOnly: true
+                            wrapMode: Text.Wrap
+                            color: Colors.foreground
+                            font.family: Metrics.monoFamily
+                            font.pixelSize: Metrics.caption
+                            background: null
+                            selectByMouse: true
                         }
                     }
-
-                    Item { Layout.fillWidth: true }
-
-                    Controls.Button {
-                        visible: setupInstructions.visible
-                        text: qsTrId("common.copy")
-                        icon.name: "edit-copy"
-                        onClicked: setupInstructions.selectAll(), setupInstructions.copy()
-                    }
-                }
-
-                Controls.TextArea {
-                    id: setupInstructions
-                    Layout.fillWidth: true
-                    visible: false
-                    readOnly: true
-                    wrapMode: Text.Wrap
-                    font.family: "monospace"
                 }
             }
-        }
 
-        // The television.
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: page.cardBorderColor
-            border.width: 1
-            implicitHeight: televisionColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            // The console display -----------------------------------------
+            Card {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                implicitHeight: displayColumn.implicitHeight + Metrics.cardPadding * 2
 
-            ColumnLayout {
-                id: televisionColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+                ColumnLayout {
+                    id: displayColumn
+                    anchors.fill: parent
+                    anchors.margins: Metrics.cardPadding
+                    spacing: Metrics.labelGap
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-
-                    Kirigami.Icon {
-                        source: "video-television"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        Kirigami.Theme.inherit: false
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: Metrics.lg
+                        Icon { name: "display"; size: Metrics.icon; color: Colors.foreground }
+                        SectionLabel { Layout.fillWidth: true; label: qsTrId("settings.console_display") }
                     }
 
-                    Kirigami.Heading {
-                        text: qsTrId("settings.television")
-                        level: 4
+                    Text {
                         Layout.fillWidth: true
+                        Layout.topMargin: Metrics.xs
+                        text: qsTrId("settings.console_display_description")
+                        color: Colors.muted
+                        font.pixelSize: Metrics.body
+                        wrapMode: Text.Wrap
                     }
-                }
 
-                Controls.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.Wrap
-                    opacity: 0.8
-                    text: qsTrId("settings.television_description")
-                }
-
-                Kirigami.FormLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
-
-                    Controls.ComboBox {
-                        id: televisionCombo
-                        Kirigami.FormData.label: qsTrId("settings.television_display")
+                    Select {
                         Layout.fillWidth: true
+                        Layout.topMargin: Metrics.md
                         model: page.displays.map(page.displayLabel)
-                        currentIndex: page.chosenDisplayIndex()
+                        currentIndex: page.chosenIndex()
+                        placeholder: qsTrId("settings.choose_display")
                         onActivated: {
-                            var display = page.displays[currentIndex];
+                            const display = page.displays[currentIndex];
                             if (display && backend.setTv(display.connector)) {
                                 page.reload();
                             }
                         }
                     }
 
-                    Controls.Label {
-                        Kirigami.FormData.label: qsTrId("settings.television_state")
-                        visible: page.chosenDisplayIndex() >= 0
-                        wrapMode: Text.Wrap
-                        opacity: 0.7
-                        text: {
-                            var display = page.displays[page.chosenDisplayIndex()];
-                            if (!display) return "";
-                            return display.connected
-                                ? qsTrId("settings.television_connected")
-                                : qsTrId("settings.television_waiting");
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Metrics.xs
+                        visible: page.chosenIndex() >= 0
+                        spacing: Metrics.md
+
+                        Icon {
+                            name: page.displays[page.chosenIndex()] && page.displays[page.chosenIndex()].connected
+                                  ? "check" : "warn"
+                            size: Metrics.iconSmall
+                            color: page.displays[page.chosenIndex()] && page.displays[page.chosenIndex()].connected
+                                   ? Colors.accent : Colors.muted
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: {
+                                const d = page.displays[page.chosenIndex()];
+                                if (!d) return "";
+                                return d.connected ? qsTrId("settings.display_connected")
+                                                   : qsTrId("settings.display_waiting");
+                            }
+                            color: Colors.muted
+                            font.pixelSize: Metrics.caption
+                            wrapMode: Text.Wrap
                         }
                     }
-                }
 
-                Controls.Label {
-                    Layout.fillWidth: true
-                    visible: page.displays.length === 0
-                    wrapMode: Text.Wrap
-                    color: Kirigami.Theme.negativeTextColor
-                    text: qsTrId("settings.no_displays")
+                    Text {
+                        Layout.fillWidth: true
+                        visible: page.displays.length === 0
+                        text: qsTrId("settings.no_displays")
+                        color: Colors.urgent
+                        font.pixelSize: Metrics.body
+                        wrapMode: Text.Wrap
+                    }
                 }
             }
-        }
 
-        // Where a fresh login lands, and whether a controller may ask.
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: page.cardBorderColor
-            border.width: 1
-            implicitHeight: behaviourColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            // Behaviour ---------------------------------------------------
+            Card {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                implicitHeight: behaviourColumn.implicitHeight + Metrics.cardPadding * 2
 
-            ColumnLayout {
-                id: behaviourColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+                ColumnLayout {
+                    id: behaviourColumn
+                    anchors.fill: parent
+                    anchors.margins: Metrics.cardPadding
+                    spacing: Metrics.x3
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-
-                    Kirigami.Icon {
-                        source: "preferences-desktop-gaming"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        Kirigami.Theme.inherit: false
-                    }
-
-                    Kirigami.Heading {
-                        text: qsTrId("settings.console_behavior")
-                        level: 4
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: Metrics.lg
+                        Icon { name: "power"; size: Metrics.icon; color: Colors.foreground }
+                        SectionLabel { Layout.fillWidth: true; label: qsTrId("settings.console_behavior") }
                     }
-                }
-
-                Kirigami.FormLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Kirigami.FormData.label: qsTrId("settings.boot_label")
-                        spacing: 0
+                        spacing: Metrics.labelGap
 
-                        Controls.ComboBox {
-                            id: bootCombo
+                        Text {
+                            text: qsTrId("settings.boot_label")
+                            color: Colors.foreground
+                            font.pixelSize: Metrics.body
+                        }
+
+                        Select {
                             Layout.fillWidth: true
                             textRole: "label"
                             valueRole: "value"
                             model: [
                                 { value: "desktop", label: qsTrId("settings.boot_desktop") },
                                 { value: "console", label: qsTrId("settings.boot_console") },
-                                { value: "last", label: qsTrId("settings.boot_last") }
+                                { value: "last",    label: qsTrId("settings.boot_last") }
                             ]
                             currentIndex: {
-                                var boot = page.status.boot || "desktop";
+                                const boot = page.status.boot || "desktop";
                                 return boot === "console" ? 1 : (boot === "last" ? 2 : 0);
                             }
-                            onActivated: {
-                                if (backend.setBootMode(currentValue)) page.reload();
-                            }
+                            onActivated: { if (backend.setBootMode(currentValue)) page.reload(); }
                         }
-                        Controls.Label {
+
+                        Text {
                             Layout.fillWidth: true
-                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                            wrapMode: Text.Wrap
                             text: qsTrId("settings.boot_description")
-                            opacity: 0.7
-                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+                            color: Colors.muted
+                            font.pixelSize: Metrics.caption
+                            wrapMode: Text.Wrap
                         }
                     }
 
-                    ColumnLayout {
+                    SettingSwitch {
                         Layout.fillWidth: true
-                        Kirigami.FormData.label: qsTrId("settings.controllers_label")
-                        spacing: 0
+                        label: qsTrId("settings.enter_on_controller")
+                        description: qsTrId("settings.enter_on_controller_description")
+                        checked: page.status.enter_on_controller_connect === true
+                        onToggled: function(value) {
+                            var config = backend.loadConfig();
+                            config["ENTER_ON_CONTROLLER_CONNECT"] = value ? "true" : "false";
+                            backend.saveConfig(config);
+                        }
+                    }
 
-                        Controls.CheckBox {
-                            Layout.fillWidth: true
-                            text: qsTrId("settings.enter_on_controller")
-                            checked: page.status.enter_on_controller_connect === true
-                            onToggled: {
-                                var config = backend.loadConfig();
-                                config["ENTER_ON_CONTROLLER_CONNECT"] = checked ? "true" : "false";
-                                backend.saveConfig(config);
-                            }
-                        }
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                            wrapMode: Text.Wrap
-                            text: qsTrId("settings.enter_on_controller_description")
-                            opacity: 0.7
-                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        }
+                    SettingSwitch {
+                        Layout.fillWidth: true
+                        label: qsTrId("settings.autostart")
+                        description: qsTrId("settings.autostart_description")
+                        checked: backend.autostartEnabled()
+                        onToggled: function(value) { backend.setAutostart(value); }
+                    }
+
+                    SettingSwitch {
+                        Layout.fillWidth: true
+                        label: qsTrId("settings.background_on_close")
+                        description: qsTrId("settings.background_on_close_description")
+                        checked: backend.backgroundOnClose()
+                        onToggled: function(value) { backend.setBackgroundOnClose(value); }
                     }
                 }
             }
+
+            // Every setting here is one engine call, applied when it is chosen.
+            // A console half-configured because someone walked away before
+            // saving is worse than one configured slowly, so there is no Save.
+            Item { Layout.preferredHeight: Metrics.x4 }
         }
-
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: page.cardBorderColor
-            border.width: 1
-            implicitHeight: startupColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
-
-            ColumnLayout {
-                id: startupColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-
-                    Kirigami.Icon {
-                        source: "system-run"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        Kirigami.Theme.inherit: false
-                    }
-
-                    Kirigami.Heading {
-                        text: qsTrId("settings.startup")
-                        level: 4
-                        Layout.fillWidth: true
-                    }
-                }
-
-                Kirigami.FormLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.gridUnit * 2
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Kirigami.FormData.label: qsTrId("settings.system")
-                        spacing: 0
-
-                        Controls.CheckBox {
-                            id: autostartCheck
-                            Layout.fillWidth: true
-                            text: qsTrId("settings.autostart")
-                            checked: backend.autostartEnabled()
-                            onToggled: backend.setAutostart(checked)
-                        }
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                            wrapMode: Text.Wrap
-                            text: qsTrId("settings.autostart_description")
-                            opacity: 0.7
-                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        Kirigami.FormData.label: qsTrId("settings.background")
-                        spacing: 0
-
-                        Controls.CheckBox {
-                            id: backgroundOnCloseCheck
-                            Layout.fillWidth: true
-                            text: qsTrId("settings.background_on_close")
-                            checked: backend.backgroundOnClose()
-                            onToggled: backend.setBackgroundOnClose(checked)
-                        }
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
-                            wrapMode: Text.Wrap
-                            text: qsTrId("settings.background_on_close_description")
-                            opacity: 0.7
-                            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        }
-                    }
-                }
-            }
-        }
-
-        Kirigami.InlineMessage {
-            id: statusLabel
-            Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.largeSpacing
-            visible: false
-            type: Kirigami.MessageType.Warning
-        }
-
-        // No Save button. Every setting on this page is one engine call and is
-        // applied when it is chosen: a console half-configured because someone
-        // walked away before saving is worse than one configured slowly.
     }
 }
