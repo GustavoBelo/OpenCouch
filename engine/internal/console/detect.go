@@ -31,6 +31,15 @@ const GamescopeDesktopName = "gamescope"
 // generates, so a hosting session can be recognised however it is launched.
 const HostingMarker = "X-OpenCouch-Hosting"
 
+// foreignHostingMarker is the marker written by hyprmoncfg, which hosts
+// sessions the same way this does and which this shares a machine with.
+//
+// Recognising somebody else's hosting entry matters as much as recognising our
+// own, and for the same reason: an entry that hosts a session is not a desktop
+// to come back to. Reading it as one makes the wrapper host a wrapper, and the
+// user never reaches a desktop at all.
+const foreignHostingMarker = "X-Hyprmoncfg-Hosting"
+
 // Entry is one session entry offered to the login manager.
 type Entry struct {
 	Path string
@@ -125,7 +134,7 @@ func ReadEntry(path string) (Entry, error) {
 			entry.Name = strings.TrimSpace(value)
 		case "Exec":
 			entry.Exec = ParseExec(value)
-		case HostingMarker:
+		case HostingMarker, foreignHostingMarker:
 			entry.Hosting = strings.EqualFold(strings.TrimSpace(value), "true")
 		case "DesktopNames":
 			for _, name := range strings.Split(value, ";") {

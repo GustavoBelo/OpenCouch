@@ -15,11 +15,31 @@ func TestHostsConsoleRecognisesAHostingEntry(t *testing.T) {
 		{Exec: []string{"start-gamescope-session"}},
 		{Exec: []string{"open-couch-engine", "enter"}},
 		{Exec: []string{"session"}},
+		// `console` alone appears in plenty of unrelated commands; only the
+		// pair means a wrapper.
+		{Exec: []string{"kitty", "--session", "console"}},
 		{Exec: nil},
 	} {
 		if HostsConsole(plain) {
 			t.Errorf("%v was mistaken for a hosting entry", plain.Exec)
 		}
+	}
+}
+
+// Somebody else's hosting entry is not a desktop either. hyprmoncfg hosts
+// sessions the same way and shares machines with this; reading its wrapper as
+// somewhere to come back to would have this wrapper host that one, and the user
+// would never reach a desktop.
+func TestHostsConsoleRecognisesAForeignHostingEntry(t *testing.T) {
+	byExec := Entry{Exec: []string{"/home/u/.local/bin/hyprmoncfg", "console", "session"}}
+	if !HostsConsole(byExec) {
+		t.Error("hyprmoncfg's wrapper command was not recognised")
+	}
+	// Its entry may point at a wrapper script instead, and then only the
+	// marker gives it away.
+	byMarker := Entry{Exec: []string{"/home/u/.local/share/hyprmoncfg-spike/session-wrapper.sh"}, Hosting: true}
+	if !HostsConsole(byMarker) {
+		t.Error("a hosting entry behind a wrapper script was not recognised")
 	}
 }
 

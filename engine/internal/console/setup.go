@@ -101,8 +101,22 @@ func HostsConsole(e Entry) bool {
 	if e.Hosting || e.File() == HostingEntryFile {
 		return true
 	}
-	for _, arg := range e.Exec {
+	return execHostsConsole(e.Exec)
+}
+
+// execHostsConsole reads a command line for the mark of a wrapper.
+//
+// Two shapes, because two programs host sessions this way: our own
+// `host-session`, and hyprmoncfg's `console session` pair. The pair is checked
+// as a pair rather than by either word alone -- `console` on its own appears in
+// plenty of unrelated commands, and matching it would have the wrapper refuse a
+// perfectly good desktop.
+func execHostsConsole(argv []string) bool {
+	for i, arg := range argv {
 		if arg == WrapperCommand {
+			return true
+		}
+		if arg == "console" && i+1 < len(argv) && argv[i+1] == "session" {
 			return true
 		}
 	}
@@ -248,12 +262,7 @@ func wrapperAlive(pid int) bool {
 		return false
 	}
 	args := strings.Split(strings.TrimSuffix(string(data), "\x00"), "\x00")
-	for _, arg := range args {
-		if arg == WrapperCommand {
-			return true
-		}
-	}
-	return false
+	return execHostsConsole(args)
 }
 
 const hostedMarker = "open-couch-hosted"
