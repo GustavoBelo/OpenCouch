@@ -17,15 +17,6 @@
 <message id="engine.missing"><source>engine.missing</source><translation>Falta um componente no sistema para usar o Modo Sala.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>O componente do sistema está desatualizado. Por favor, atualize-o para garantir o funcionamento do Modo Sala.</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Boas-vindas ao Open Couch</translation></message>
-<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>O Open Couch alterna suas telas em um clique: jogue na sala ou use o PC na mesa sem complicação.</translation></message>
-<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuração</translation></message>
-<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Escolha as telas do PC e da TV, além da resolução e do zoom (escala). O valor padrão 1 equivale a 100%.</translation></message>
-<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Monitor do PC no Modo Sala</translation></message>
-<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>Por padrão, a tela do PC apaga quando você vai pra sala, isso evita o jogo abrir no monitor errado... mas dá pra deixar as duas ligadas se preferir.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. Como usar?</translation></message>
-<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Clique em "Ir para a TV" para ligar a TV e abrir a Steam em tela cheia, ou em "Voltar para o PC" para deixar tudo como estava.</translation></message>
-<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permissão necessária</translation></message>
-<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Para conseguir trocar de tela e abrir a Steam, o Open Couch precisa de um ajudante instalado direto no sistema operacional.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Abre o Open Couch sozinho assim que você faz login no sistema.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Ao fechar a janela, o app continua rodando perto do relógio pra monitorar a Steam. Use o ícone de lá para reabrir ou sair.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar junto com o sistema</translation></message>
@@ -48,7 +39,7 @@
 <message id="settings.not_ready"><source>settings.not_ready</source><translation>O modo console ainda não está pronto</translation></message>
 <message id="settings.recheck"><source>settings.recheck</source><translation>Verificar de novo</translation></message>
 <message id="settings.hosting_session"><source>settings.hosting_session</source><translation>Sessão hospedeira</translation></message>
-<message id="settings.hosting_description"><source>settings.hosting_description</source><translation>Trocar sem passar pela tela de login exige uma entrada de sessão que hospede o seu desktop e o console. Isto gera essa entrada e diz onde colocá-la — instalar exige root, então o comando é mostrado em vez de executado.</translation></message>
+<message id="settings.hosting_description"><source>settings.hosting_description</source><translation>Trocar sem passar pela tela de login exige uma entrada de sessão que hospede o seu desktop e o console. Isto a prepara e diz exatamente o que fazer com ela.</translation></message>
 <message id="settings.run_setup"><source>settings.run_setup</source><translation>Preparar a entrada de sessão</translation></message>
 <message id="settings.no_displays"><source>settings.no_displays</source><translation>Nenhuma tela encontrada.</translation></message>
 <message id="settings.console_behavior"><source>settings.console_behavior</source><translation>Comportamento</translation></message>
@@ -71,5 +62,16 @@
 <message id="settings.choose_display"><source>settings.choose_display</source><translation>Escolha uma tela</translation></message>
 <message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation>Copiar o comando de instalação</translation></message>
 <message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation>Comando copiado. Rode num terminal e depois use Atualizar.</translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>O Open Couch entrega a máquina inteira para a sessão gamescope do Steam na sua TV, e devolve quando você sai. É uma sessão de console de verdade, não o Big Picture numa janela.</translation></message>
+<message id="onboarding.needs_title"><source>onboarding.needs_title</source><translation>O que ele precisa</translation></message>
+<message id="onboarding.needs_body"><source>onboarding.needs_body</source><translation>Um pacote gamescope-session da sua distribuição, e o Steam. O Open Couch executa essa sessão, não a distribui. Nada aqui pede permissão nem senha para funcionar.</translation></message>
+<message id="onboarding.session_title"><source>onboarding.session_title</source><translation>1. A sessão hospedeira</translation></message>
+<message id="onboarding.session_body"><source>onboarding.session_body</source><translation>Trocar sem passar pela tela de login exige uma sessão que hospede o seu desktop e o console. As Configurações preparam essa entrada e dizem onde colocá-la; um pacote a instala por você.</translation></message>
+<message id="onboarding.display_title"><source>onboarding.display_title</source><translation>2. A tela do console</translation></message>
+<message id="onboarding.display_body"><source>onboarding.display_body</source><translation>Escolha qual tela o console assume. A resolução, a taxa de atualização e o HDR ficam de fora de propósito: o gamescope lê o modo preferido da tela e o Steam muda por jogo.</translation></message>
+<message id="onboarding.entering_title"><source>onboarding.entering_title</source><translation>3. Entrar, e voltar</translation></message>
+<message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation>Entrar encerra esta sessão do desktop, então tudo que estiver aberto vai junto — você recebe uma contagem regressiva que dá para cancelar antes. O menu de energia do Steam traz você de volta.</translation></message>
+<message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation>Já instalada para todas as contas desta máquina. Não falta nada além de deslogar e escolhê-la na tela de login.</translation></message>
+<message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation>Verificar de novo</translation></message>
 </context>
 </TS>

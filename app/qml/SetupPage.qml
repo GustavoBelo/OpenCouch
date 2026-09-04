@@ -126,9 +126,32 @@ Item {
                         SectionLabel { Layout.fillWidth: true; label: qsTrId("settings.hosting_session") }
                     }
 
+                    // Whether this needs root depends on the machine -- a package
+                    // installs the entry for every account, greetd and a bare tty
+                    // read the user's own directory, and only the common display
+                    // managers need it in /usr. So the card reports the state
+                    // rather than warning about root unconditionally.
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Metrics.xs
+                        visible: page.status.hosting_installed === true
+                        spacing: Metrics.md
+
+                        Icon { name: "check"; size: Metrics.iconSmall; color: Colors.accent }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: qsTrId("settings.hosting_installed")
+                            color: Colors.muted
+                            font.pixelSize: Metrics.body
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
                     Text {
                         Layout.fillWidth: true
                         Layout.topMargin: Metrics.xs
+                        visible: page.status.hosting_installed !== true
                         text: qsTrId("settings.hosting_description")
                         color: Colors.muted
                         font.pixelSize: Metrics.body
@@ -141,7 +164,8 @@ Item {
                         spacing: Metrics.md
 
                         AppButton {
-                            text: qsTrId("settings.run_setup")
+                            text: page.status.hosting_installed === true
+                                  ? qsTrId("settings.recheck_setup") : qsTrId("settings.run_setup")
                             icon: "session"
                             onClicked: {
                                 const instructions = backend.runSetup();

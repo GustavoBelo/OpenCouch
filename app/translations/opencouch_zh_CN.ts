@@ -17,15 +17,6 @@
 <message id="engine.missing"><source>engine.missing</source><translation>缺少使用客厅模式的系统组件。</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>系统组件版本过旧。请更新以确保客厅模式正常运行。</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>欢迎使用 Open Couch</translation></message>
-<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch 让你一键切换屏幕：去客厅瘫着打游戏，还是在书桌前用电脑，轻松搞定不折腾。</translation></message>
-<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. 基础配置</translation></message>
-<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>分别选择你的电脑显示器和电视，并设置好分辨率与缩放比例（默认值 1 等于 100%）。</translation></message>
-<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. 客厅模式下的电脑屏幕</translation></message>
-<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>默认情况下，切换到客厅时电脑屏幕会自动熄灭，防止游戏在错误的屏幕上打开……不过你也可以选择让两块屏幕都亮着。</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. 如何使用</translation></message>
-<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>点击“切到电视”点亮电视并全屏打开 Steam；点击“切回电脑”即可恢复原状。</translation></message>
-<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>需要系统权限</translation></message>
-<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>为了能顺利切换屏幕并启动 Steam，Open Couch 需要在操作系统中安装一个小助手组件。</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>登录系统后自动启动 Open Couch。</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>关闭窗口后，应用会在系统托盘常驻后台以监听 Steam。可通过托盘图标重新打开或退出。</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>开机自启动</translation></message>
@@ -71,5 +62,16 @@
 <message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
 <message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation type="unfinished"></translation></message>
 <message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation type="unfinished"></translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_title"><source>onboarding.needs_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_body"><source>onboarding.needs_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_title"><source>onboarding.session_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_body"><source>onboarding.session_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_title"><source>onboarding.display_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_body"><source>onboarding.display_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_title"><source>onboarding.entering_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

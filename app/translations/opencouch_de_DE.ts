@@ -17,15 +17,6 @@
 <message id="engine.missing"><source>engine.missing</source><translation>Für den Couch-Modus fehlt eine Systemkomponente.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>Die Systemkomponente ist veraltet. Bitte aktualisiere sie, damit der Couch-Modus einwandfrei funktioniert.</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Willkommen bei Open Couch</translation></message>
-<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch wechselt deine Bildschirme mit nur einem Klick: Zocke gemütlich im Wohnzimmer oder nutze den Schreibtisch-PC – ganz ohne Stress.</translation></message>
-<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Einrichtung</translation></message>
-<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Wähle deine Bildschirme für PC und TV sowie Auflösung und Skalierung aus. Der Standardwert 1 entspricht 100 %.</translation></message>
-<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. PC-Monitor im Couch-Modus</translation></message>
-<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>Standardmäßig schaltet sich der PC-Monitor ab, sobald du zum TV wechselst – so landet das Spiel nicht auf dem falschen Bildschirm. Du kannst aber auch beide anlassen, wenn du möchtest.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. So geht's</translation></message>
-<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Klicke auf „Ab zum TV“, um den Fernseher einzuschalten und Steam im Vollbildmodus zu öffnen, oder auf „Zurück zum PC“, um alles wieder wie gewohnt einzustellen.</translation></message>
-<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Erforderliche Berechtigung</translation></message>
-<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Damit Open Couch die Bildschirme wechseln und Steam steuern kann, wird ein kleiner Helfer-Dienst direkt im Betriebssystem benötigt.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Startet Open Couch automatisch nach dem Anmelden.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Beim Schließen des Fensters läuft die App im System-Tray weiter, um Steam zu überwachen. Nutze das Tray-Icon, um sie wieder zu öffnen oder zu beenden.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Mit dem System starten</translation></message>
@@ -71,5 +62,16 @@
 <message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
 <message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation type="unfinished"></translation></message>
 <message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation type="unfinished"></translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_title"><source>onboarding.needs_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_body"><source>onboarding.needs_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_title"><source>onboarding.session_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_body"><source>onboarding.session_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_title"><source>onboarding.display_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_body"><source>onboarding.display_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_title"><source>onboarding.entering_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

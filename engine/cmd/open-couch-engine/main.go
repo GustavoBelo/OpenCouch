@@ -312,9 +312,14 @@ func status(ctx context.Context) error {
 		Want string `json:"want"`
 	}
 	out := struct {
-		Version                  string        `json:"version"`
-		Ready                    bool          `json:"ready"`
-		Hosted                   bool          `json:"hosted"`
+		Version string `json:"version"`
+		Ready   bool   `json:"ready"`
+		Hosted  bool   `json:"hosted"`
+		// HostingInstalled says a system session directory already carries the
+		// entry for this binary -- a package put it there. It is what tells the
+		// application whether setup still has anything to install, and so
+		// whether to warn about needing root at all.
+		HostingInstalled         bool          `json:"hosting_installed"`
 		Mode                     string        `json:"mode"`
 		TVName                   string        `json:"tv_name"`
 		TVDescription            string        `json:"tv_description"`
@@ -329,6 +334,7 @@ func status(ctx context.Context) error {
 		Version:                  version,
 		Ready:                    len(console.Unmet(reqs)) == 0,
 		Hosted:                   console.Hosted(e.RuntimeDir),
+		HostingInstalled:         hostingInstalled(e),
 		TVName:                   e.Config.TVName,
 		TVDescription:            e.Config.TVDescription,
 		DesktopSession:           e.Config.DesktopSession,
@@ -379,6 +385,7 @@ func doctor(ctx context.Context) error {
 func setup(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
 	chosen := fs.String("desktop", "", "session entry file to come back to, e.g. omarchy.desktop")
+	force := fs.Bool("force", false, "write the entry again even if one is already installed")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -423,14 +430,17 @@ func setup(ctx context.Context, args []string) error {
 	wrapperCommand := self + " " + console.WrapperCommand
 
 	// A package may have installed the entry already, in which case the only
-	// thing left to do is record the choice and log out.
-	if installed, ok := console.InstalledHostingEntry(e.Entries, self); ok {
+	// thing left to do is record the choice and log out. --force writes it
+	// anyway, which is the way out when the installed one came from an older
+	// version and no longer matches what this one would write.
+	if installed, ok := console.InstalledHostingEntry(e.Entries, self); ok && !*force {
 		if err := recordDesktop(e, entry); err != nil {
 			return err
 		}
 		fmt.Printf("The hosting session is already installed (%s).\n\n", installed.Path)
 		fmt.Printf("Log out and pick %q at your login screen, then run `open-couch-engine doctor`.\n",
 			installed.Name)
+		fmt.Printf("\nTo write it again anyway: open-couch-engine setup --force\n")
 		return nil
 	}
 	name := console.HostingEntryName(entry.Name)
@@ -592,4 +602,15 @@ func recordDesktop(e env, entry console.Entry) error {
 		e.Config.DesktopNames = live
 	}
 	return console.SaveConfig(e.Base, e.Config)
+}
+
+// hostingInstalled reports whether a system session directory already carries
+// the hosting entry for this exact binary.
+func hostingInstalled(e env) bool {
+	self, err := os.Executable()
+	if err != nil {
+		return false
+	}
+	_, ok := console.InstalledHostingEntry(e.Entries, self)
+	return ok
 }

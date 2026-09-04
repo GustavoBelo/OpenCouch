@@ -17,15 +17,6 @@
 <message id="engine.missing"><source>engine.missing</source><translation>A system component is missing to use Couch Mode.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>The system component is outdated. Please update it to ensure Couch Mode works properly.</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Welcome to Open Couch</translation></message>
-<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch switches your displays with a single click: game from the couch or work at your desk with zero hassle.</translation></message>
-<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Setup</translation></message>
-<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Select your Desktop and TV displays, plus their resolution and zoom (scaling). Default 1 means 100%.</translation></message>
-<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Desktop Monitor in Couch Mode</translation></message>
-<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>By default, your desk monitor turns off when you head to the couch so games don't launch on the wrong screen... but you can keep both on if you prefer.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation>3. How to Use?</translation></message>
-<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Click "Go to TV" to turn on your TV and launch Steam in full screen, or "Back to Desktop" to put everything back the way it was.</translation></message>
-<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permission Needed</translation></message>
-<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>To switch displays and launch Steam properly, Open Couch needs a helper installed directly on your OS.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Launches Open Couch automatically as soon as you log in.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Closing the window keeps the app running in the system tray to monitor Steam. Use the tray icon to reopen or quit.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Launch on system startup</translation></message>
@@ -48,7 +39,7 @@
 <message id="settings.not_ready"><source>settings.not_ready</source><translation>Console mode is not ready yet</translation></message>
 <message id="settings.recheck"><source>settings.recheck</source><translation>Check again</translation></message>
 <message id="settings.hosting_session"><source>settings.hosting_session</source><translation>Hosting session</translation></message>
-<message id="settings.hosting_description"><source>settings.hosting_description</source><translation>Switching without a trip through the login screen needs a session entry that hosts both your desktop and the console. This writes it and tells you where to put it — installing it needs root, so it is printed rather than applied.</translation></message>
+<message id="settings.hosting_description"><source>settings.hosting_description</source><translation>Switching without a trip through the login screen needs a session entry that hosts both your desktop and the console. This prepares it and tells you exactly what to do with it.</translation></message>
 <message id="settings.run_setup"><source>settings.run_setup</source><translation>Prepare the session entry</translation></message>
 <message id="settings.no_displays"><source>settings.no_displays</source><translation>No displays were found.</translation></message>
 <message id="settings.console_behavior"><source>settings.console_behavior</source><translation>Behaviour</translation></message>
@@ -71,5 +62,16 @@
 <message id="settings.choose_display"><source>settings.choose_display</source><translation>Choose a display</translation></message>
 <message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation>Copy the install command</translation></message>
 <message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation>Install command copied. Run it in a terminal, then Refresh.</translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch hands the whole machine to Steam's gamescope session on your television, and gives it back when you leave. It is a real console session, not Big Picture in a window.</translation></message>
+<message id="onboarding.needs_title"><source>onboarding.needs_title</source><translation>What it needs</translation></message>
+<message id="onboarding.needs_body"><source>onboarding.needs_body</source><translation>A gamescope-session package from your distribution, plus Steam. Open Couch runs that session rather than shipping it. Nothing here asks for a permission or a password to work.</translation></message>
+<message id="onboarding.session_title"><source>onboarding.session_title</source><translation>1. The hosting session</translation></message>
+<message id="onboarding.session_body"><source>onboarding.session_body</source><translation>Switching without passing through a login screen needs a session that hosts both your desktop and the console. Settings prepares it and tells you where to put it; a package installs it for you.</translation></message>
+<message id="onboarding.display_title"><source>onboarding.display_title</source><translation>2. The console display</translation></message>
+<message id="onboarding.display_body"><source>onboarding.display_body</source><translation>Choose which display the console takes over. Its resolution, refresh rate and HDR are left alone on purpose: gamescope reads the display's preferred mode and Steam changes it per game.</translation></message>
+<message id="onboarding.entering_title"><source>onboarding.entering_title</source><translation>3. Entering, and coming back</translation></message>
+<message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation>Entering ends this desktop session, so anything still open goes with it — you get a countdown you can cancel first. Steam's own Power menu brings you home.</translation></message>
+<message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation>Already installed for every account on this machine. Nothing to do but log out and pick it at your login screen.</translation></message>
+<message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation>Check again</translation></message>
 </context>
 </TS>

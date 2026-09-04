@@ -17,15 +17,6 @@
 <message id="engine.missing"><source>engine.missing</source><translation>Falta un componente del sistema para usar el Modo Sala.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>El componente del sistema está desactualizado. Por favor, actualízalo para garantizar el funcionamiento del Modo Sala.</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Te damos la bienvenida a Open Couch</translation></message>
-<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch cambia de pantalla en un solo clic: juega en el salón o usa el PC en el escritorio sin líos.</translation></message>
-<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuración</translation></message>
-<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Elige las pantallas del PC y de la tele, además de la resolución y el zoom (escala). El valor por defecto 1 equivale al 100%.</translation></message>
-<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Monitor del PC en Modo Salón</translation></message>
-<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>Por defecto, la pantalla del PC se apaga cuando te vas al salón; así evitas que el juego se abra en el monitor equivocado... pero puedes dejar las dos encendidas si prefieres.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation> 3. ¿Cómo usarlo?</translation></message>
-<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Haz clic en "Ir a la tele" para encender la tele y abrir Steam en pantalla completa, o en "Volver al PC" para dejarlo todo como estaba.</translation></message>
-<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permiso necesario</translation></message>
-<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Para poder cambiar de pantalla y abrir Steam, Open Couch necesita un asistente instalado directamente en el sistema operativo.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Abre Open Couch automáticamente en cuanto inicias sesión en el sistema.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Al cerrar la ventana, la app sigue funcionando junto al reloj para monitorizar Steam. Usa su icono ahí para reabrirla o salir.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar con el sistema</translation></message>
@@ -71,5 +62,16 @@
 <message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
 <message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation type="unfinished"></translation></message>
 <message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation type="unfinished"></translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_title"><source>onboarding.needs_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_body"><source>onboarding.needs_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_title"><source>onboarding.session_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_body"><source>onboarding.session_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_title"><source>onboarding.display_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_body"><source>onboarding.display_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_title"><source>onboarding.entering_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

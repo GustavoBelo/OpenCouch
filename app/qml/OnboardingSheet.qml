@@ -85,10 +85,10 @@ Controls.Popup {
 
                 Repeater {
                     model: [
-                        { icon: "warn",    title: qsTrId("onboarding.requirement_title"),     body: qsTrId("onboarding.requirement_description") },
-                        { icon: "session", title: qsTrId("onboarding.configuration_title"),   body: qsTrId("onboarding.configuration_description") },
-                        { icon: "display", title: qsTrId("onboarding.desktop_display_title"), body: qsTrId("onboarding.desktop_display_description") },
-                        { icon: "enter",   title: qsTrId("onboarding.usage_title"),           body: qsTrId("onboarding.usage_description") }
+                        { icon: "warn",    title: qsTrId("onboarding.needs_title"),    body: qsTrId("onboarding.needs_body") },
+                        { icon: "session", title: qsTrId("onboarding.session_title"),  body: qsTrId("onboarding.session_body") },
+                        { icon: "display", title: qsTrId("onboarding.display_title"),  body: qsTrId("onboarding.display_body") },
+                        { icon: "enter",   title: qsTrId("onboarding.entering_title"), body: qsTrId("onboarding.entering_body") }
                     ]
 
                     RowLayout {
