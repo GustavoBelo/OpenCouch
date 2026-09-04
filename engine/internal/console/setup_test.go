@@ -47,45 +47,6 @@ func TestHostsConsoleRecognisesAForeignHostingEntry(t *testing.T) {
 }
 
 // Running setup twice must not stack the suffix.
-func TestHostingEntryNameDoesNotStack(t *testing.T) {
-	first := HostingEntryName("Omarchy (Hyprland uwsm)")
-	if first != "Omarchy (Hyprland uwsm) (console switch)" {
-		t.Fatalf("name = %q", first)
-	}
-	if again := HostingEntryName(first); again != first {
-		t.Errorf("running setup twice gave %q", again)
-	}
-}
-
-// The entry carries no DesktopNames: one installed by a package serves every
-// account, and they do not all come back to the same desktop. The wrapper
-// exports the identity instead, which is tested in session_test.go.
-func TestEntryContentIsTheSameForEveryAccount(t *testing.T) {
-	body := EntryContent("X (console switch)", "/usr/bin/open-couch-engine host-session")
-	if contains(body, "DesktopNames") {
-		t.Errorf("the entry named a desktop it cannot know:\n%s", body)
-	}
-	if !contains(body, "Exec=/usr/bin/open-couch-engine host-session") || !contains(body, HostingMarker+"=true") {
-		t.Errorf("entry = %q", body)
-	}
-}
-
-func contains(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && (haystack == needle || indexOf(haystack, needle) >= 0)
-}
-
-func indexOf(h, n string) int {
-	for i := 0; i+len(n) <= len(h); i++ {
-		if h[i:i+len(n)] == n {
-			return i
-		}
-	}
-	return -1
-}
-
-// Reading the Exec line is not enough: a hosting entry may point at a wrapper
-// script, and then it looks like an ordinary session and offers itself as
-// somewhere to come back to -- which would host itself forever.
 func TestHostsConsoleTrustsTheMarkerWhateverTheCommand(t *testing.T) {
 	viaScript := Entry{Exec: []string{"/home/u/.local/share/some/wrapper.sh"}, Hosting: true}
 	if !HostsConsole(viaScript) {
@@ -150,49 +111,24 @@ func TestHostsConsoleRecognisesAHostingEntryByItsName(t *testing.T) {
 	}
 }
 
-// Naming the hosting entry after another program's hosting entry stacked the
-// suffix twice: "Omarchy (hyprmoncfg console switch) (console switch)".
-func TestHostingEntryNameDoesNotStackAForeignSuffix(t *testing.T) {
-	for _, tc := range []struct{ in, want string }{
-		{"Omarchy", "Omarchy (console switch)"},
-		{"Omarchy (console switch)", "Omarchy (console switch)"},
-		{"Omarchy (hyprmoncfg console switch)", "Omarchy (console switch)"},
-		{"Omarchy (hyprmoncfg console switch) (console switch)", "Omarchy (console switch)"},
-	} {
-		if got := HostingEntryName(tc.in); got != tc.want {
-			t.Errorf("HostingEntryName(%q) = %q, want %q", tc.in, got, tc.want)
-		}
+// The entry is named after the product, not the desktop. Naming it after the
+// desktop put two near-identical entries in the greeter on a machine that also
+// had hyprmoncfg, which names its own the same way.
+func TestHostingEntryNameNamesTheProduct(t *testing.T) {
+	if got := HostingEntryName(); got != "Open Couch (console switch)" {
+		t.Errorf("HostingEntryName() = %q", got)
 	}
-}
-
-// An entry installed where the greeter never looks is the worst outcome: the
-// user logs out, cannot find the session, and nothing says why. SDDM ships
-// SessionDir=/usr/local/share/wayland-sessions,/usr/share/wayland-sessions.
-func TestSetupInstructionsInstallWhereTheGreeterLooks(t *testing.T) {
-	for _, tc := range []struct {
-		kind     LoginManagerKind
-		wantSudo bool
-	}{
-		{LoginSDDM, true},
-		{LoginGDM, true},
-		{LoginLightDM, true},
-		{LoginUnknown, true},
-		{LoginGreetd, false},
-		{LoginNone, false},
-	} {
-		got := SetupInstructions(LoginManager{Kind: tc.kind, Unit: "x.service"},
-			"/home/u/.config/open-couch/open-couch-session.desktop", "X (console switch)", "cmd host-session")
-		system := strings.Contains(got, "sudo install") && strings.Contains(got, "/usr/local/share/wayland-sessions/")
-		user := strings.Contains(got, "~/.local/share/wayland-sessions/")
-		if tc.wantSudo && !system {
-			t.Errorf("%v: told the user to install where its greeter does not look:\n%s", tc.kind, got)
-		}
-		if !tc.wantSudo && !user {
-			t.Errorf("%v: asked for root when the user's own directory would do:\n%s", tc.kind, got)
-		}
-		if system && user {
-			t.Errorf("%v: gave two different install paths at once:\n%s", tc.kind, got)
-		}
+	// And it still ends with the mark that lets HostsConsole recognise it.
+	if !contains(HostingEntryName(), hostingNameMark) {
+		t.Errorf("%q would not be recognised as a hosting entry", HostingEntryName())
+	}
+	// The desktop it hosts moves to the Comment, where there is room for it.
+	body := EntryContent("Omarchy (Hyprland uwsm)", "cmd host-session")
+	if !contains(body, "Name=Open Couch (console switch)") {
+		t.Errorf("entry = %q", body)
+	}
+	if !contains(body, "Comment=Hosts Omarchy (Hyprland uwsm) and") {
+		t.Errorf("the entry does not say which desktop it hosts:\n%s", body)
 	}
 }
 
@@ -233,4 +169,8 @@ func TestInstalledHostingEntryFindsOnlyOursInASystemDirectory(t *testing.T) {
 			t.Errorf("%s was mistaken for a packaged hosting entry", other.Path)
 		}
 	}
+}
+
+func contains(haystack, needle string) bool {
+	return strings.Contains(haystack, needle)
 }

@@ -45,7 +45,7 @@ package() {
     install -Dm644 /dev/stdin "$pkgdir/usr/share/wayland-sessions/open-couch-session.desktop" <<'EOF'
 [Desktop Entry]
 Name=Open Couch (console switch)
-Comment=Hosts the desktop and the gamescope console session in one login session
+Comment=Hosts your desktop and the gamescope console session in one login session
 Exec=/usr/bin/open-couch-engine host-session
 Type=Application
 X-OpenCouch-Hosting=true

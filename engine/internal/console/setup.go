@@ -70,14 +70,18 @@ func DetectLoginManager(ctx context.Context, sc Runner) LoginManager {
 // to the same desktop -- so the identity is exported by the wrapper, which is
 // the one thing that knows which desktop it is about to start. That also makes
 // the entry `setup` writes and the entry a package installs the same file.
-func EntryContent(name, wrapperCommand string) string {
+func EntryContent(desktopName, wrapperCommand string) string {
+	comment := "Hosts your desktop and the gamescope console session in one login session"
+	if desktopName != "" {
+		comment = "Hosts " + desktopName + " and the gamescope console session in one login session"
+	}
 	return fmt.Sprintf(`[Desktop Entry]
 Name=%s
-Comment=Hosts the desktop and the gamescope console session in one login session
+Comment=%s
 Exec=%s
 Type=Application
 %s=true
-`, name, wrapperCommand, HostingMarker)
+`, HostingEntryName(), comment, wrapperCommand, HostingMarker)
 }
 
 // HostsConsole reports whether a session entry is a hosting session -- ours or
@@ -102,8 +106,8 @@ func HostsConsole(e Entry) bool {
 	return execHostsConsole(e.Exec)
 }
 
-// hostingNameSuffix is what HostingEntryName appends, and the most reliable
-// mark a hosting entry carries.
+// hostingNameSuffix is what a hosting entry's name ends with, and the most
+// reliable mark it carries.
 //
 // It beats a list of known file names because it is shared by construction:
 // hyprmoncfg names its hosting entry with the same function, so an entry
@@ -149,48 +153,19 @@ func execHostsConsole(argv []string) bool {
 // an unrelated command line would make the wrapper host itself.
 const WrapperCommand = "host-session"
 
-// HostingEntryName names the hosting session after the desktop it hosts,
-// without stacking the suffix each time setup is run.
-func HostingEntryName(desktopName string) string {
-	name := strings.TrimSpace(desktopName)
-	// Strip any trailing suffix, not only one written exactly as this writes
-	// it. A name that came from another program's hosting entry ends with the
-	// same words inside its own parentheses -- "Omarchy (hyprmoncfg console
-	// switch)" -- and appending to that produced a name carrying the suffix
-	// twice.
-	for {
-		trimmed := strings.TrimSpace(strings.TrimSuffix(name, hostingNameSuffix))
-		if open := strings.LastIndex(trimmed, "("); open >= 0 &&
-			strings.HasSuffix(trimmed, "console switch)") {
-			trimmed = strings.TrimSpace(trimmed[:open])
-		}
-		if trimmed == name {
-			break
-		}
-		name = trimmed
-	}
-	return name + " " + hostingNameSuffix
-}
-
-// ReadsUserSessionDir reports whether this login manager looks in
-// ~/.local/share/wayland-sessions.
+// HostingEntryName is what the entry calls itself in the login screen.
 //
-// Most do not. SDDM ships SessionDir=/usr/local/share/wayland-sessions,
-// /usr/share/wayland-sessions and has an open request to support a per-user one
-// (sddm/sddm#916); GDM and LightDM are the same. Recommending a directory the
-// greeter never reads sends the user to log out and find nothing there.
-func (lm LoginManager) ReadsUserSessionDir() bool {
-	switch lm.Kind {
-	case LoginSDDM, LoginGDM, LoginLightDM:
-		return false
-	case LoginNone, LoginGreetd, LoginLy:
-		// These start whatever command they are configured with, so the entry
-		// is a convenience rather than something they enumerate.
-		return true
-	}
-	// An untested login manager gets the answer that fails visibly rather than
-	// silently: a system directory is read by every one of them that reads any.
-	return false
+// The product, not the desktop it hosts. Naming it after the desktop read well
+// until a machine had two of these installed: hyprmoncfg names its own the same
+// way, and the greeter then offers "Omarchy (hyprmoncfg console switch)" next to
+// "Omarchy (Hyprland uwsm) (console switch)" -- two entries that start and end
+// with the same words, which is not a choice anybody can make at a glance. It
+// also means a package and `setup` produce the same name, which they did not.
+//
+// The desktop it comes back to is named in the Comment instead, where there is
+// room to say it plainly.
+func HostingEntryName() string {
+	return "Open Couch (console switch)"
 }
 
 // InstalledHostingEntry reports the hosting entry a package has already put in
@@ -217,6 +192,27 @@ func InstalledHostingEntry(entries []Entry, self string) (Entry, bool) {
 		}
 	}
 	return Entry{}, false
+}
+
+// ReadsUserSessionDir reports whether this login manager looks in
+// ~/.local/share/wayland-sessions.
+//
+// Most do not. SDDM ships SessionDir=/usr/local/share/wayland-sessions,
+// /usr/share/wayland-sessions and has an open request to support a per-user one
+// (sddm/sddm#916); GDM and LightDM are the same. Recommending a directory the
+// greeter never reads sends the user to log out and find nothing there.
+func (lm LoginManager) ReadsUserSessionDir() bool {
+	switch lm.Kind {
+	case LoginSDDM, LoginGDM, LoginLightDM:
+		return false
+	case LoginNone, LoginGreetd, LoginLy:
+		// These start whatever command they are configured with, so the entry
+		// is a convenience rather than something they enumerate.
+		return true
+	}
+	// An untested login manager gets the answer that fails visibly rather than
+	// silently: a system directory is read by every one of them that reads any.
+	return false
 }
 
 // SetupInstructions says what to change so the login manager starts the hosting

@@ -443,8 +443,7 @@ func setup(ctx context.Context, args []string) error {
 		fmt.Printf("\nTo write it again anyway: open-couch-engine setup --force\n")
 		return nil
 	}
-	name := console.HostingEntryName(entry.Name)
-	body := console.EntryContent(name, wrapperCommand)
+	body := console.EntryContent(entry.Name, wrapperCommand)
 
 	path := filepath.Join(e.Base, console.HostingEntryFile)
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
@@ -455,7 +454,7 @@ func setup(ctx context.Context, args []string) error {
 		return err
 	}
 
-	fmt.Println(console.SetupInstructions(console.DetectLoginManager(ctx, nil), path, name, wrapperCommand))
+	fmt.Println(console.SetupInstructions(console.DetectLoginManager(ctx, nil), path, console.HostingEntryName(), wrapperCommand))
 	return nil
 }
 
