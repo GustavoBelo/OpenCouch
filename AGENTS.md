@@ -265,6 +265,14 @@ Verificadas por leitura direta de `packaging/release.sh` — o script agora **mi
 - **Checagem de branch `main`.** O script agora confere `git rev-parse --abbrev-ref HEAD` (`packaging/release.sh:33`) e aborta se não estiver em `main`, garantindo que tags `vX.Y.Z` nunca sejam criadas em branches de feature (alinhado à **Estratégia de branch** abaixo).
 - **`appstreamcli validate` bloqueante e antes do commit.** Antes, a validação rodava *depois* do `git commit` e só emitia `Warning:` — o commit já ficava no histórico. Agora o script valida o metainfo renderizado (`packaging/release.sh:98`) **antes** de `git add`/`commit`/`tag`; se `appstreamcli` estiver disponível e falhar, aborta sem criar commit/tag. Se `appstreamcli` não estiver instalado, mantém `Warning` e segue (único caso não-bloqueante).
 
+- **`CheckIdentity` (Go) e `kCheckIdentity` (C++) precisam ser idênticos byte a byte.**
+  `engine/cmd/open-couch-engine/main.go` imprime a string em `check`;
+  `app/src/engineclient.cpp` compara por igualdade. Mudar um lado só faz o app relatar
+  **todo** engine como ausente. A comparação existe porque sair 0 não prova nada: o engine bash
+  que isto substituiu também tem um `check` que passa e reporta a mesma versão, e depois responde
+  `status` com linhas de log em vez de JSON — o app falaria com ele e mostraria "não pronto" para
+  sempre, sem nada a dizer.
+
 ## Estratégia de branch
  
 Segue o modelo **GitHub Flow** — simples, adequado a um projeto de porte pequeno/médio com um mantenedor principal, e evita a complexidade de algo como GitFlow (branches `develop`/`release` separadas) que não se justifica aqui.

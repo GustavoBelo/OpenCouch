@@ -8,9 +8,16 @@
 namespace {
     constexpr const char *kEngineName = "open-couch-engine";
 
-    // Bump this when the engine script changes in a way that requires users to reinstall
+    // Bump this when the engine changes in a way that requires users to reinstall
     // Leave it alone for app-only releases (UI, settings, translations, etc.)
     constexpr const char *kMinEngineVersion = "1.7.0";
+
+    // What `check` must print. An exit code alone cannot tell this engine from
+    // the bash one it replaced: that one's `check` also succeeds, reports the
+    // same version, and then answers `status` with log lines instead of JSON.
+    // The app would talk to it, parse nothing, and show "not ready" for ever
+    // with nothing to say why -- so identity is checked by content.
+    constexpr const char *kCheckIdentity = "open-couch-engine console-mode/1";
 
     // Returns true if version string `a` is semantically less than `b` (X.Y.Z).
     bool versionLessThan(const QString &a, const QString &b)
@@ -67,8 +74,8 @@ QString EngineClient::runSync(const QStringList &args, bool *ok) const
 bool EngineClient::engineAvailable() const
 {
     bool ok = false;
-    runSync({QStringLiteral("check")}, &ok);
-    return ok;
+    const QString output = runSync({QStringLiteral("check")}, &ok);
+    return ok && output.trimmed() == QLatin1String(kCheckIdentity);
 }
 
 QString EngineClient::engineVersion() const
@@ -131,11 +138,12 @@ bool EngineClient::installBundledEngine(QString *errorMessage) const
     }
 
     const QString srcDir = bundledEngineDir();
-    const QStringList scripts = {
-        QStringLiteral("open-couch-engine"),
-        QStringLiteral("open-couch-log-viewer")
-    };
-    
+    // Just the engine now. The log viewer opened konsole against the bash
+    // engine's log; the engine writes its own log and there is nothing for a
+    // second script to do. Copying one that is no longer shipped would fail the
+    // whole install.
+    const QStringList scripts = {QStringLiteral("open-couch-engine")};
+
     for (const QString &script : scripts) {
         const QString src = srcDir + QLatin1Char('/') + script;
         const QString dest = destDir + QLatin1Char('/') + script;

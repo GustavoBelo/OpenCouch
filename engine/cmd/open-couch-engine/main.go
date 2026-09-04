@@ -30,6 +30,15 @@ import (
 // say what it is has to read as too old rather than as fine.
 var version = "0.0.0"
 
+// CheckIdentity is what `check` prints so a caller can tell this engine from
+// anything else answering to the same name. The number is the command
+// interface, bumped only when the app has to be able to refuse an older one.
+//
+// It has to stay byte-for-byte identical to kCheckIdentity in
+// app/src/engineclient.cpp. They are compared for equality, so a change to one
+// alone makes the app report every engine as missing.
+const CheckIdentity = "open-couch-engine console-mode/1"
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
@@ -57,6 +66,14 @@ func run(args []string) error {
 		// The app calls this to find out whether an engine is installed at all.
 		// It answers for the binary, not for the machine: `doctor` is what says
 		// whether a console session could actually start.
+		//
+		// It prints an identity rather than just exiting 0, because exiting 0
+		// proves nothing: the bash engine this replaced also has a `check` that
+		// succeeds, reports the same version number, and then answers `status`
+		// with log lines instead of JSON. An app that trusted the exit code
+		// would talk to it, get an empty status, and show "not ready" forever
+		// with nothing to say why.
+		fmt.Println(CheckIdentity)
 		return nil
 	case "config-path":
 		base, err := baseDir()
