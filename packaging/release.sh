@@ -44,6 +44,11 @@ fi
 RELEASE_DATE="$(date -u +%Y-%m-%d)"
 printf 'VERSION=%s\nRELEASE_DATE=%s\n' "$VERSION" "$RELEASE_DATE" > "$VERSION_FILE"
 
+# The engine carries no version of its own to sync: it is a Go binary and the
+# version arrives at build time through -ldflags, from this file. There is
+# nothing to sed and nothing to checksum here -- the release workflow publishes
+# the binary and its SHA256SUMS.
+
 # Sync version into host installer files
 INSTALL_FILE="${SCRIPT_DIR}/host/install.sh"
 sed -i -e "s/^SELF_VERSION=\"[^\"]*\"/SELF_VERSION=\"${VERSION}\"/" "$INSTALL_FILE"
@@ -51,44 +56,6 @@ if ! grep -q "^SELF_VERSION=\"${VERSION}\"" "$INSTALL_FILE"; then
     printf 'Error: failed to update SELF_VERSION in %s (pattern did not match).\n' "$INSTALL_FILE" >&2
     exit 1
 fi
-
-sed -i -e "s/^ENGINE_VERSION=\"[^\"]*\"/ENGINE_VERSION=\"${VERSION}\"/" \
-    "${PROJECT_DIR}/backend/open-couch-engine"
-if ! grep -q "^ENGINE_VERSION=\"${VERSION}\"" "${PROJECT_DIR}/backend/open-couch-engine"; then
-    printf 'Error: failed to update ENGINE_VERSION in backend/open-couch-engine.\n' >&2
-    exit 1
-fi
-
-# Sync tag in Flatpak manifest
-FLATPAK_MANIFEST="${PROJECT_DIR}/packaging/io.github.gustavobelo.opencouch.yml"
-sed -i -e "s/^  *tag: v.*/    tag: ${TAG}/"    "${FLATPAK_MANIFEST}"
-if ! grep -q "tag: ${TAG}" "${FLATPAK_MANIFEST}"; then
-    printf 'Error: failed to update tag in %s.\n' "$FLATPAK_MANIFEST" >&2
-    exit 1
-fi
-
-# Sync MIN_VERSION in engine from the app's kMinEngineVersion
-MIN_VERSION="$(sed -n 's/.*kMinEngineVersion\s*=\s*"\([^"]*\)".*/\1/p' \
-    "${PROJECT_DIR}/app/src/engineclient.cpp")"
-if [[ -z "$MIN_VERSION" ]]; then
-    printf 'Error: could not extract kMinEngineVersion from app/src/engineclient.cpp.\n' >&2
-    exit 1
-fi
-if ! [[ "$MIN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    printf 'Error: invalid MIN_VERSION "%s" extracted from app/src/engineclient.cpp.\n' "$MIN_VERSION" >&2
-    exit 1
-fi
-sed -i "/^MIN_VERSION=/d" "${PROJECT_DIR}/backend/open-couch-engine"
-sed -i "/^ENGINE_VERSION=/a MIN_VERSION=\"${MIN_VERSION}\"" \
-    "${PROJECT_DIR}/backend/open-couch-engine"
-if ! grep -q "^MIN_VERSION=\"${MIN_VERSION}\"" "${PROJECT_DIR}/backend/open-couch-engine"; then
-    printf 'Error: failed to insert MIN_VERSION=%s into backend/open-couch-engine.\n' "$MIN_VERSION" >&2
-    exit 1
-fi
-
-# Generate SHA256SUMS for the host engine scripts
-BACKEND_DIR="${PROJECT_DIR}/backend"
-(cd "$BACKEND_DIR" && sha256sum open-couch-engine open-couch-log-viewer > SHA256SUMS)
 
 # Validate AppStream metainfo BEFORE commit/tag — fail if invalid (when tool is available)
 if command -v appstreamcli >/dev/null 2>&1; then
@@ -107,9 +74,7 @@ else
     printf 'Warning: appstreamcli not found; skipping metainfo validation.\n' >&2
 fi
 
-git -C "$PROJECT_DIR" add "$VERSION_FILE" "$INSTALL_FILE" \
-    "${BACKEND_DIR}/open-couch-engine" "${BACKEND_DIR}/SHA256SUMS" \
-    "$FLATPAK_MANIFEST"
+git -C "$PROJECT_DIR" add "$VERSION_FILE" "$INSTALL_FILE"
 git -C "$PROJECT_DIR" commit -m "Release ${TAG}"
 
 git -C "$PROJECT_DIR" tag "$TAG"

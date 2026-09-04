@@ -3,49 +3,80 @@
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL%20v3+-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/GustavoBelo/OpenCouch)](https://github.com/GustavoBelo/OpenCouch/releases)
 
-Open Couch switches your KDE Plasma display setup between your desk and the living room TV. It can launch Steam Big Picture and restore your normal layout when you finish playing.
+Open Couch hands your whole machine to Steam's gamescope session on the television, and
+gives it back cleanly when you leave.
+
+It is not a launcher that opens Big Picture in a window. Big Picture only offers per-game
+HDR, FSR, tearing and the frame limiter when the session it runs in declares them, and only
+a real gamescope session does. So this runs one: your desktop session ends, gamescope takes
+the television, and Steam's own **Switch to Desktop** brings your desktop back.
+
+Works on KDE Plasma, Hyprland and GNOME. It does not replace your distribution and does not
+need you to reinstall anything.
 
 ## ✨ What it does
 
 | | |
 |---|---|
-| **One-click display switch** | Switch between your desk and living room TV layouts instantly. |
-| **Steam Big Picture integration** | Launch Big Picture, monitor it, and restore your desktop layout when you finish playing. |
-| **Detailed display settings** | Configure resolution, refresh rate, scale, position, priority, and enabled state for each display. |
-| **Flexible TV setup** | Keep the desk display enabled or mirror it while playing on the TV. |
-| **System tray** | Keep Open Couch out of the way and start it automatically with your desktop session. |
-| **Logs and history** | Export logs and review history when troubleshooting display or Steam issues. |
-| **Guided setup** | Choose your desk display and TV through a simple first-run setup. |
+| **A real console session** | Your distribution's own `gamescope-session`, with everything Big Picture needs declared. |
+| **Switching without a greeter** | A login session hosts both your desktop and the console, so switching never drops you at a password prompt. |
+| **Picks the television** | Points gamescope at the display you chose, and waits for it when it is still switched off. |
+| **Moves the sound** | Follows the display to its HDMI output and puts the sound back on the way home. |
+| **Comes back clean** | Sanitises the systemd user manager on the way out, which is what lets the next compositor start at all. |
+| **Announces itself** | A countdown you can cancel, because entering ends the desktop session and everything open in it. |
 
-## 📦 Installation
+Resolution, refresh rate, HDR and VRR are deliberately not settings here: gamescope reads the
+display's preferred mode and Steam changes it per game.
 
-The **AppImage is the recommended way to install Open Couch**.
+## 📦 Install
 
-1. Download `OpenCouch-x86_64.AppImage` from the [latest GitHub Release](https://github.com/GustavoBelo/OpenCouch/releases/latest).
-2. Make it executable and run it:
+You need a `gamescope-session` package from your distribution — Open Couch runs it, it does
+not ship it. `open-couch-engine doctor` tells you if it is missing.
 
-   ```sh
-   chmod +x OpenCouch-x86_64.AppImage
-   ./OpenCouch-x86_64.AppImage
-   ```
+### The engine
 
-The AppImage includes the display and Steam engine. On first launch, it automatically installs or updates the engine in `~/.local/bin` when needed. You do not need to update the engine separately.
+The engine is the whole product: a static binary with no runtime dependencies that does
+everything from the command line. The graphical application is optional.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh | bash
+```
+
+Or, with a Go toolchain:
+
+```sh
+go install github.com/GustavoBelo/OpenCouch/engine/cmd/open-couch-engine@latest
+```
+
+Or take the binary straight from the [latest release](https://github.com/GustavoBelo/OpenCouch/releases/latest)
+— `open-couch-engine-linux-amd64` or `-arm64`, checksums in `SHA256SUMS`.
 
 ## 🚀 First run
 
-1. Open Open Couch from the AppImage.
-2. Follow the setup and select your desk monitor and TV.
-3. Use **Go to TV** to switch layouts and launch Steam Big Picture.
-4. Close Steam or use **Restore desktop** to return to your normal layout.
+```sh
+open-couch-engine doctor              # what is still missing
+open-couch-engine outputs             # the connectors on this machine
+open-couch-engine tv HDMI-A-1         # choose the one on the television
+open-couch-engine setup               # writes the hosting session entry, tells you where to put it
+```
 
-Open Couch is designed for KDE Plasma and requires Steam for the Big Picture integration.
+Then log out, pick the new session at your login screen, and:
+
+```sh
+open-couch-engine enter
+```
+
+Steam → Power → **Switch to Desktop** brings you home. So does `open-couch-engine leave`
+over ssh.
+
+To start there every time: `open-couch-engine boot console`.
 
 ## 🧹 Remove
 
-Delete the AppImage to remove the application. To remove the engine that it installed:
-
 ```sh
-rm -f ~/.local/bin/open-couch-engine ~/.local/bin/open-couch-log-viewer
+rm -f ~/.local/bin/open-couch-engine
+rm -rf ~/.config/open-couch ~/.cache/open-couch
+sudo rm -f /usr/local/share/wayland-sessions/open-couch-session.desktop
 ```
 
 ## 📄 License
