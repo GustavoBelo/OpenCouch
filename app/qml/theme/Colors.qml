@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import io.github.gustavobelo.opencouch
 
 // The whole colour system: four colours and a set of named derivations.
 //
@@ -12,11 +13,15 @@ import QtQuick
 // call sites cannot invent a forty-first alpha, and so the set stays small
 // enough to hold in your head.
 QtObject {
-    readonly property color background: "#0d0f12"
-    readonly property color surface:    "#11141a"
-    readonly property color foreground: "#e6e8ea"
-    readonly property color accent:     "#4ade80"
-    readonly property color urgent:     "#f87171"
+    // The four colours follow the desktop when the desktop publishes a theme,
+    // and fall back to these otherwise. Everything below is derived, so a theme
+    // change moves every surface, border and wash in step without any of them
+    // being restated.
+    readonly property color background: DesktopTheme.available ? DesktopTheme.background : "#0d0f12"
+    readonly property color surface:    DesktopTheme.available ? DesktopTheme.surface    : "#11141a"
+    readonly property color foreground: DesktopTheme.available ? DesktopTheme.foreground : "#e6e8ea"
+    readonly property color accent:     DesktopTheme.available ? DesktopTheme.accent     : "#4ade80"
+    readonly property color urgent:     DesktopTheme.available ? DesktopTheme.urgent     : "#f87171"
 
     // Dim text is derived rather than declared, so it can never disagree with
     // the foreground it is meant to recede from.

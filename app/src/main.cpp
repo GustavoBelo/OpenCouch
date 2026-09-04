@@ -10,6 +10,7 @@
 #include "appversion.h"
 #include "applicationicon.h"
 #include "backend.h"
+#include "desktoptheme.h"
 
 int main(int argc, char *argv[])
 {
@@ -46,7 +47,13 @@ int main(int argc, char *argv[])
     }
 
     Backend backend;
+    DesktopTheme desktopTheme;
     AppInfoModel appInfoModel;
+
+    // Registered as a QML singleton rather than a context property: Colors.qml
+    // is itself a singleton, and singletons are created in their own context
+    // where context properties do not reach.
+    qmlRegisterSingletonInstance("io.github.gustavobelo.opencouch", 1, 0, "DesktopTheme", &desktopTheme);
 
     QQmlApplicationEngine engine;
 

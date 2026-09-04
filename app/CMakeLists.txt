@@ -74,6 +74,8 @@ qt_add_executable(opencouch
     src/backend.cpp
     src/backend.h
     src/configstore.cpp
+    src/desktoptheme.cpp
+    src/desktoptheme.h
     src/configstore.h
     src/engineclient.cpp
     src/engineclient.h

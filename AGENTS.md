@@ -61,6 +61,10 @@ A GUI é apenas uma camada; ela invoca o engine via `QProcess` (`app/src/enginec
 - `src/main.cpp` — bootstrap: instância única (QLocalServer), tradutores, engine QML, context properties (`backend`, `appInfo`).
 - `src/backend.{h,cpp}` — ponte QML↔engine. Expõe `Q_INVOKABLE`s para todas as ações (play, restore, status, logs, autostart, engine install). Roda o engine de forma síncrona (`runSync`) ou assíncrona (`runEngineAsync`).
 - `src/engineclient.{h,cpp}` — constrói a linha de comando do engine (usa `flatpak-spawn --host` dentro de Flatpak), versão e instalação do engine empacotado em `~/.local/bin`.
+- `src/desktoptheme.{h,cpp}` — lê `~/.local/state/omarchy/current/theme/colors.toml` e observa o
+  arquivo **e o diretório** (trocar de tema reescreve o diretório inteiro, então uma watch só no
+  arquivo fica apontando para um inode morto). Registrado como **singleton QML**, não context
+  property: `Colors.qml` é singleton, e singletons não enxergam context properties.
 - `src/configstore.{h,cpp}` — config (`config.env`), autostart (desktop entry / portal Background), `backgroundOnClose`, onboarding.
 - `src/displaysettingsmodel.{h,cpp}` — modelo de settings usado pela tela de configuração.
 - `src/displaysettingsvalidator.{h,cpp}` — valida DESK_OUTPUT/TV_OUTPUT/scale/pos antes de salvar.

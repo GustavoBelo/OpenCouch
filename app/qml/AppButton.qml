@@ -11,7 +11,6 @@ Item {
     property string text: ""
     property string icon: ""
     property bool primary: false
-    property bool enabled: true
     property bool busy: false
     // Large is the console-sized target: the one thing on a page you press
     // without looking, from a sofa.
@@ -69,7 +68,6 @@ Item {
         id: mouse
         anchors.fill: parent
         hoverEnabled: true
-        enabled: root.enabled
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()
     }

@@ -7,7 +7,6 @@ Item {
     id: root
 
     property bool checked: false
-    property bool enabled: true
     signal toggled(bool value)
 
     implicitWidth: Metrics.toggleWidth
@@ -44,7 +43,6 @@ Item {
         id: mouse
         anchors.fill: parent
         hoverEnabled: true
-        enabled: root.enabled
         cursorShape: Qt.PointingHandCursor
         onClicked: {
             root.checked = !root.checked;
