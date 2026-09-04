@@ -95,7 +95,7 @@ func run(args []string) error {
 	case "doctor":
 		return doctor(ctx)
 	case "setup":
-		return setup(ctx)
+		return setup(ctx, rest)
 	case "outputs":
 		return outputs()
 	case "tv":
@@ -121,7 +121,8 @@ func usage() {
   cancel         call off a countdown that is already running
   status         what is configured and what is running, as JSON
   doctor         what a console session still needs, as a list
-  setup          write the hosting session entry and say how to install it
+  setup [--desktop FILE]
+                 write the hosting session entry and say how to install it
   outputs        every connector on the machine, as JSON
   tv <CONNECTOR> choose the display the console takes over
   boot <MODE>    where a fresh login starts: desktop, console or last
@@ -378,21 +379,44 @@ func doctor(ctx context.Context) error {
 	return nil
 }
 
-func setup(ctx context.Context) error {
+func setup(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+	chosen := fs.String("desktop", "", "session entry file to come back to, e.g. omarchy.desktop")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
 	e, err := load()
 	if err != nil {
 		return err
 	}
-	desktop := console.CurrentDesktopSession(ctx, nil)
+
+	// Asking which session is running is only a guess at which desktop to come
+	// back to, and inside a hosted session it is the wrong one: the answer is
+	// the hosting entry, which would make the wrapper start a wrapper. So the
+	// guess is checked, and --desktop overrides it outright.
+	desktop := *chosen
 	if desktop == "" {
-		return errors.New("could not tell which desktop session is running, so there is nothing to come back to")
+		desktop = console.CurrentDesktopSession(ctx, nil)
+	}
+	if desktop == "" {
+		return fmt.Errorf("could not tell which desktop session is running.\n%s", desktopChoices(e.Entries))
+	}
+	if !strings.HasSuffix(desktop, ".desktop") {
+		desktop += ".desktop"
 	}
 	entry, ok := console.FindEntryByFile(e.Entries, desktop)
 	if !ok {
-		return fmt.Errorf("the running session %q has no entry in %s", desktop, strings.Join(console.SessionDirs(), ", "))
+		return fmt.Errorf("no session entry named %q in %s.\n%s",
+			desktop, strings.Join(console.SessionDirs(), ", "), desktopChoices(e.Entries))
 	}
 	if console.HostsConsole(entry) {
-		return errors.New("this session is already the hosting one; there is nothing to set up")
+		return fmt.Errorf("%q hosts sessions itself, so it is not somewhere to come back to -- "+
+			"recording it would have this wrapper start that one.\n%s",
+			desktop, desktopChoices(e.Entries))
+	}
+	if console.IsGamescopeSession(entry) {
+		return fmt.Errorf("%q is the console session, not a desktop.\n%s", desktop, desktopChoices(e.Entries))
 	}
 
 	self, err := os.Executable()
@@ -547,4 +571,24 @@ func closeApps(names []string) error {
 		}
 	}
 	return nil
+}
+
+// desktopChoices lists the entries that are actually desktops, for a message
+// that refuses one that is not.
+//
+// A refusal that does not say what would work leaves the user to go and read a
+// session directory themselves, which is the moment they pick the hosting entry
+// again.
+func desktopChoices(entries []console.Entry) string {
+	choices := []string{}
+	for _, entry := range entries {
+		if console.HostsConsole(entry) || console.IsGamescopeSession(entry) {
+			continue
+		}
+		choices = append(choices, "  open-couch-engine setup --desktop "+entry.File()+"   ("+entry.Name+")")
+	}
+	if len(choices) == 0 {
+		return "No desktop session entries were found at all."
+	}
+	return "Pick one of:\n" + strings.Join(choices, "\n")
 }

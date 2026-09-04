@@ -63,10 +63,20 @@ func Requirements(ctx context.Context, cfg Config, sc Runner, entries []Entry, c
 	add(installed("gamescope"), "gamescope is installed", "gamescope is not installed")
 	add(installed("steam"), "Steam is installed", "Steam is not installed")
 
-	_, hasDesktop := FindEntryByFile(entries, cfg.DesktopSession)
-	add(hasDesktop,
-		"the desktop session to come back to is "+cfg.DesktopSession,
-		"no desktop session to come back to; set desktop_session in "+configPath)
+	// Existing is not enough: the entry also has to be a desktop. Recording a
+	// hosting session as the way home makes the wrapper start a wrapper, and
+	// the user never reaches a desktop at all -- which reads as a machine that
+	// hangs on login rather than as a setting that is wrong.
+	desktop, hasDesktop := FindEntryByFile(entries, cfg.DesktopSession)
+	switch {
+	case !hasDesktop:
+		add(false, "", "no desktop session to come back to; set desktop_session in "+configPath)
+	case HostsConsole(desktop):
+		add(false, "", "the desktop session to come back to ("+cfg.DesktopSession+
+			") hosts sessions itself; pick a real desktop with `open-couch-engine setup --desktop <file>`")
+	default:
+		add(true, "the desktop session to come back to is "+cfg.DesktopSession, "")
+	}
 
 	add(cfg.Configured(),
 		"the display to hand over is "+cfg.TVName,

@@ -1,6 +1,9 @@
 package console
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Asking "which session is running" inside a hosted session answers with the
 // hosting entry. Recording that would make the wrapper host itself and the user
@@ -132,5 +135,75 @@ func TestIsGamescopeSession(t *testing.T) {
 	}
 	if IsGamescopeSession(Entry{DesktopNames: []string{"hyprland"}}) {
 		t.Error("an ordinary session was mistaken for the console")
+	}
+}
+
+// A hosting entry may point at a wrapper script, carry no marker, and be called
+// anything -- which is exactly what was installed on the machine this was first
+// tested on. The generated name is what still gives it away, because both
+// programs that host sessions build it with HostingEntryName.
+func TestHostsConsoleRecognisesAHostingEntryByItsName(t *testing.T) {
+	behindScript := Entry{
+		Name: "Omarchy (hyprmoncfg console switch)",
+		Exec: []string{"/home/u/.local/share/hyprmoncfg-spike/session-wrapper.sh"},
+	}
+	if !HostsConsole(behindScript) {
+		t.Error("a hosting entry behind a wrapper script was read as a desktop")
+	}
+	// And an ordinary desktop is still an ordinary desktop.
+	for _, plain := range []Entry{
+		{Name: "Omarchy (Hyprland uwsm)", Exec: []string{"uwsm", "start", "omarchy.desktop"}},
+		{Name: "Hyprland", Exec: []string{"Hyprland"}},
+		{Name: "Plasma (Wayland)", Exec: []string{"startplasma-wayland"}},
+	} {
+		if HostsConsole(plain) {
+			t.Errorf("%q was mistaken for a hosting entry", plain.Name)
+		}
+	}
+}
+
+// Naming the hosting entry after another program's hosting entry stacked the
+// suffix twice: "Omarchy (hyprmoncfg console switch) (console switch)".
+func TestHostingEntryNameDoesNotStackAForeignSuffix(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"Omarchy", "Omarchy (console switch)"},
+		{"Omarchy (console switch)", "Omarchy (console switch)"},
+		{"Omarchy (hyprmoncfg console switch)", "Omarchy (console switch)"},
+		{"Omarchy (hyprmoncfg console switch) (console switch)", "Omarchy (console switch)"},
+	} {
+		if got := HostingEntryName(tc.in); got != tc.want {
+			t.Errorf("HostingEntryName(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// An entry installed where the greeter never looks is the worst outcome: the
+// user logs out, cannot find the session, and nothing says why. SDDM ships
+// SessionDir=/usr/local/share/wayland-sessions,/usr/share/wayland-sessions.
+func TestSetupInstructionsInstallWhereTheGreeterLooks(t *testing.T) {
+	for _, tc := range []struct {
+		kind     LoginManagerKind
+		wantSudo bool
+	}{
+		{LoginSDDM, true},
+		{LoginGDM, true},
+		{LoginLightDM, true},
+		{LoginUnknown, true},
+		{LoginGreetd, false},
+		{LoginNone, false},
+	} {
+		got := SetupInstructions(LoginManager{Kind: tc.kind, Unit: "x.service"},
+			"/home/u/.config/open-couch/open-couch-session.desktop", "X (console switch)", "cmd host-session")
+		system := strings.Contains(got, "sudo install") && strings.Contains(got, "/usr/local/share/wayland-sessions/")
+		user := strings.Contains(got, "~/.local/share/wayland-sessions/")
+		if tc.wantSudo && !system {
+			t.Errorf("%v: told the user to install where its greeter does not look:\n%s", tc.kind, got)
+		}
+		if !tc.wantSudo && !user {
+			t.Errorf("%v: asked for root when the user's own directory would do:\n%s", tc.kind, got)
+		}
+		if system && user {
+			t.Errorf("%v: gave two different install paths at once:\n%s", tc.kind, got)
+		}
 	}
 }

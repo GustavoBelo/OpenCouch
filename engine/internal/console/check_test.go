@@ -122,3 +122,36 @@ func havesOf(reqs []Requirement) []string {
 	}
 	return out
 }
+
+// A desktop entry that exists is not enough: recording a hosting session as the
+// way home makes the wrapper start a wrapper, and the user never reaches a
+// desktop -- which reads as a machine that hangs on login, not as a wrong
+// setting.
+func TestRequirementsRefuseAHostingEntryAsTheDesktop(t *testing.T) {
+	entries := []Entry{
+		{Path: "/usr/share/wayland-sessions/omarchy.desktop", Name: "Omarchy", Exec: []string{"uwsm", "start"}},
+		{Path: "/usr/local/share/wayland-sessions/hyprmoncfg-session.desktop",
+			Name: "Omarchy (hyprmoncfg console switch)", Exec: []string{"/home/u/session-wrapper.sh"}},
+	}
+	cfg := Config{TVName: "HDMI-A-1", DesktopSession: "hyprmoncfg-session.desktop"}
+
+	found := false
+	for _, r := range Requirements(context.Background(), cfg, &fakeRunner{}, entries, "/tmp/console.json") {
+		if strings.Contains(r.Want, "hosts sessions itself") {
+			found = true
+			if r.OK {
+				t.Error("a hosting entry was accepted as the desktop to come back to")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("nothing complained about the desktop being a hosting session")
+	}
+
+	cfg.DesktopSession = "omarchy.desktop"
+	for _, r := range Requirements(context.Background(), cfg, &fakeRunner{}, entries, "/tmp/console.json") {
+		if strings.Contains(r.Have, "the desktop session to come back to") && !r.OK {
+			t.Error("a real desktop was refused")
+		}
+	}
+}

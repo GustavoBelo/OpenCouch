@@ -265,6 +265,15 @@ Verificadas por leitura direta de `packaging/release.sh` — o script agora **mi
 - **Checagem de branch `main`.** O script agora confere `git rev-parse --abbrev-ref HEAD` (`packaging/release.sh:33`) e aborta se não estiver em `main`, garantindo que tags `vX.Y.Z` nunca sejam criadas em branches de feature (alinhado à **Estratégia de branch** abaixo).
 - **`appstreamcli validate` bloqueante e antes do commit.** Antes, a validação rodava *depois* do `git commit` e só emitia `Warning:` — o commit já ficava no histórico. Agora o script valida o metainfo renderizado (`packaging/release.sh:98`) **antes** de `git add`/`commit`/`tag`; se `appstreamcli` estiver disponível e falhar, aborta sem criar commit/tag. Se `appstreamcli` não estiver instalado, mantém `Warning` e segue (único caso não-bloqueante).
 
+- **O sufixo `(console switch)` no `Name=` é compartilhado com o hyprmoncfg por construção.**
+  Os dois projetos geram o nome da entrada hospedeira com o mesmo `HostingEntryName`, e é por isso
+  que o `HostsConsole` o usa para detectar hospedeiras alheias. Uma hospedeira pode apontar para um
+  script wrapper e não ter marcador nem `Exec` reconhecível — o nome é o que sempre sobra. Sem isso o
+  wrapper adota o wrapper do outro como "desktop" e ninguém chega a um desktop.
+- **`ReadsUserSessionDir` decide onde o `setup` manda instalar a entrada.** SDDM, GDM e LightDM só
+  leem os diretórios de sistema (`SessionDir=/usr/local/share/wayland-sessions,/usr/share/...`;
+  sddm/sddm#916 ainda está aberto). Mandar instalar em `~/.local/share/wayland-sessions` nesses casos
+  produz o pior desfecho possível: o usuário desloga, não encontra a sessão e nada explica.
 - **`CheckIdentity` (Go) e `kCheckIdentity` (C++) precisam ser idênticos byte a byte.**
   `engine/cmd/open-couch-engine/main.go` imprime a string em `check`;
   `app/src/engineclient.cpp` compara por igualdade. Mudar um lado só faz o app relatar
