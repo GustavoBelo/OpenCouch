@@ -193,6 +193,32 @@ func (lm LoginManager) ReadsUserSessionDir() bool {
 	return false
 }
 
+// InstalledHostingEntry reports the hosting entry a package has already put in
+// a system session directory for this exact binary.
+//
+// A package can install the entry itself, because the engine it points at is on
+// PATH for every account. When it has, `setup` has nothing to install and
+// should say so rather than printing a sudo command for a file that is already
+// there.
+func InstalledHostingEntry(entries []Entry, self string) (Entry, bool) {
+	for _, entry := range entries {
+		if !HostsConsole(entry) || len(entry.Exec) == 0 {
+			continue
+		}
+		if entry.Exec[0] != self {
+			// Some other build's entry. Pointing a login at it would run a
+			// binary this user may not have.
+			continue
+		}
+		for _, root := range SessionRoots {
+			if strings.HasPrefix(entry.Path, root+"/") {
+				return entry, true
+			}
+		}
+	}
+	return Entry{}, false
+}
+
 // SetupInstructions says what to change so the login manager starts the hosting
 // session, and never changes it.
 //

@@ -182,12 +182,29 @@ add_custom_target(engine ALL
     VERBATIM
 )
 
-option(INSTALL_ENGINE_BUNDLE "Bundle the engine for AppImage distribution" OFF)
-if(INSTALL_ENGINE_BUNDLE)
-    install(PROGRAMS "${OPENCOUCH_ENGINE_BINARY}"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/open-couch"
-    )
-endif()
+# The engine goes on PATH, not into a private directory. That is what makes it
+# runnable by every account, which is in turn what lets a single hosting session
+# entry serve all of them -- and removes the one step of setup that needs root.
+install(PROGRAMS "${OPENCOUCH_ENGINE_BINARY}"
+    DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+
+# The hosting session entry, generated here so the Exec line points at wherever
+# this build installs the engine. It declares no DesktopNames: one file serves
+# every account and they do not all come back to the same desktop, so the
+# wrapper exports the identity instead.
+set(OPENCOUCH_HOSTING_ENTRY "${CMAKE_CURRENT_BINARY_DIR}/generated/open-couch-session.desktop")
+file(WRITE "${OPENCOUCH_HOSTING_ENTRY}"
+"[Desktop Entry]
+Name=Open Couch (console switch)
+Comment=Hosts the desktop and the gamescope console session in one login session
+Exec=${CMAKE_INSTALL_FULL_BINDIR}/open-couch-engine host-session
+Type=Application
+X-OpenCouch-Hosting=true
+")
+install(FILES "${OPENCOUCH_HOSTING_ENTRY}"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/wayland-sessions"
+)
 
 # Defines BUILD_TESTING and calls enable_testing(). Without it add_test() below
 # is accepted and silently registers nothing.

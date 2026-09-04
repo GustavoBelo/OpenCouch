@@ -421,6 +421,18 @@ func setup(ctx context.Context, args []string) error {
 		return err
 	}
 	wrapperCommand := self + " " + console.WrapperCommand
+
+	// A package may have installed the entry already, in which case the only
+	// thing left to do is record the choice and log out.
+	if installed, ok := console.InstalledHostingEntry(e.Entries, self); ok {
+		if err := recordDesktop(e, entry); err != nil {
+			return err
+		}
+		fmt.Printf("The hosting session is already installed (%s).\n\n", installed.Path)
+		fmt.Printf("Log out and pick %q at your login screen, then run `open-couch-engine doctor`.\n",
+			installed.Name)
+		return nil
+	}
 	name := console.HostingEntryName(entry.Name)
 	body := console.EntryContent(name, wrapperCommand)
 
@@ -429,20 +441,7 @@ func setup(ctx context.Context, args []string) error {
 		return err
 	}
 
-	// Recorded now rather than at the first switch: this is the moment the
-	// desktop to come back to is known for certain, because it is the one
-	// running.
-	e.Config.DesktopSession = entry.File()
-	// Same for its identity. Plenty of entries declare no DesktopNames --
-	// Omarchy's does not, because under uwsm the Exec line carries it -- and the
-	// running session is the only place the answer can be read rather than
-	// guessed.
-	if len(entry.DesktopNames) > 0 {
-		e.Config.DesktopNames = strings.Join(entry.DesktopNames, ":")
-	} else if live := strings.TrimSpace(os.Getenv("XDG_CURRENT_DESKTOP")); live != "" {
-		e.Config.DesktopNames = live
-	}
-	if err := console.SaveConfig(e.Base, e.Config); err != nil {
+	if err := recordDesktop(e, entry); err != nil {
 		return err
 	}
 
@@ -575,4 +574,22 @@ func desktopChoices(entries []console.Entry) string {
 		return "No desktop session entries were found at all."
 	}
 	return "Pick one of:\n" + strings.Join(choices, "\n")
+}
+
+// recordDesktop remembers which desktop to come back to, and what it calls
+// itself.
+//
+// Recorded at setup rather than at the first switch: this is the moment the
+// answer is known for certain, because it is the session running right now.
+// Plenty of entries declare no DesktopNames -- Omarchy's does not, because under
+// uwsm the Exec line carries it -- so the running session is the only place the
+// identity can be read rather than guessed.
+func recordDesktop(e env, entry console.Entry) error {
+	e.Config.DesktopSession = entry.File()
+	if len(entry.DesktopNames) > 0 {
+		e.Config.DesktopNames = strings.Join(entry.DesktopNames, ":")
+	} else if live := strings.TrimSpace(os.Getenv("XDG_CURRENT_DESKTOP")); live != "" {
+		e.Config.DesktopNames = live
+	}
+	return console.SaveConfig(e.Base, e.Config)
 }

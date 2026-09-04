@@ -1,0 +1,55 @@
+# Maintainer: Gustavo Belo <gustavobelo28@gmail.com>
+pkgname=open-couch-engine
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="Hand the machine to Steam's gamescope session on the television, and back"
+arch=('x86_64' 'aarch64')
+url="https://github.com/GustavoBelo/OpenCouch"
+license=('GPL-3.0-or-later')
+# gamescope-session is not a dependency this can name: the package providing it
+# is different on every distribution, and Steam's own is not in the repositories
+# at all. `open-couch-engine doctor` reports it far better than a missing
+# dependency error would.
+depends=('gamescope' 'steam' 'systemd' 'libpulse')
+makedepends=('go')
+optdepends=('open-couch: the graphical application')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "OpenCouch-$pkgver/engine"
+    # Static on purpose: the engine runs as the login session itself, before
+    # much of the system is up, and has no business depending on shared
+    # libraries it might not find there.
+    export CGO_ENABLED=0
+    go build -trimpath \
+        -ldflags "-s -w -X main.version=$pkgver" \
+        -o "$srcdir/open-couch-engine" \
+        ./cmd/open-couch-engine
+}
+
+check() {
+    cd "OpenCouch-$pkgver/engine"
+    go test ./...
+}
+
+package() {
+    install -Dm755 "$srcdir/open-couch-engine" "$pkgdir/usr/bin/open-couch-engine"
+
+    # The hosting session entry, installed for every account. It is what lets
+    # switching skip the greeter, and installing it here is what removes the one
+    # step of setup that needed root.
+    #
+    # It declares no DesktopNames: one file serves every account and they do not
+    # all come back to the same desktop, so the wrapper exports the identity.
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/wayland-sessions/open-couch-session.desktop" <<'EOF'
+[Desktop Entry]
+Name=Open Couch (console switch)
+Comment=Hosts the desktop and the gamescope console session in one login session
+Exec=/usr/bin/open-couch-engine host-session
+Type=Application
+X-OpenCouch-Hosting=true
+EOF
+
+    install -Dm644 "OpenCouch-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

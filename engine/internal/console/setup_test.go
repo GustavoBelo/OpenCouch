@@ -195,3 +195,42 @@ func TestSetupInstructionsInstallWhereTheGreeterLooks(t *testing.T) {
 		}
 	}
 }
+
+// A package can install the hosting entry itself, because the engine it points
+// at is on PATH for every account. When it has, setup has nothing to install
+// and should not print a sudo command for a file that is already there.
+func TestInstalledHostingEntryFindsOnlyOursInASystemDirectory(t *testing.T) {
+	const self = "/usr/bin/open-couch-engine"
+	old := SessionRoots
+	SessionRoots = []string{"/usr/local/share/wayland-sessions", "/usr/share/wayland-sessions"}
+	t.Cleanup(func() { SessionRoots = old })
+
+	ours := Entry{
+		Path: "/usr/share/wayland-sessions/open-couch-session.desktop",
+		Name: "Open Couch (console switch)",
+		Exec: []string{self, "host-session"},
+	}
+	if _, ok := InstalledHostingEntry([]Entry{ours}, self); !ok {
+		t.Error("the entry a package installed was not recognised")
+	}
+
+	for _, other := range []Entry{
+		// In the user's own directory: not something a package put there, and
+		// on most login managers not something the greeter reads either.
+		{Path: "/home/u/.local/share/wayland-sessions/open-couch-session.desktop",
+			Exec: []string{self, "host-session"}},
+		// Another build's entry. Pointing a login at it would run a binary this
+		// user may not even have.
+		{Path: "/usr/share/wayland-sessions/open-couch-session.desktop",
+			Exec: []string{"/home/someone/.local/bin/open-couch-engine", "host-session"}},
+		// Somebody else's wrapper entirely.
+		{Path: "/usr/share/wayland-sessions/hyprmoncfg-session.desktop",
+			Name: "Omarchy (hyprmoncfg console switch)", Exec: []string{"/usr/bin/hyprmoncfg", "console", "session"}},
+		// An ordinary desktop.
+		{Path: "/usr/share/wayland-sessions/omarchy.desktop", Exec: []string{"uwsm", "start"}},
+	} {
+		if _, ok := InstalledHostingEntry([]Entry{other}, self); ok {
+			t.Errorf("%s was mistaken for a packaged hosting entry", other.Path)
+		}
+	}
+}
