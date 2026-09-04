@@ -210,6 +210,7 @@ func hostSession(ctx context.Context) error {
 	w := &console.Wrapper{
 		DesktopExec:    desktop.Exec,
 		DesktopSession: desktop.File(),
+		DesktopNames:   desktop.DesktopNames,
 		StateDir:       e.StateDir,
 		RuntimeDir:     e.RuntimeDir,
 		Choices:        e.Config,
@@ -421,7 +422,7 @@ func setup(ctx context.Context, args []string) error {
 	}
 	wrapperCommand := self + " " + console.WrapperCommand
 	name := console.HostingEntryName(entry.Name)
-	body := console.EntryContent(name, wrapperCommand, entry.DesktopNames)
+	body := console.EntryContent(name, wrapperCommand)
 
 	path := filepath.Join(e.Base, console.HostingEntryFile)
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
@@ -432,6 +433,15 @@ func setup(ctx context.Context, args []string) error {
 	// desktop to come back to is known for certain, because it is the one
 	// running.
 	e.Config.DesktopSession = entry.File()
+	// Same for its identity. Plenty of entries declare no DesktopNames --
+	// Omarchy's does not, because under uwsm the Exec line carries it -- and the
+	// running session is the only place the answer can be read rather than
+	// guessed.
+	if len(entry.DesktopNames) > 0 {
+		e.Config.DesktopNames = strings.Join(entry.DesktopNames, ":")
+	} else if live := strings.TrimSpace(os.Getenv("XDG_CURRENT_DESKTOP")); live != "" {
+		e.Config.DesktopNames = live
+	}
 	if err := console.SaveConfig(e.Base, e.Config); err != nil {
 		return err
 	}

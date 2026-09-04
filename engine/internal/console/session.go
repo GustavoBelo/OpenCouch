@@ -24,6 +24,9 @@ type Wrapper struct {
 	// DesktopSession is the file DesktopExec came from, so a re-read can tell
 	// whether the user has since chosen a different one.
 	DesktopSession string
+	// DesktopNames is what the entry DesktopExec came from declares, if it
+	// declares anything. Config.DesktopNames covers the ones that do not.
+	DesktopNames []string
 	// ConsoleExec is the gamescope session's own entry point. Reusing it rather
 	// than reimplementing matters: that script does environment plumbing --
 	// dbus-update-activation-environment, XDG_DESKTOP_PORTAL_DIR, reset-failed --
@@ -232,16 +235,45 @@ func (w *Wrapper) choices() Config {
 // might not exist is worse than one that is out of date, so anything the re-read
 // cannot resolve -- a session that has been uninstalled, an entry that would
 // host itself -- falls back to it rather than failing.
-func (w *Wrapper) desktopCommand(cfg Config) []string {
+func (w *Wrapper) desktopCommand(cfg Config) ([]string, []string) {
 	if cfg.DesktopSession == "" || cfg.DesktopSession == w.DesktopSession {
-		return w.DesktopExec
+		return w.DesktopExec, desktopEnv(w.DesktopSession, w.DesktopNames, cfg.DesktopNames)
 	}
 	entry, ok := FindEntryByFile(FindEntries(SessionDirs()), cfg.DesktopSession)
 	if !ok || len(entry.Exec) == 0 || HostsConsole(entry) {
 		w.logf("console: cannot come back to %s, using %s", cfg.DesktopSession, w.DesktopSession)
-		return w.DesktopExec
+		return w.DesktopExec, desktopEnv(w.DesktopSession, w.DesktopNames, cfg.DesktopNames)
 	}
-	return entry.Exec
+	return entry.Exec, desktopEnv(entry.File(), entry.DesktopNames, cfg.DesktopNames)
+}
+
+// desktopEnv is what the desktop's own session entry would have set had the
+// login manager started it directly.
+//
+// Without this the desktop comes up with an empty XDG_CURRENT_DESKTOP, and
+// portals and polkit agents key off that -- so the session gets the wrong ones,
+// for its whole life, with nothing to say why. It used to come from the
+// DesktopNames line of the per-user hosting entry; that entry cannot carry it
+// once it is installed once for every account.
+func desktopEnv(session string, names []string, recorded string) []string {
+	// The entry's own declaration first, then what setup saw the running
+	// session claim. Many entries declare nothing -- Omarchy's does not -- and
+	// under uwsm the identity comes from the Exec line instead, so the recorded
+	// value is what covers them.
+	joined := strings.Join(names, ":")
+	if joined == "" {
+		joined = strings.TrimSpace(recorded)
+	}
+	env := []string{}
+	if joined != "" {
+		env = append(env,
+			"XDG_CURRENT_DESKTOP="+joined,
+			"XDG_SESSION_DESKTOP="+joined)
+	}
+	if session != "" {
+		env = append(env, "DESKTOP_SESSION="+strings.TrimSuffix(session, ".desktop"))
+	}
+	return env
 }
 
 // commandFor prepares the machine for a mode and returns what to run.
@@ -249,7 +281,8 @@ func (w *Wrapper) commandFor(ctx context.Context, mode Mode) ([]string, []string
 	cfg := w.choices()
 	if mode != ModeConsole {
 		RestoreAudio(ctx, w.StateDir, w.logf)
-		return w.desktopCommand(cfg), nil, nil
+		argv, env := w.desktopCommand(cfg)
+		return argv, env, nil
 	}
 	if len(w.ConsoleExec) == 0 {
 		return nil, nil, errors.New("no gamescope session is installed")

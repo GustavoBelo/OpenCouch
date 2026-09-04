@@ -65,24 +65,19 @@ func DetectLoginManager(ctx context.Context, sc Runner) LoginManager {
 // DesktopNames deliberately carries the desktop compositor's own names rather
 // than anything of ours: what logs in is the user's desktop, and applications
 // that key off XDG_CURRENT_DESKTOP should not be able to tell the difference.
-// A desktop whose own entry names nothing falls back to what this session
-// claims to be, and failing that the line is left out rather than filled with a
-// guess: naming the wrong desktop is worse than naming none, because portals and
-// polkit agents key off it and would load the wrong ones for the whole session.
-func EntryContent(name, wrapperCommand string, desktopNames []string) string {
-	names := strings.Join(desktopNames, ";")
-	if names == "" {
-		names = strings.TrimSpace(os.Getenv("XDG_CURRENT_DESKTOP"))
-	}
-	entry := fmt.Sprintf(`[Desktop Entry]
+// The entry declares no DesktopNames, and that is deliberate. One installed by
+// a package serves every account on the machine, and they do not all come back
+// to the same desktop -- so the identity is exported by the wrapper, which is
+// the one thing that knows which desktop it is about to start. That also makes
+// the entry `setup` writes and the entry a package installs the same file.
+func EntryContent(name, wrapperCommand string) string {
+	return fmt.Sprintf(`[Desktop Entry]
 Name=%s
 Comment=Hosts the desktop and the gamescope console session in one login session
 Exec=%s
-`, name, wrapperCommand)
-	if names != "" {
-		entry += "DesktopNames=" + names + "\n"
-	}
-	return entry + fmt.Sprintf("Type=Application\n%s=true\n", HostingMarker)
+Type=Application
+%s=true
+`, name, wrapperCommand, HostingMarker)
 }
 
 // HostsConsole reports whether a session entry is a hosting session -- ours or

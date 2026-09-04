@@ -377,3 +377,49 @@ func TestRunLeavesNoWordWhenNothingFailed(t *testing.T) {
 		t.Errorf("a working session recorded %q", reason)
 	}
 }
+
+// The desktop used to get its identity from the DesktopNames line of the
+// per-user hosting entry. A hosting entry installed once for every account
+// cannot carry it, so the wrapper exports it -- and without it the desktop comes
+// up with an empty XDG_CURRENT_DESKTOP, which portals and polkit agents key off
+// for the whole life of the session.
+func TestDesktopSessionGetsItsIdentityFromTheWrapper(t *testing.T) {
+	env := desktopEnv("omarchy.desktop", []string{"Hyprland"}, "")
+	want := map[string]bool{
+		"XDG_CURRENT_DESKTOP=Hyprland": false,
+		"XDG_SESSION_DESKTOP=Hyprland": false,
+		"DESKTOP_SESSION=omarchy":      false,
+	}
+	for _, entry := range env {
+		if _, ok := want[entry]; ok {
+			want[entry] = true
+		} else {
+			t.Errorf("unexpected environment entry %q", entry)
+		}
+	}
+	for entry, seen := range want {
+		if !seen {
+			t.Errorf("%q was not exported", entry)
+		}
+	}
+
+	// More than one name is how a session claims two identities at once.
+	if got := desktopEnv("x.desktop", []string{"wlroots", "Hyprland"}, ""); got[0] != "XDG_CURRENT_DESKTOP=wlroots:Hyprland" {
+		t.Errorf("got %q, want the names joined with a colon", got[0])
+	}
+
+	// An entry that declares nothing falls back to what setup recorded from the
+	// running session, which is how Omarchy -- whose entry names nothing -- gets
+	// an identity at all.
+	if got := desktopEnv("omarchy.desktop", nil, "Hyprland"); got[0] != "XDG_CURRENT_DESKTOP=Hyprland" {
+		t.Errorf("got %q, want the recorded identity", got)
+	}
+
+	// With neither, nothing is invented: naming the wrong desktop is worse than
+	// naming none.
+	for _, entry := range desktopEnv("x.desktop", nil, "") {
+		if strings.HasPrefix(entry, "XDG_CURRENT_DESKTOP=") {
+			t.Errorf("invented a desktop identity: %q", entry)
+		}
+	}
+}

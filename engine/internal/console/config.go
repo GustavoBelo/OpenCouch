@@ -26,6 +26,14 @@ type Config struct {
 	TVDescription string `json:"tv_description,omitempty"`
 	// DesktopSession is the session entry to come back to, by file name.
 	DesktopSession string `json:"desktop_session,omitempty"`
+	// DesktopNames is what that session should claim as XDG_CURRENT_DESKTOP.
+	//
+	// Recorded here rather than read from the entry because plenty of entries
+	// do not declare DesktopNames at all -- Omarchy's does not -- and the value
+	// is per-user anyway, which a hosting entry installed once for every
+	// account cannot be. `setup` captures it from the session that is running,
+	// which is the only moment it can be observed directly.
+	DesktopNames string `json:"desktop_names,omitempty"`
 	// Boot says where a fresh login starts: at the desktop, in the console, or
 	// wherever the last session ended. Empty means the desktop.
 	Boot BootMode `json:"boot,omitempty"`

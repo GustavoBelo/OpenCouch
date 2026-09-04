@@ -47,7 +47,12 @@ type Entry struct {
 	// Exec is the command line, already stripped of the field codes a session
 	// entry may carry.
 	Exec []string
-	// DesktopNames is the DesktopNames= list, lowercased.
+	// DesktopNames is the DesktopNames= list, exactly as written.
+	//
+	// Case is preserved because this ends up in XDG_CURRENT_DESKTOP, which
+	// portals and polkit agents match case-sensitively -- "KDE" finds the KDE
+	// portal and "kde" finds nothing. The comparisons below fold case
+	// themselves rather than making every reader accept a mangled value.
 	DesktopNames []string
 	// Hosting is set by the marker `console setup` writes. Reading the Exec
 	// line is not enough on its own: a hosting entry may point at a wrapper
@@ -138,7 +143,7 @@ func ReadEntry(path string) (Entry, error) {
 			entry.Hosting = strings.EqualFold(strings.TrimSpace(value), "true")
 		case "DesktopNames":
 			for _, name := range strings.Split(value, ";") {
-				if name = strings.ToLower(strings.TrimSpace(name)); name != "" {
+				if name = strings.TrimSpace(name); name != "" {
 					entry.DesktopNames = append(entry.DesktopNames, name)
 				}
 			}
@@ -200,7 +205,7 @@ func ParseExec(line string) []string {
 func FindGamescopeSession(entries []Entry) (Entry, bool) {
 	for _, entry := range entries {
 		for _, name := range entry.DesktopNames {
-			if name == GamescopeDesktopName {
+			if strings.EqualFold(name, GamescopeDesktopName) {
 				return entry, true
 			}
 		}
@@ -212,7 +217,7 @@ func FindGamescopeSession(entries []Entry) (Entry, bool) {
 // never somewhere to come back to.
 func IsGamescopeSession(e Entry) bool {
 	for _, name := range e.DesktopNames {
-		if name == GamescopeDesktopName {
+		if strings.EqualFold(name, GamescopeDesktopName) {
 			return true
 		}
 	}

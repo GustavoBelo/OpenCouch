@@ -57,28 +57,16 @@ func TestHostingEntryNameDoesNotStack(t *testing.T) {
 	}
 }
 
-func TestEntryContentCarriesTheDesktopIdentity(t *testing.T) {
-	t.Setenv("XDG_CURRENT_DESKTOP", "")
-	body := EntryContent("X", "open-couch-engine host-session", []string{"KDE"})
-	if !contains(body, "DesktopNames=KDE") || !contains(body, "Exec=open-couch-engine host-session") {
-		t.Fatalf("entry = %q", body)
+// The entry carries no DesktopNames: one installed by a package serves every
+// account, and they do not all come back to the same desktop. The wrapper
+// exports the identity instead, which is tested in session_test.go.
+func TestEntryContentIsTheSameForEveryAccount(t *testing.T) {
+	body := EntryContent("X (console switch)", "/usr/bin/open-couch-engine host-session")
+	if contains(body, "DesktopNames") {
+		t.Errorf("the entry named a desktop it cannot know:\n%s", body)
 	}
-
-	// A desktop whose own entry names nothing falls back to what this session
-	// claims to be, because that is the identity the user is already running
-	// under.
-	t.Setenv("XDG_CURRENT_DESKTOP", "Hyprland")
-	if !contains(EntryContent("X", "cmd", nil), "DesktopNames=Hyprland") {
-		t.Error("an entry with no names of its own ignored the running session")
-	}
-
-	// With nothing to fall back to, the line is left out rather than guessed.
-	// Portals and polkit agents key off XDG_CURRENT_DESKTOP, so naming the
-	// wrong desktop loads the wrong ones for the whole session -- worse than
-	// naming none.
-	t.Setenv("XDG_CURRENT_DESKTOP", "")
-	if contains(EntryContent("X", "cmd", nil), "DesktopNames=") {
-		t.Error("an entry with nothing to declare declared something anyway")
+	if !contains(body, "Exec=/usr/bin/open-couch-engine host-session") || !contains(body, HostingMarker+"=true") {
+		t.Errorf("entry = %q", body)
 	}
 }
 
@@ -109,7 +97,7 @@ func TestHostsConsoleTrustsTheMarkerWhateverTheCommand(t *testing.T) {
 }
 
 func TestEntryContentCarriesTheMarker(t *testing.T) {
-	if !contains(EntryContent("X", "open-couch-engine host-session", nil), HostingMarker+"=true") {
+	if !contains(EntryContent("X", "open-couch-engine host-session"), HostingMarker+"=true") {
 		t.Error("the generated entry does not mark itself as hosting")
 	}
 }
