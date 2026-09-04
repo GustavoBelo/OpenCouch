@@ -39,7 +39,6 @@ public:
     Q_INVOKABLE QString runSetup();
     Q_INVOKABLE bool setTv(const QString &connector);
     Q_INVOKABLE bool setBootMode(const QString &mode);
-    Q_INVOKABLE void closeTrackedApps(const QStringList &processNames);
 
     Q_INVOKABLE bool engineAvailable();
     Q_INVOKABLE bool engineNeedsUpdate();

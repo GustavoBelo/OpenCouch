@@ -175,17 +175,12 @@ Kirigami.ScrollablePage {
     }
 
     function enterConsoleNow() {
-        // Asked to quit before the session they live in ends, not after: this
-        // is the difference between an editor saving its buffers and one being
-        // killed along with the desktop.
-        if (appCleanupModel.enabled) {
-            var names = [];
-            var apps = appCleanupModel.appsToClose;
-            for (var i = 0; i < apps.length; i++) {
-                names.push(apps[i].processName);
-            }
-            backend.closeTrackedApps(names);
-        }
+        // Nothing is closed first. Ending the session sends SIGTERM to
+        // everything in it and waits, which is the same signal a list of
+        // applications to close would send, moments earlier and to fewer of
+        // them -- and on a desktop that runs the full session-management
+        // protocol, preempting it would talk over the very prompt that asks
+        // whether to save.
         backend.enterConsole();
     }
 

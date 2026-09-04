@@ -80,8 +80,6 @@ qt_add_executable(opencouch
     src/engineclient.h
     src/appinfomodel.cpp
     src/appinfomodel.h
-    src/appcleanupmodel.cpp
-    src/appcleanupmodel.h
 )
 
 qt_add_qml_module(opencouch
@@ -92,9 +90,6 @@ qt_add_qml_module(opencouch
         qml/SetupPage.qml
         qml/DashboardPage.qml
         qml/OnboardingSheet.qml
-        qml/ChooseAppDialog.qml
-        qml/RunningAppsDialog.qml
-        qml/AppRowDelegate.qml
     RESOURCES
 )
 

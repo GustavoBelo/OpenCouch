@@ -20,7 +20,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/GustavoBelo/OpenCouch/engine/internal/apps"
 	"github.com/GustavoBelo/OpenCouch/engine/internal/console"
 	"github.com/GustavoBelo/OpenCouch/engine/internal/notify"
 )
@@ -102,8 +101,6 @@ func run(args []string) error {
 		return setTV(rest)
 	case "boot":
 		return setBoot(rest)
-	case "close-apps":
-		return closeApps(rest)
 	case "help", "-h", "--help":
 		usage()
 		return nil
@@ -126,7 +123,6 @@ func usage() {
   outputs        every connector on the machine, as JSON
   tv <CONNECTOR> choose the display the console takes over
   boot <MODE>    where a fresh login starts: desktop, console or last
-  close-apps ... ask the named applications to quit, before handing over
   config-path    where the settings file lives
   check          succeed if this engine can run
   version        print the engine version
@@ -549,28 +545,6 @@ func logger(stateDir string) func(string, ...any) {
 		fmt.Fprint(os.Stderr, line)
 		_, _ = file.WriteString(line)
 	}
-}
-
-// closeApps asks the named applications to quit.
-//
-// The names come from the caller rather than from a file this reads, because the
-// list belongs to the application's own settings and duplicating it here would
-// give the user two places to change it and one of them would be wrong.
-func closeApps(names []string) error {
-	if len(names) == 0 {
-		return errors.New("usage: open-couch-engine close-apps <process-name>...")
-	}
-	for _, r := range apps.Close(names) {
-		switch {
-		case r.Skipped:
-			fmt.Printf("skipped %s: closing it would take the session down\n", r.Name)
-		case r.Closed == 0:
-			fmt.Printf("%s was not running\n", r.Name)
-		default:
-			fmt.Printf("asked %s to quit (%d process(es))\n", r.Name, r.Closed)
-		}
-	}
-	return nil
 }
 
 // desktopChoices lists the entries that are actually desktops, for a message

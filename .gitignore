@@ -34,3 +34,7 @@ test-appdir/
 
 # OS
 .DS_Store
+
+# Local context notes and the bats download directory from an abandoned branch.
+/context.md
+/tests/

@@ -12,7 +12,6 @@
 <message id="common.got_it"><source>common.got_it</source><translation>Entendido</translation></message>
 <message id="common.loading"><source>common.loading</source><translation>Cargando...</translation></message>
 <message id="common.log"><source>common.log</source><translation>Registros</translation></message>
-<message id="common.save"><source>common.save</source><translation>Guardar</translation></message>
 <message id="dashboard.copy_log"><source>dashboard.copy_log</source><translation>Copiar registros</translation></message>
 <message id="dashboard.download_log"><source>dashboard.download_log</source><translation>Descargar registros</translation></message>
 <message id="dashboard.help"><source>dashboard.help</source><translation>¿Cómo funciona?</translation></message>
@@ -53,7 +52,6 @@
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimizar a la bandeja del sistema al cerrar</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Invitar a un café al dev</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch es de código abierto y lo desarrollo en mi tiempo libre. Si te ha servido en tu día a día, ¡échame un cable!</translation></message>
-<message id="settings.error.save_failed"><source>settings.error.save_failed</source><translation>No se han podido guardar los ajustes.</translation></message>
 <message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>Viendo registro anterior: %1</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Volver al registro en tiempo real</translation></message>
 <message id="common.version"><source>common.version</source><translation>Versión %1</translation></message>
@@ -61,31 +59,12 @@
 <message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>No se ha podido leer el registro o el archivo está vacío.</translation></message>
 <message id="settings.system"><source>settings.system</source><translation>Sistema</translation></message>
 <message id="settings.background"><source>settings.background</source><translation>Segundo plano</translation></message>
-<message id="settings.saved"><source>settings.saved</source><translation>¡Ajustes guardados correctamente!</translation></message>
 <message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
 <message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permiso necesario para usar el Modo Salón</translation></message>
 <message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Después de ejecutar el comando, haz clic en Actualizar estado en el panel para aplicar los cambios.</translation></message>
 <message id="engine.installed_ok"><source>engine.installed_ok</source><translation>¡Engine instalado con éxito!</translation></message>
 <message id="engine.install_button"><source>engine.install_button</source><translation>Instalar Engine</translation></message>
 <message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>El engine ya está incluido en esta app y se instalará automáticamente en el primer uso.</translation></message>
-<message id="resource_control.heading"><source>resource_control.heading</source><translation type="unfinished">Resource Control</translation></message>
-<message id="resource_control.description"><source>resource_control.description</source><translation type="unfinished">Choose which apps are automatically closed when couch mode opens.</translation></message>
-<message id="resource_control.app_cleanup_heading"><source>resource_control.app_cleanup_heading</source><translation type="unfinished">App cleanup</translation></message>
-<message id="resource_control.enable_cleanup"><source>resource_control.enable_cleanup</source><translation type="unfinished">Close selected apps after couch mode opens</translation></message>
-<message id="resource_control.enable_cleanup_description"><source>resource_control.enable_cleanup_description</source><translation type="unfinished">After Big Picture is visible, OpenCouch waits for the delay below, then closes your selected apps.</translation></message>
-<message id="resource_control.warning_terminate"><source>resource_control.warning_terminate</source><translation type="unfinished">Selected apps are terminated directly. Unsaved work may be lost.</translation></message>
-<message id="resource_control.apps_to_close"><source>resource_control.apps_to_close</source><translation type="unfinished">Apps to close</translation></message>
-<message id="resource_control.apps_to_close_description"><source>resource_control.apps_to_close_description</source><translation type="unfinished">Only the apps you select here are closed when couch mode opens. Everything else keeps running.</translation></message>
-<message id="resource_control.choose_app"><source>resource_control.choose_app</source><translation type="unfinished">Choose app…</translation></message>
-<message id="resource_control.running_apps"><source>resource_control.running_apps</source><translation type="unfinished">Running apps…</translation></message>
-<message id="resource_control.no_apps_selected"><source>resource_control.no_apps_selected</source><translation type="unfinished">No apps selected.</translation></message>
-<message id="resource_control.remove_app"><source>resource_control.remove_app</source><translation type="unfinished">Remove</translation></message>
-<message id="resource_control.wait_before_closing"><source>resource_control.wait_before_closing</source><translation type="unfinished">Wait before closing</translation></message>
-<message id="resource_control.wait_before_closing_description"><source>resource_control.wait_before_closing_description</source><translation type="unfinished">Seconds to wait after couch mode opens before closing your selected apps.</translation></message>
-<message id="resource_control.picker_title"><source>resource_control.picker_title</source><translation type="unfinished">Choose application</translation></message>
-<message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
-<message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
-<message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
 <message id="common.copy"><source>common.copy</source><translation type="unfinished"></translation></message>
 <message id="engine.enter_console"><source>engine.enter_console</source><translation type="unfinished"></translation></message>
 <message id="dashboard.enter_console"><source>dashboard.enter_console</source><translation type="unfinished"></translation></message>

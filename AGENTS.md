@@ -58,18 +58,13 @@ A GUI é apenas uma camada; ela invoca o engine via `QProcess` (`app/src/enginec
 
 ### app/ — GUI Qt6/QML
 
-- `src/main.cpp` — bootstrap: instância única (QLocalServer), tradutores, engine QML, context properties (`backend`, `displaySettingsModel`, `appCleanupModel`, `appInfo`).
+- `src/main.cpp` — bootstrap: instância única (QLocalServer), tradutores, engine QML, context properties (`backend`, `appInfo`).
 - `src/backend.{h,cpp}` — ponte QML↔engine. Expõe `Q_INVOKABLE`s para todas as ações (play, restore, status, logs, autostart, engine install). Roda o engine de forma síncrona (`runSync`) ou assíncrona (`runEngineAsync`).
 - `src/engineclient.{h,cpp}` — constrói a linha de comando do engine (usa `flatpak-spawn --host` dentro de Flatpak), versão e instalação do engine empacotado em `~/.local/bin`.
-- `src/configstore.{h,cpp}` — config (`config.env`), autostart (desktop entry / portal Background), `backgroundOnClose`, onboarding, e chaves de limpeza de apps (`CLOSE_APPS_ENABLED`, `CLOSE_APPS_WAIT_SECONDS`, `APPS_TO_CLOSE`).
+- `src/configstore.{h,cpp}` — config (`config.env`), autostart (desktop entry / portal Background), `backgroundOnClose`, onboarding.
 - `src/displaysettingsmodel.{h,cpp}` — modelo de settings usado pela tela de configuração.
 - `src/displaysettingsvalidator.{h,cpp}` — valida DESK_OUTPUT/TV_OUTPUT/scale/pos antes de salvar.
-- `src/appcleanupmodel.{h,cpp}` — modelo de controle de recursos: lista de apps a fechar, tempo de espera e integração com `close-tracked-apps` do engine. Pontos-chave:
-  - **Varredura nativa** de `.desktop` via `QStandardPaths`/`QDir`/`QFile`/`QDirIterator`, até depth 2, seguindo symlinks flatpak.
-  - **Varredura de processos** via `/proc` + `/proc/<pid>/exe|comm|cmdline`, filtrando `PROTECTED_PROCESSES` e cruzando com os `.desktop` encontrados.
-  - **Cache em memória por sessão** (`QMap` lower → displayName/icon).
-  - **Carregamento assíncrono**: `QThread::create` + `installedApps`/`runningApps`/`loadingInstalled`/`loadingRunning` + `requestInstalledApplications`/`requestRunningApplications` + `BusyIndicator`.
-  - Em Flatpak, usa `/run/host` ou `flatpak-spawn --host open-couch-engine` como fallback.
+
 - `src/appinfomodel.{h,cpp}` — nome, versão e URL do script de instalação.
 - `qml/` — `main.qml`, `SetupPage.qml`, `DashboardPage.qml`, `OnboardingSheet.qml`, `ChooseAppDialog.qml`, `RunningAppsDialog.qml` (Kirigami, `QtQuick.Controls`).
 - `translations/` — catálogos Qt Linguist (`.ts`); `opencouch_en.ts` é o catálogo base.
@@ -80,7 +75,7 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
 
 - `cmd/open-couch-engine/` — a CLI. Subcomandos: `host-session`, `enter [--yes]`, `leave`, `cancel`,
   `status` (JSON), `doctor`, `setup`, `outputs` (JSON), `tv <CONNECTOR>`, `boot <modo>`,
-  `close-apps <nome>...`, `config-path`, `check`, `version`.
+  `config-path`, `check`, `version`.
 - `internal/console/` — o núcleo. As peças que carregam o valor são as chatas:
   - `session.go` — o loop do wrapper: `Sanitize` → `SettleJobs` → `commandFor` → `Launch`, repetindo.
   - `systemd.go` — **`Sanitize`**. Nada mais limpa o systemd user manager na saída de uma sessão
@@ -97,8 +92,6 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
   - `setup.go`, `detect.go` — descoberta de `.desktop` e a entrada hospedeira.
   - `announce.go` — countdown com botão Cancel, para os caminhos sem GUI.
 - `internal/audio/` — EDID→ELD→pin→profile→sink. O WirePlumber move *streams*, não o sink default.
-- `internal/apps/` — `close-apps`. `Protected` cobre os compositores de **todos** os desktops, não só
-  o que está rodando: a lista é escrita uma vez e carregada entre máquinas.
 - `internal/notify/`, `internal/atomicfile/`.
 
 Runtime:

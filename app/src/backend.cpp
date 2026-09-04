@@ -289,21 +289,6 @@ bool Backend::setBootMode(const QString &mode)
     return ok;
 }
 
-void Backend::closeTrackedApps(const QStringList &processNames)
-{
-    if (processNames.isEmpty()) {
-        return;
-    }
-    // Synchronous on purpose: this runs on the way into console mode, and the
-    // point is that the applications have been asked to quit before the session
-    // they are running in ends.
-    bool ok = false;
-    const QString output = runEngineSync(QStringList{QStringLiteral("close-apps")} + processNames, &ok);
-    for (const QString &line : output.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-        emit logLine(line);
-    }
-}
-
 void Backend::copyLogToClipboard()
 {
     bool ok = false;
