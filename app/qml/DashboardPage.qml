@@ -106,17 +106,25 @@ Item {
                     }
 
                     AppButton {
-                        visible: backend.canAutoInstallEngine() && !backend.engineAvailable()
-                        text: qsTrId("dashboard.install_action")
-                        icon: "save"
+                        visible: !backend.engineAvailable()
+                        text: qsTrId("dashboard.copy_install_command")
+                        icon: "copy"
                         onClicked: {
-                            const err = backend.tryAutoInstallEngine();
-                            banner.visible = false;
-                            if (err !== "") {
-                                banner.show(err, true);
-                            }
-                            page.reload();
+                            installCommand.text = "curl -fsSL " + appInfo.installScriptUrl + " | bash";
+                            installCommand.selectAll();
+                            installCommand.copy();
+                            installCommand.deselect();
+                            banner.show(qsTrId("dashboard.install_command_copied"), false);
                         }
+                    }
+
+                    // Off-screen, purely to own the clipboard copy: the command
+                    // is shown as a message rather than run, because fetching
+                    // and executing a script on the user's behalf is not
+                    // something a window should decide.
+                    TextEdit {
+                        id: installCommand
+                        visible: false
                     }
 
                     IconAction {

@@ -46,12 +46,10 @@ QString EngineClient::engineName() const
 
 QStringList EngineClient::commandLine(const QStringList &args) const
 {
-    QStringList command;
-    if (runningInFlatpakSandbox()) {
-        command << QStringLiteral("flatpak-spawn") << QStringLiteral("--host") << engineName();
-    } else {
-        command << engineName();
-    }
+    // Just the name. The engine is on PATH -- a package puts it in /usr/bin and
+    // the installer in ~/.local/bin -- and there is no sandbox left to reach
+    // out of.
+    QStringList command{engineName()};
     command.append(args);
     return command;
 }
@@ -95,76 +93,4 @@ bool EngineClient::engineNeedsUpdate() const
     if (engineVer.isEmpty())
         return true; // engine ran but couldn't report version - it's broken/stripped
     return versionLessThan(engineVer, QString::fromLatin1(kMinEngineVersion));
-}
-
-bool EngineClient::runningInFlatpakSandbox()
-{
-    return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
-}
-
-static QString bundledEngineDir()
-{
-    const QString appDir = QString::fromLocal8Bit(qgetenv("APPDIR"));
-    if (!appDir.isEmpty()) {
-        const QString candidate = appDir + QStringLiteral("/usr/share/open-couch");
-        if (QFileInfo::exists(candidate + QStringLiteral("/open-couch-engine"))) {
-            return candidate;
-        }
-    }
-
-    // Flatpak installs bundled scripts below /app, while AppImage uses APPDIR.
-    const QString flatpakDir = QStringLiteral("/app/share/open-couch");
-    if (QFileInfo::exists(flatpakDir + QStringLiteral("/open-couch-engine"))) {
-        return flatpakDir;
-    }
-
-    return QString(); 
-}
-
-bool EngineClient::canAutoInstall()
-{
-    const QString dir = bundledEngineDir();
-    return QFileInfo::exists(dir + QStringLiteral("/open-couch-engine"));
-}
-
-bool EngineClient::installBundledEngine(QString *errorMessage) const
-{
-    const QString destDir = QDir::homePath() + QStringLiteral("/.local/bin");
-    QDir dir;
-    if (!dir.mkpath(destDir)) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("Could not create ~/.local/bin directory");
-        return false;
-    }
-
-    const QString srcDir = bundledEngineDir();
-    // Just the engine now. The log viewer opened konsole against the bash
-    // engine's log; the engine writes its own log and there is nothing for a
-    // second script to do. Copying one that is no longer shipped would fail the
-    // whole install.
-    const QStringList scripts = {QStringLiteral("open-couch-engine")};
-
-    for (const QString &script : scripts) {
-        const QString src = srcDir + QLatin1Char('/') + script;
-        const QString dest = destDir + QLatin1Char('/') + script;
-
-        QFile::remove(dest);
-        if(!QFile::copy(src, dest)) {
-            if (errorMessage)
-                    *errorMessage = QStringLiteral("Could not copy %1").arg(script);
-            return false;
-        }
-
-        const bool chmodOk = QFile(dest).setPermissions(
-            QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
-            QFile::ReadGroup | QFile::ExeGroup |
-            QFile::ReadOther | QFile::ExeOther
-        );
-        if (!chmodOk) {
-            if (errorMessage)
-                *errorMessage = QStringLiteral("Could not set permissions on %1").arg(script);
-            return false;
-        }
-    }
-    return true;
 }

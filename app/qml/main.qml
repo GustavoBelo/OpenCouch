@@ -125,8 +125,6 @@ Controls.ApplicationWindow {
         backend.attachWindow(root);
 
         Qt.callLater(function() {
-            backend.ensureEngine();
-
             const dashboard = stack.push(dashboardComponent);
             dashboard.settingsRequested.connect(root.showSettings);
 

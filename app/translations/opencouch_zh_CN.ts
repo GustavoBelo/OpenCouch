@@ -16,7 +16,6 @@
 <message id="dashboard.log_history"><source>dashboard.log_history</source><translation>历史记录</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>缺少使用客厅模式的系统组件。</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>系统组件版本过旧。请更新以确保客厅模式正常运行。</translation></message>
-<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>查看安装方法</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>欢迎使用 Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch 让你一键切换屏幕：去客厅瘫着打游戏，还是在书桌前用电脑，轻松搞定不折腾。</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. 基础配置</translation></message>
@@ -70,5 +69,7 @@
 <message id="settings.display_connected"><source>settings.display_connected</source><translation type="unfinished"></translation></message>
 <message id="settings.display_waiting"><source>settings.display_waiting</source><translation type="unfinished"></translation></message>
 <message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
+<message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation type="unfinished"></translation></message>
+<message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

@@ -16,7 +16,6 @@
 <message id="dashboard.log_history"><source>dashboard.log_history</source><translation>Historial</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>Falta un componente del sistema para usar el Modo Sala.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>El componente del sistema está desactualizado. Por favor, actualízalo para garantizar el funcionamiento del Modo Sala.</translation></message>
-<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>Ver cómo instalar</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Te damos la bienvenida a Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch cambia de pantalla en un solo clic: juega en el salón o usa el PC en el escritorio sin líos.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuración</translation></message>
@@ -70,5 +69,7 @@
 <message id="settings.display_connected"><source>settings.display_connected</source><translation type="unfinished"></translation></message>
 <message id="settings.display_waiting"><source>settings.display_waiting</source><translation type="unfinished"></translation></message>
 <message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
+<message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation type="unfinished"></translation></message>
+<message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation type="unfinished"></translation></message>
 </context>
 </TS>

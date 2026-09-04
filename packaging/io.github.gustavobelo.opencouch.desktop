@@ -1,14 +1,12 @@
-#!/usr/bin/env xdg-open
 [Desktop Entry]
 Type=Application
 Name=Open Couch
 Name[pt_BR]=Open Couch
-Comment=Switch the display layout between desktop and TV/couch mode, and control Steam Big Picture
-Comment[pt_BR]=Alterna o layout de telas entre desktop e TV/sala, e controla o modo Big Picture da Steam
+Comment=Hand the machine to Steam's gamescope session on the television, and back
+Comment[pt_BR]=Entrega a máquina para a sessão gamescope do Steam na TV, e de volta
 Icon=io.github.gustavobelo.opencouch
 Exec=opencouch
 Terminal=false
 Categories=Game;Utility;
-Keywords=steam;bigpicture;couch;tv;monitor;display;kscreen;
+Keywords=steam;bigpicture;gamescope;console;couch;tv;display;
 StartupNotify=true
-X-Flatpak=io.github.gustavobelo.opencouch

@@ -16,7 +16,6 @@
 <message id="dashboard.log_history"><source>dashboard.log_history</source><translation>Histórico</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>Falta um componente no sistema para usar o Modo Sala.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>O componente do sistema está desatualizado. Por favor, atualize-o para garantir o funcionamento do Modo Sala.</translation></message>
-<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>Ver como instalar</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Boas-vindas ao Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>O Open Couch alterna suas telas em um clique: jogue na sala ou use o PC na mesa sem complicação.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuração</translation></message>
@@ -70,5 +69,7 @@
 <message id="settings.display_connected"><source>settings.display_connected</source><translation>Conectada e pronta.</translation></message>
 <message id="settings.display_waiting"><source>settings.display_waiting</source><translation>Está desligada. O console vai esperar por ela ao iniciar.</translation></message>
 <message id="settings.choose_display"><source>settings.choose_display</source><translation>Escolha uma tela</translation></message>
+<message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation>Copiar o comando de instalação</translation></message>
+<message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation>Comando copiado. Rode num terminal e depois use Atualizar.</translation></message>
 </context>
 </TS>

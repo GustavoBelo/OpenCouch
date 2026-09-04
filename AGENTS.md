@@ -110,11 +110,10 @@ só o detecta), `gamescope`, `steam`, `pactl`, D-Bus.
 ### packaging/
 
 - `release.sh` — **única forma autorizada de versionar** (ver abaixo).
-- `build-flatpak.sh` — build local do Flatpak.
-- `build-appimage.sh` — build local do AppImage (replica o `release.yml`).
-- `io.github.gustavobelo.opencouch.yml` — manifest Flatpak (tag sincronizada pelo release.sh).
 - `io.github.gustavobelo.opencouch.metainfo.xml` — metadados AppStream.
-- `host/install.sh` — instalador do engine no host (local ou via curl com verificação SHA256).
+- `aur/` — dois PKGBUILDs: `open-couch-engine` (binário + entrada de sessão) e `open-couch` (a GUI).
+- `rpm/open-couch.spec` — o mesmo par, como subpacotes, para o COPR.
+- `host/install.sh` — baixa o binário da release para `~/.local/bin` e confere o SHA256.
 - `icons/`, `screenshots/`, `video/`.
 
 ## Build

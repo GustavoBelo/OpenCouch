@@ -16,7 +16,6 @@
 <message id="dashboard.log_history"><source>dashboard.log_history</source><translation>History</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>A system component is missing to use Couch Mode.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>The system component is outdated. Please update it to ensure Couch Mode works properly.</translation></message>
-<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>See how to install</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Welcome to Open Couch</translation></message>
 <message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch switches your displays with a single click: game from the couch or work at your desk with zero hassle.</translation></message>
 <message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Setup</translation></message>
@@ -70,5 +69,7 @@
 <message id="settings.display_connected"><source>settings.display_connected</source><translation>Connected and ready.</translation></message>
 <message id="settings.display_waiting"><source>settings.display_waiting</source><translation>Not switched on. The console will wait for it when it starts.</translation></message>
 <message id="settings.choose_display"><source>settings.choose_display</source><translation>Choose a display</translation></message>
+<message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation>Copy the install command</translation></message>
+<message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation>Install command copied. Run it in a terminal, then Refresh.</translation></message>
 </context>
 </TS>

@@ -116,42 +116,6 @@ bool Backend::engineNeedsUpdate()
     return m_engineClient->engineNeedsUpdate();
 }
 
-bool Backend::canAutoInstallEngine()
-{
-    return EngineClient::canAutoInstall();
-}
-
-QString Backend::tryAutoInstallEngine()
-{
-    QString error;
-    if (!m_engineClient->installBundledEngine(&error)) {
-        return error.isEmpty() ? QString("Unknown error") : error;
-    }
-    return QString();
-}
-
-QString Backend::ensureEngine()
-{
-    if (m_engineClient->engineAvailable() && !m_engineClient->engineNeedsUpdate()) {
-        return QString();
-    }
-
-    if (!EngineClient::canAutoInstall()) {
-        return QStringLiteral("No bundled engine is available");
-    }
-
-    const QString error = tryAutoInstallEngine();
-    if (!error.isEmpty()) {
-        return error;
-    }
-
-    if (!m_engineClient->engineAvailable() || m_engineClient->engineNeedsUpdate()) {
-        return QStringLiteral("The bundled engine is unavailable or outdated");
-    }
-
-    return QString();
-}
-
 QVariantList Backend::listDisplays()
 {
     bool ok = false;
