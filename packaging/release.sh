@@ -108,7 +108,11 @@ if command -v appstreamcli >/dev/null 2>&1; then
     TMP_META="$(mktemp)"
     sed -e "s/@PROJECT_VERSION@/${VERSION}/g" -e "s/@OPENCOUCH_RELEASE_DATE@/${RELEASE_DATE}/g" \
         "$MANIFEST_TEMPLATE" > "$TMP_META"
-    if appstreamcli validate "$TMP_META"; then
+    # --no-net because the screenshot URLs point at the tag this script is
+    # about to create. Fetching them can only fail: the tag does not exist yet,
+    # and it cannot, since the validation gates the commit that precedes it.
+    # Everything else the validator checks is in the file itself.
+    if appstreamcli validate --no-net "$TMP_META"; then
         printf 'AppStream metainfo validated successfully.\n'
     else
         printf 'Error: appstreamcli validation failed — aborting release.\n' >&2
