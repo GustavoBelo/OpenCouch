@@ -199,6 +199,7 @@ file(WRITE "${OPENCOUCH_HOSTING_ENTRY}"
 Name=Open Couch (console switch)
 Comment=Hosts your desktop and the gamescope console session in one login session
 Exec=${CMAKE_INSTALL_FULL_BINDIR}/open-couch-engine host-session
+TryExec=${CMAKE_INSTALL_FULL_BINDIR}/open-couch-engine
 Type=Application
 X-OpenCouch-Hosting=true
 ")
