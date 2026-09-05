@@ -17,9 +17,4 @@ public:
     QString engineVersion() const;
     bool engineNeedsUpdate() const;
 
-    static bool canAutoInstall();
-    bool installBundledEngine(QString *errorMessage = nullptr) const;
-
-private:
-    static bool runningInFlatpakSandbox();
 };

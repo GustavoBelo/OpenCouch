@@ -3,6 +3,7 @@ app/build/
 app-build/
 appimage-build/
 appimage-dist/
+*.AppImage
 build/
 *.o
 *.obj
@@ -20,9 +21,6 @@ flatpak-repo/
 repo/
 *.flatpak
 
-# AppImage build/state
-AppDir/
-*.AppImage
 build-fedora/
 test-appdir/
 
@@ -34,3 +32,7 @@ test-appdir/
 
 # OS
 .DS_Store
+
+# Local context notes and the bats download directory from an abandoned branch.
+/context.md
+/tests/

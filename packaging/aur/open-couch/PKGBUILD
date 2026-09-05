@@ -1,0 +1,36 @@
+# Maintainer: Gustavo Belo <gustavobelo28@gmail.com>
+pkgname=open-couch
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="Console mode for your Linux desktop — the graphical application"
+arch=('x86_64' 'aarch64')
+url="https://github.com/GustavoBelo/OpenCouch"
+license=('GPL-3.0-or-later')
+# The window is optional: everything it does, open-couch-engine does from the
+# command line. That is why it is a separate package -- a machine in the living
+# room should not have to install Qt to be a console.
+depends=('open-couch-engine' 'qt6-base' 'qt6-declarative' 'qt6-wayland')
+makedepends=('cmake' 'ninja' 'go' 'qt6-tools')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "OpenCouch-$pkgver"
+    cmake -S app -B build -G Ninja \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr
+    cmake --build build
+}
+
+package() {
+    cd "OpenCouch-$pkgver"
+    DESTDIR="$pkgdir" cmake --install build
+
+    # The engine and its session entry belong to open-couch-engine. The CMake
+    # build produces them because the application needs one to run against, but
+    # shipping them from both packages would make the two conflict.
+    rm -f "$pkgdir/usr/bin/open-couch-engine"
+    rm -rf "$pkgdir/usr/share/wayland-sessions"
+
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

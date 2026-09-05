@@ -6,12 +6,11 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 
-#include "appcleanupmodel.h"
 #include "appinfomodel.h"
 #include "appversion.h"
 #include "applicationicon.h"
 #include "backend.h"
-#include "displaysettingsmodel.h"
+#include "desktoptheme.h"
 
 int main(int argc, char *argv[])
 {
@@ -48,15 +47,17 @@ int main(int argc, char *argv[])
     }
 
     Backend backend;
-    DisplaySettingsModel displaySettingsModel;
-    AppCleanupModel appCleanupModel;
+    DesktopTheme desktopTheme;
     AppInfoModel appInfoModel;
+
+    // Registered as a QML singleton rather than a context property: Colors.qml
+    // is itself a singleton, and singletons are created in their own context
+    // where context properties do not reach.
+    qmlRegisterSingletonInstance("io.github.gustavobelo.opencouch", 1, 0, "DesktopTheme", &desktopTheme);
 
     QQmlApplicationEngine engine;
 
     engine.rootContext()->setContextProperty(QStringLiteral("backend"), &backend);
-    engine.rootContext()->setContextProperty(QStringLiteral("displaySettingsModel"), &displaySettingsModel);
-    engine.rootContext()->setContextProperty(QStringLiteral("appCleanupModel"), &appCleanupModel);
     engine.rootContext()->setContextProperty(QStringLiteral("appInfo"), &appInfoModel);
 
     QLocalServer server;
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
         }
     });
 
-    const QUrl url(QStringLiteral("qrc:/io/github/gustavobelo/opencouch/qml/main.qml"));
+    const QUrl url(QStringLiteral("qrc:/qt/qml/io/github/gustavobelo/opencouch/qml/main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,
                       []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
     engine.load(url);

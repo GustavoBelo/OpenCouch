@@ -62,11 +62,10 @@ configure_file(
     @ONLY
 )
 
-find_package(ECM REQUIRED NO_MODULE)
-set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-
+# No Kirigami and no ECM. Kirigami's job is to make an application look native
+# on KDE, which is the opposite of what this one needs: it has to look the same
+# on every desktop, and it cannot depend on an icon theme being installed.
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets LinguistTools Qml Quick QuickControls2 DBus)
-find_package(KF6Kirigami REQUIRED)
 
 qt_add_executable(opencouch
     src/main.cpp
@@ -75,31 +74,47 @@ qt_add_executable(opencouch
     src/backend.cpp
     src/backend.h
     src/configstore.cpp
+    src/desktoptheme.cpp
+    src/desktoptheme.h
     src/configstore.h
     src/engineclient.cpp
     src/engineclient.h
-    src/displaysettingsvalidator.cpp
-    src/displaysettingsvalidator.h
-    src/displaysettingsmodel.cpp
-    src/displaysettingsmodel.h
     src/appinfomodel.cpp
     src/appinfomodel.h
-    src/appcleanupmodel.cpp
-    src/appcleanupmodel.h
 )
+
+# The design system is two singletons: one palette, one spacing/type scale.
+# Everything else reads from them, so a colour or a density change is one edit.
+set_source_files_properties(qml/theme/Colors.qml qml/theme/Metrics.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(opencouch
     URI io.github.gustavobelo.opencouch
     VERSION 1.0
+    # /qt/qml is the prefix the engine's default import path searches. Without
+    # it the module is in the resource but not importable, so its singletons
+    # resolve as ordinary components through the directory instead -- which
+    # fails at runtime with "was a singleton at compile time".
+    RESOURCE_PREFIX "/qt/qml"
     QML_FILES
         qml/main.qml
         qml/SetupPage.qml
         qml/DashboardPage.qml
         qml/OnboardingSheet.qml
-        qml/ChooseAppDialog.qml
-        qml/RunningAppsDialog.qml
-        qml/AppRowDelegate.qml
+        qml/theme/Colors.qml
+        qml/theme/Metrics.qml
+        qml/Icon.qml
+        qml/Card.qml
+        qml/AppButton.qml
+        qml/SectionLabel.qml
+        qml/StatusDot.qml
+        qml/Select.qml
+        qml/Toggle.qml
+        qml/IconAction.qml
+        qml/SettingSwitch.qml
+        qml/StateSurface.qml
     RESOURCES
+        qml/IconData.js
 )
 
 qt_add_resources(OPENCOUCH_ICON_RESOURCES applicationicon.qrc)
@@ -142,11 +157,64 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/io.github.gustavobelo.openco
 install(FILES ${OPENCOUCH_PACKAGING_DIR}/icons/io.github.gustavobelo.opencouch.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
 
-option(INSTALL_ENGINE_BUNDLE "Bundle engine scripts for Flatpak/AppImage distribution" OFF)
-if(INSTALL_ENGINE_BUNDLE)
-    install(PROGRAMS
-        "${CMAKE_SOURCE_DIR}/../backend/open-couch-engine"
-        "${CMAKE_SOURCE_DIR}/../backend/open-couch-log-viewer"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/open-couch"
+# The engine is a separate Go binary rather than part of this target: it runs as
+# the login session itself, long before and long after the app, and the app only
+# ever drives it over QProcess.
+if(EXISTS "${CMAKE_SOURCE_DIR}/engine")
+    set(OPENCOUCH_ENGINE_DIR "${CMAKE_SOURCE_DIR}/engine")
+else()
+    set(OPENCOUCH_ENGINE_DIR "${CMAKE_SOURCE_DIR}/../engine")
+endif()
+set(OPENCOUCH_ENGINE_BINARY "${CMAKE_CURRENT_BINARY_DIR}/open-couch-engine")
+
+find_program(GO_EXECUTABLE go REQUIRED)
+
+# Always out of date on purpose: Go's own build cache decides what to rebuild,
+# and listing every source here would go stale the first time one is added.
+add_custom_target(engine ALL
+    COMMAND "${CMAKE_COMMAND}" -E env GOFLAGS=-mod=mod
+            "${GO_EXECUTABLE}" build -trimpath
+            -ldflags "-s -w -X main.version=${OPENCOUCH_VERSION}"
+            -o "${OPENCOUCH_ENGINE_BINARY}"
+            ./cmd/open-couch-engine
+    WORKING_DIRECTORY "${OPENCOUCH_ENGINE_DIR}"
+    COMMENT "Building open-couch-engine ${OPENCOUCH_VERSION}"
+    VERBATIM
+)
+
+# The engine goes on PATH, not into a private directory. That is what makes it
+# runnable by every account, which is in turn what lets a single hosting session
+# entry serve all of them -- and removes the one step of setup that needs root.
+install(PROGRAMS "${OPENCOUCH_ENGINE_BINARY}"
+    DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+
+# The hosting session entry, generated here so the Exec line points at wherever
+# this build installs the engine. It declares no DesktopNames: one file serves
+# every account and they do not all come back to the same desktop, so the
+# wrapper exports the identity instead.
+set(OPENCOUCH_HOSTING_ENTRY "${CMAKE_CURRENT_BINARY_DIR}/generated/open-couch-session.desktop")
+file(WRITE "${OPENCOUCH_HOSTING_ENTRY}"
+"[Desktop Entry]
+Name=Open Couch (console switch)
+Comment=Hosts your desktop and the gamescope console session in one login session
+Exec=${CMAKE_INSTALL_FULL_BINDIR}/open-couch-engine host-session
+Type=Application
+X-OpenCouch-Hosting=true
+")
+install(FILES "${OPENCOUCH_HOSTING_ENTRY}"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/wayland-sessions"
+)
+
+# Defines BUILD_TESTING and calls enable_testing(). Without it add_test() below
+# is accepted and silently registers nothing.
+include(CTest)
+
+if(BUILD_TESTING)
+    add_test(NAME engine
+        COMMAND "${GO_EXECUTABLE}" test ./...
+    )
+    set_tests_properties(engine PROPERTIES
+        WORKING_DIRECTORY "${OPENCOUCH_ENGINE_DIR}"
     )
 endif()

@@ -1,986 +1,486 @@
 import QtQuick
-import QtQuick.Layouts
 import QtQuick.Controls as Controls
-import org.kde.kirigami as Kirigami
+import QtQuick.Layouts
+import io.github.gustavobelo.opencouch
 
-Kirigami.ScrollablePage {
+Item {
     id: page
-    title: "Open Couch"
 
-    signal reconfigureRequested()
-    signal helpRequested()
+    signal settingsRequested()
 
-    property int logPanelHeight: Kirigami.Units.gridUnit * 10
-    readonly property int logPanelMinHeight: Kirigami.Units.gridUnit * 4
-    property int logPanelMaxHeight: Math.max(logPanelMinHeight, page.height - Kirigami.Units.gridUnit * 10)
-    property real logResizeStartY: 0
-    property int logResizeStartHeight: 0
-    property string viewingHistoryId: ""
-    property string viewingHistoryName: ""
-    property string liveLogCache: ""
-    property bool bannerIsEngineWarning: false
-    property bool bannerIsEngineOutdated: false
+    property var status: ({})
+    property string viewingHistory: ""
+    readonly property bool ready: status.ready === true
+    readonly property string displayName: status.tv_description || status.tv_name || ""
 
-    function showBanner(type, text, autoHide, isEngineWarning, outdated) {
-        banner.type = type;
-        banner.text = text;
-        banner.visible = true;
-        bannerIsEngineOutdated = !!outdated;
-        bannerIsEngineWarning = !!isEngineWarning;
-        statusFeedbackTimer.stop();
-        if (autoHide) {
-            statusFeedbackTimer.restart();
+    function reload() {
+        page.status = backend.consoleStatus();
+        // The engine leaves word when a console session could not start: the
+        // desktop it fell back to came up with no notification server yet, so
+        // this window is the first thing able to say what happened.
+        if (page.status.failure) {
+            banner.show(page.status.failure, true);
         }
     }
 
-    actions: [
-        Kirigami.Action {
-            text: qsTrId("dashboard.help")
-            icon.name: "help-about"
-            onTriggered: page.helpRequested()
-        },
-        Kirigami.Action {
-            text: qsTrId("app.settings")
-            icon.name: "configure"
-            onTriggered: page.reconfigureRequested()
-        }
-    ]
+    function loadLog() {
+        const raw = backend.readLog();
+        logView.text = (raw === undefined || raw === "") ? "" : raw.trim();
+        logView.cursorPosition = logView.length;
+    }
 
     Component.onCompleted: {
         backend.clearLog();
-        backend.refreshStatus();
+        page.reload();
+        page.loadLog();
+        historySelect.entries = backend.logHistory();
 
-        let rawContent = backend.readLog();
-        if (rawContent !== undefined && rawContent !== "") {
-            let lines = rawContent.split('\n');
-            let formattedLines = [];
-            for (let i = 0; i < lines.length; i++) {
-                if (i === lines.length - 1 && lines[i] === "") continue;
-                formattedLines.push(logArea.getFormattedLine(lines[i]));
-            }
-            logArea.text = formattedLines.join("<br/>");
-            logArea.cursorPosition = logArea.length;
+        if (!backend.engineAvailable()) {
+            banner.show(qsTrId("engine.missing"), true);
+        } else if (backend.engineNeedsUpdate()) {
+            banner.show(qsTrId("engine.outdated"), true);
         }
-
-        if (backend.watcherEnabled()) {
-            backend.startWatcher();
-        }
-        
-        var engineMissing = !backend.engineAvailable();
-        var engineOutdated = !engineMissing && backend.engineNeedsUpdate();
-        if (engineMissing || engineOutdated) {
-            if (engineMissing) {
-                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-            } else {
-                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-            }
-        }
-    }
-
-    Timer {
-        id: statusFeedbackTimer
-        interval: 2500
-        onTriggered: banner.visible = false
     }
 
     Connections {
         target: backend
         function onLogLine(line) {
-            logArea.append(line);
+            logView.append(line);
+            logView.cursorPosition = logView.length;
         }
         function onActionFinished(success, message) {
-            page.showBanner(success ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error, message, false, false, false);
-            backend.refreshStatus();
-        }
-        function onStatusUpdated(text) {
-            statusArea.text = text;
+            banner.show(message, !success);
+            page.reload();
         }
     }
 
-    ColumnLayout {
-        width: page.width
-        spacing: Kirigami.Units.largeSpacing
+    Controls.ScrollView {
+        anchors.fill: parent
+        contentWidth: availableWidth
+        clip: true
 
-        Kirigami.InlineMessage {
-            id: banner
-            Layout.fillWidth: true
-            visible: false
-            showCloseButton: !page.bannerIsEngineWarning && !page.bannerIsEngineOutdated
-            actions: [
-                Kirigami.Action {
-                    text: qsTrId("dashboard.install_action")
-                    icon.name: "system-run"
-                    visible: page.bannerIsEngineWarning
-                    onTriggered: permissionPopup.open()
-                },
-                Kirigami.Action {
-                    text: qsTrId("dashboard.update_action")
-                    icon.name: "system-software-update"
-                    visible: page.bannerIsEngineOutdated
-                    onTriggered: permissionPopup.open()
+        ColumnLayout {
+            width: parent.parent.width
+            spacing: Metrics.sectionGap
+
+            Item { Layout.preferredHeight: Metrics.xs }
+
+            // Banner ------------------------------------------------------
+            Card {
+                id: banner
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                visible: false
+                accented: false
+                color: bannerBad ? Colors.urgentWash : Colors.accentWash
+                border.color: bannerBad ? Colors.urgentEdge : Colors.accentEdge
+                implicitHeight: bannerRow.implicitHeight + Metrics.x5
+
+                property bool bannerBad: false
+                function show(message, bad) {
+                    bannerText.text = message;
+                    bannerBad = bad;
+                    visible = true;
                 }
-            ]
-        }
 
-        Rectangle {
-            id: heroCard
-            Layout.fillWidth: true
-            Layout.preferredHeight: Kirigami.Units.gridUnit * 4.5
-            radius: Kirigami.Units.largeSpacing
-            color: backend.running ? Kirigami.Theme.positiveBackgroundColor : Kirigami.Theme.alternateBackgroundColor
-            border.color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.separatorColor
-            border.width: 1
+                RowLayout {
+                    id: bannerRow
+                    anchors.fill: parent
+                    anchors.margins: Metrics.xl
+                    spacing: Metrics.xl
 
-            Behavior on color { ColorAnimation { duration: 220; easing.type: Easing.InOutQuad } }
-            Behavior on border.color { ColorAnimation { duration: 220; easing.type: Easing.InOutQuad } }
+                    Icon {
+                        Layout.alignment: Qt.AlignTop
+                        name: banner.bannerBad ? "warn" : "check"
+                        size: Metrics.icon
+                        color: banner.bannerBad ? Colors.urgent : Colors.accent
+                    }
 
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.largeSpacing
+                    Text {
+                        id: bannerText
+                        Layout.fillWidth: true
+                        color: Colors.foreground
+                        font.pixelSize: Metrics.body
+                        wrapMode: Text.Wrap
+                    }
 
-                Kirigami.Icon {
-                    source: backend.running ? "video-display" : "computer"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
-                    Layout.alignment: Qt.AlignVCenter
+                    AppButton {
+                        visible: !backend.engineAvailable()
+                        text: qsTrId("dashboard.copy_install_command")
+                        icon: "copy"
+                        onClicked: {
+                            installCommand.text = "curl -fsSL " + appInfo.installScriptUrl + " | bash";
+                            installCommand.selectAll();
+                            installCommand.copy();
+                            installCommand.deselect();
+                            banner.show(qsTrId("dashboard.install_command_copied"), false);
+                        }
+                    }
+
+                    // Off-screen, purely to own the clipboard copy: the command
+                    // is shown as a message rather than run, because fetching
+                    // and executing a script on the user's behalf is not
+                    // something a window should decide.
+                    TextEdit {
+                        id: installCommand
+                        visible: false
+                    }
+
+                    IconAction {
+                        icon: "close"
+                        onTriggered: banner.visible = false
+                    }
                 }
+            }
+
+            // Hero --------------------------------------------------------
+            Card {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                accented: page.ready
+                implicitHeight: heroColumn.implicitHeight + Metrics.cardPadding * 2
 
                 ColumnLayout {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignVCenter
-                    spacing: 2
+                    id: heroColumn
+                    anchors.fill: parent
+                    anchors.margins: Metrics.cardPadding
+                    spacing: Metrics.sm
 
-                    Kirigami.Heading {
-                        level: 3
-                        text: backend.running ? qsTrId("status.couch") : qsTrId("status.desktop")
-                        color: backend.running ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.textColor
-                    }
-
-                    Controls.Label {
-                        visible: backend.running
-                        text: qsTrId("dashboard.couch_active")
-                        opacity: 0.85
-                        font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                        color: Kirigami.Theme.positiveTextColor
-                    }
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
-            border.width: 1
-            implicitHeight: actionRow.implicitHeight + Kirigami.Units.largeSpacing * 2
-
-            RowLayout {
-                id: actionRow
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.largeSpacing
-
-                Controls.Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3.2
-                    text: qsTrId("dashboard.enter_couch")
-                    icon.name: "media-playback-start"
-                    icon.width: Kirigami.Units.iconSizes.medium
-                    icon.height: Kirigami.Units.iconSizes.medium
-                    highlighted: !backend.running
-                    enabled: !backend.running
-                    onClicked: {
-                        if(!backend.engineAvailable()) {
-                            permissionPopup.open();
-                            return;
-                        }
-                        banner.visible = false;
-                        backend.play();
-                    }
-                }
-
-                Controls.Button {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.gridUnit * 3.2
-                    text: qsTrId("dashboard.return_desktop")
-                    icon.name: "go-home"
-                    icon.width: Kirigami.Units.iconSizes.medium
-                    icon.height: Kirigami.Units.iconSizes.medium
-                    enabled: backend.running
-                    highlighted: backend.running
-                    onClicked: {
-                        banner.visible = false;
-                        backend.restore();
-                    }
-                }
-            }
-        }
-
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
-            border.width: 1
-            implicitHeight: statusCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
-
-            ColumnLayout {
-                id: statusCardColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    Kirigami.Icon {
-                        source: "view-list-details"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    }
-
-                    Kirigami.Heading {
-                        text: qsTrId("dashboard.display_status")
-                        level: 3
+                    RowLayout {
                         Layout.fillWidth: true
+                        spacing: Metrics.xxl
+
+                        Icon {
+                            name: page.ready ? "display" : "warn"
+                            size: Metrics.iconLarge
+                            color: page.ready ? Colors.accent : Colors.muted
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: page.ready ? qsTrId("dashboard.console_ready")
+                                             : qsTrId("dashboard.console_not_ready")
+                            color: page.ready ? Colors.accent : Colors.foreground
+                            font.pixelSize: Metrics.display
+                            font.bold: true
+                            wrapMode: Text.Wrap
+                        }
                     }
-                }
 
-                Rectangle {
-                    Layout.fillWidth: true
-                    implicitHeight: statusArea.implicitHeight + Kirigami.Units.smallSpacing * 2
-                    radius: Kirigami.Units.smallSpacing
-                    color: Kirigami.Theme.alternateBackgroundColor
-
-                    Controls.Label {
-                        id: statusArea
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
+                    Text {
+                        Layout.fillWidth: true
+                        Layout.topMargin: Metrics.xxs
+                        text: page.ready ? qsTrId("dashboard.console_ready_body").arg(page.displayName)
+                                         : qsTrId("dashboard.console_not_ready_body")
+                        color: Colors.muted
+                        font.pixelSize: Metrics.body
                         wrapMode: Text.Wrap
-                        text: qsTrId("common.loading")
-                        opacity: 0.85
-                    }
-                }
-
-                Controls.Button {
-                    Layout.alignment: Qt.AlignRight
-                    text: qsTrId("dashboard.refresh_status")
-                    icon.name: "view-refresh"
-                    onClicked: {
-                        backend.refreshStatus();
-                        let rawContent = backend.readLog();
-                        if (rawContent !== undefined && rawContent !== "") {
-                            let lines = rawContent.split('\n');
-                            let formattedLines = [];
-                            for (let i = 0; i < lines.length; i++) {
-                                if (i === lines.length - 1 && lines[i] === "") continue;
-                                formattedLines.push(logArea.getFormattedLine(lines[i]));
-                            }
-                            logArea.text = formattedLines.join("<br/>");
-                            logArea.cursorPosition = logArea.length;
-                        }
-                        var rMissing = !backend.engineAvailable();
-                        var rOutdated = !rMissing && backend.engineNeedsUpdate();
-                        if (rMissing || rOutdated) {
-                            if (backend.canAutoInstallEngine()) {
-                                var installError = backend.tryAutoInstallEngine();
-                                if (installError.length > 0) {
-                                    backend.refreshStatus();
-                                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
-                                } else if (rMissing) {
-                                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                                } else {
-                                    page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-                                }
-                            } else if (rMissing) {
-                                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.missing"), false, true, false);
-                            } else {
-                                page.showBanner(Kirigami.MessageType.Warning, qsTrId("engine.outdated"), false, false, true);
-                            }
-                        } else {
-                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.status_updated"), true, false, false);
-                        }
                     }
                 }
             }
-        }
 
-        Rectangle {
-            Layout.fillWidth: true
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.backgroundColor
-            border.color: Kirigami.Theme.separatorColor
-            border.width: 1
-            implicitHeight: logCardColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+            // The action --------------------------------------------------
+            AppButton {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                large: true
+                primary: true
+                icon: "enter"
+                text: qsTrId("dashboard.enter_console")
+                enabled: page.ready && !backend.running
+                onClicked: countdown.arm()
+            }
 
+            AppButton {
+                Layout.alignment: Qt.AlignHCenter
+                visible: !page.ready
+                text: qsTrId("app.settings")
+                icon: "settings"
+                onClicked: page.settingsRequested()
+            }
+
+            // Requirements ------------------------------------------------
             ColumnLayout {
-                id: logCardColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                spacing: Metrics.rowGap
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
+                SectionLabel { label: qsTrId("dashboard.console_status") }
 
-                    Kirigami.Icon {
-                        source: "text-x-log"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    }
-
-                    Kirigami.Heading {
-                        text: qsTrId("common.log")
-                        level: 3
+                Repeater {
+                    model: page.status.requirements || []
+                    StatusDot {
                         Layout.fillWidth: true
+                        ok: modelData.ok
+                        text: modelData.ok ? modelData.have : modelData.want
                     }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.smallSpacing
-
-                    Controls.Button {
-                        text: qsTrId("dashboard.copy_log")
-                        icon.name: "edit-copy"
-                        enabled: page.viewingHistoryId === ""
-                        onClicked: {
-                            backend.copyLogToClipboard();
-                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_copied"), false, false, false);
-                        }
-                    }
-
-                    Controls.Button {
-                        text: qsTrId("dashboard.log_history")
-                        icon.name: "document-open-recent"
-                        onClicked: historyDialog.open()
-                    }
-
-                    Controls.ToolButton {
-                        id: logOverflowButton
-                        icon.name: "overflow-menu"
-                        enabled: page.viewingHistoryId === ""
-                        onClicked: logOptionsMenu.popup(logOverflowButton)
-                        
-                        Controls.Menu {
-                            id: logOptionsMenu
-
-                            Controls.MenuItem {
-                                text: qsTrId("dashboard.download_log")
-                                icon.name: "document-save"
-                                onTriggered: {
-                                    const path = backend.exportLogToHome();
-                                    if (path.length > 0) {
-                                        page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_saved").arg(path), false, false, false);
-                                    } else {
-                                        page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.log_save_failed"), false, false, false);
-                                    }
-                                }
-                            }
-
-                            Controls.MenuItem {
-                                text: qsTrId("dashboard.clear_log")
-                                icon.name: "edit-clear"
-                                onTriggered: {
-                                    logArea.clear();
-                                    backend.clearLog();
-                                    page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_cleared"), false, false, false);
-                                }
-                            }
-                        }
-                    }
-
-                    Item { Layout.fillWidth: true }
-                }
-
-                Kirigami.InlineMessage {
-                    id: historyModeBanner
-                    Layout.fillWidth: true
-                    Layout.bottomMargin: Kirigami.Units.smallSpacing
-                    visible: page.viewingHistoryId !== ""
-                    type: Kirigami.MessageType.Warning
-                    text: qsTrId("dashboard.viewing_history").arg(page.viewingHistoryName)
-                    actions: [
-                        Kirigami.Action {
-                            text: qsTrId("dashboard.back_to_live_log")
-                            icon.name: "media-skip-backward"
-                            onTriggered: {
-                                page.viewingHistoryId = "";
-                                page.viewingHistoryName = "";
-                                logArea.text = page.liveLogCache;
-                                logArea.cursorPosition = logArea.length;
-                            }
-                        }
-                    ]
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: page.logPanelHeight
-                    radius: Kirigami.Units.smallSpacing
-                    color: Kirigami.Theme.alternateBackgroundColor
-                    clip: true
-
-                    Controls.ScrollView {
-                        id: logScroll
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        clip: true
-                        Controls.ScrollBar.vertical.policy: Controls.ScrollBar.AsNeeded
-
-                        Controls.TextArea {
-                            id: logArea
-                            width: logScroll.availableWidth
-                            readOnly: true
-                            wrapMode: Controls.TextArea.Wrap
-                            textFormat: TextEdit.RichText
-                            font.family: "monospace"
-                            color: Kirigami.Theme.textColor
-                            background: null
-
-                            function escapeHtml(value) {
-                                return value
-                                    .replace(/&/g, "&amp;")
-                                    .replace(/</g, "&lt;")
-                                    .replace(/>/g, "&gt;")
-                                    .replace(/"/g, "&quot;");
-                            }
-
-                            function getFormattedLine(line) {
-                                const safeLine = escapeHtml(line);
-                                return /(ERRO|ERROR|error|WARN|warning)/.test(line)
-                                    ? "<font color=\"#ef5350\">" + safeLine + "</font>"
-                                    : safeLine;
-                            }
-
-                            function clear() {
-                                text = "";
-                                page.liveLogCache = "";
-                            }
-
-                            function append(line) {
-                                const formatted = getFormattedLine(line);
-
-                                if (page.viewingHistoryId === "") {
-                                    text += (text.length > 0 ? "<br/>" : "") + formatted;
-                                    cursorPosition = length;
-                                } else {
-                                    page.liveLogCache += (page.liveLogCache.length > 0 ? "<br/>" : "") + formatted;
-                                }
-                            }
-                        }
-
-                        WheelHandler {
-                            target: parent
-                            acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                            onWheel: (event) => {
-                                event.accepted = true
-                                const bar = logScroll.Controls.ScrollBar.vertical
-                                if (bar.size >= 1) return
-                                const step = event.angleDelta.y / 120 * Kirigami.Units.gridUnit * 3
-                                bar.position = Math.max(0, Math.min(1 - bar.size, bar.position - step / logArea.implicitHeight))
-                            }
-                        }
+                AppButton {
+                    Layout.topMargin: Metrics.xs
+                    text: qsTrId("dashboard.refresh_status")
+                    icon: "refresh"
+                    onClicked: {
+                        page.reload();
+                        page.loadLog();
                     }
                 }
+            }
+
+            // Log ---------------------------------------------------------
+            ColumnLayout {
+                id: logSection
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                spacing: Metrics.rowGap
+
+                property bool expanded: false
 
                 MouseArea {
-                    id: logResizeHandle
+                    id: logHeader
                     Layout.fillWidth: true
-                    Layout.preferredHeight: Kirigami.Units.smallSpacing * 2
-                    Layout.topMargin: Kirigami.Units.smallSpacing
-                    cursorShape: Qt.SizeVerCursor
-                    hoverEnabled: true
-                    preventStealing: true
+                    implicitHeight: logHeaderRow.implicitHeight
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: logSection.expanded = !logSection.expanded
 
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: Kirigami.Units.gridUnit * 3
-                        height: parent.height
-                        radius: height / 2
-                        color: logResizeHandle.containsMouse || logResizeHandle.pressed ? Kirigami.Theme.highlightColor : Kirigami.Theme.separatorColor
-                        opacity: logResizeHandle.pressed ? 0.9 : (logResizeHandle.containsMouse ? 0.7 : 0.5)
+                    RowLayout {
+                        id: logHeaderRow
+                        anchors.fill: parent
+                        spacing: Metrics.lg
 
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
+                        Icon {
+                            name: "log"
+                            size: Metrics.iconSmall
+                            color: Colors.muted
+                        }
 
-                    Controls.ToolTip.visible: logResizeHandle.containsMouse && !logResizeHandle.pressed
-                    Controls.ToolTip.text: qsTrId("dashboard.log_resize_hint")
+                        SectionLabel {
+                            Layout.fillWidth: true
+                            label: qsTrId("dashboard.logs")
+                        }
 
-                    onPressed: (mouse) => {
-                        const p = logResizeHandle.mapToGlobal(mouse.x, mouse.y);
-                        page.logResizeStartY = p.y;
-                        page.logResizeStartHeight = page.logPanelHeight;
-                    }
-                    onPositionChanged: (mouse) => {
-                        if (!pressed) return;
-
-                        const p = logResizeHandle.mapToGlobal(mouse.x, mouse.y);
-                        const newHeight = page.logResizeStartHeight + (p.y - page.logResizeStartY);
-                        const originalSize = Kirigami.Units.gridUnit * 10;
-                        
-                        page.logPanelHeight = Math.max(originalSize, Math.min(page.logPanelMaxHeight, newHeight));
-                    }
-                    
-                    onDoubleClicked: {
-                        page.logPanelHeight = Kirigami.Units.gridUnit * 10;
+                        Icon {
+                            name: "chevron"
+                            size: Metrics.icon
+                            color: logHeader.containsMouse ? Colors.foreground : Colors.muted
+                            rotation: logSection.expanded ? 180 : 0
+                            Behavior on rotation { NumberAnimation { duration: Metrics.moveDuration; easing.type: Easing.OutCubic } }
+                        }
                     }
                 }
-            }
-        }
 
-        Kirigami.Separator {
-            Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.largeSpacing
-        }
+                Card {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.logHeight
+                    visible: logSection.expanded
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.topMargin: Kirigami.Units.smallSpacing
-            radius: Kirigami.Units.largeSpacing
-            color: Kirigami.Theme.alternateBackgroundColor
-            border.color: Kirigami.Theme.separatorColor
-            border.width: 1
-            implicitHeight: supportColumn.implicitHeight + Kirigami.Units.largeSpacing * 2
+                    Controls.ScrollView {
+                        anchors.fill: parent
+                        anchors.margins: Metrics.lg
+                        clip: true
 
-            ColumnLayout {
-                id: supportColumn
-                anchors.fill: parent
-                anchors.margins: Kirigami.Units.largeSpacing
-                spacing: Kirigami.Units.smallSpacing
+                        Controls.TextArea {
+                            id: logView
+                            readOnly: true
+                            wrapMode: Text.Wrap
+                            color: Colors.muted
+                            font.family: Metrics.monoFamily
+                            font.pixelSize: Metrics.caption
+                            background: null
+                            selectByMouse: true
+                        }
+                    }
+                }
+
+                // Past runs. The engine keeps one file per session, and the
+                // one worth reading is almost always the session that just
+                // failed -- so this sits with the log rather than behind a
+                // separate browser.
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: logSection.expanded && historySelect.count > 0
+                    spacing: Metrics.md
+
+                    Text {
+                        text: qsTrId("dashboard.log_history")
+                        color: Colors.muted
+                        font.pixelSize: Metrics.caption
+                    }
+
+                    Select {
+                        id: historySelect
+                        Layout.fillWidth: true
+                        property var entries: []
+                        textRole: "name"
+                        model: entries
+                        onActivated: {
+                            const entry = entries[currentIndex];
+                            if (!entry) return;
+                            logView.text = backend.readHistoryLog(entry.id);
+                            page.viewingHistory = entry.id;
+                        }
+                    }
+
+                    AppButton {
+                        visible: page.viewingHistory !== ""
+                        text: qsTrId("dashboard.back_to_live_log")
+                        icon: "refresh"
+                        onClicked: { page.viewingHistory = ""; page.loadLog(); historySelect.currentIndex = -1; }
+                    }
+                }
 
                 RowLayout {
                     Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
+                    visible: logSection.expanded
+                    spacing: Metrics.md
 
-                    Kirigami.Icon {
-                        source: "help-donate"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Layout.alignment: Qt.AlignTop 
+                    AppButton {
+                        text: qsTrId("dashboard.copy_logs")
+                        icon: "copy"
+                        onClicked: page.viewingHistory === "" ? backend.copyLogToClipboard()
+                                                            : backend.copyHistoryLogToClipboard(page.viewingHistory)
                     }
+                    AppButton {
+                        text: qsTrId("dashboard.download_logs")
+                        icon: "save"
+                        onClicked: {
+                            const path = page.viewingHistory === "" ? backend.exportLogToHome()
+                                                                    : backend.exportHistoryLog(page.viewingHistory);
+                            if (path !== "") {
+                                banner.show(qsTrId("dashboard.log_saved").arg(path), false);
+                            }
+                        }
+                    }
+                    AppButton {
+                        text: qsTrId("dashboard.clear_logs")
+                        icon: "clear"
+                        onClicked: { backend.clearLog(); page.loadLog(); }
+                    }
+                    Item { Layout.fillWidth: true }
+                }
+            }
 
-                    Controls.Label {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        text: qsTrId("support.description")
-                        opacity: 0.8
-                    }
+            // Support ------------------------------------------------------
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                Layout.topMargin: Metrics.x4
+                spacing: Metrics.lg
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: Metrics.sm
+                    height: 1
+                    color: Colors.hairline
                 }
 
-                Controls.Button {
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTrId("support.description")
+                    color: Colors.muted
+                    font.pixelSize: Metrics.caption
+                    wrapMode: Text.Wrap
+                }
+
+                AppButton {
+                    Layout.alignment: Qt.AlignLeft
                     text: qsTrId("support.buy_coffee")
-                    icon.name: "help-donate"
-                    highlighted: true
-                    Layout.alignment: Qt.AlignRight
+                    icon: "heart"
                     onClicked: Qt.openUrlExternally("https://www.buymeacoffee.com/gustavobelo")
                 }
             }
-        }
 
-        Controls.Label {
-            Layout.fillWidth: true
-            horizontalAlignment: Text.AlignRight
-            text: qsTrId("common.version").arg(appInfo.formattedVersion())
-            opacity: 0.6
-            font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
+            Item { Layout.preferredHeight: Metrics.x4 }
         }
     }
 
-        Controls.Popup {
-            id: permissionPopup
-            parent: Controls.Overlay.overlay
-            modal: true
-            focus: true
-            dim: true
-            closePolicy: Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
+    // The countdown ---------------------------------------------------------
+    //
+    // Full screen, because it is the most consequential moment in the app: the
+    // desktop session is about to end and everything open in it goes too. A
+    // dialog that can be missed is not a warning.
+    Rectangle {
+        id: countdown
+        anchors.fill: parent
+        color: Colors.scrim
+        visible: opacity > 0
+        opacity: 0
+        z: 10
+
+        property int remaining: 10
+
+        function arm() {
+            if (!backend.engineAvailable()) {
+                banner.show(qsTrId("engine.missing"), true);
+                return;
+            }
+            banner.visible = false;
+            remaining = 10;
+            opacity = 1;
+            ticker.restart();
+        }
+
+        function stand_down() {
+            ticker.stop();
+            opacity = 0;
+        }
+
+        Behavior on opacity { NumberAnimation { duration: Metrics.moveDuration; easing.type: Easing.OutCubic } }
+
+        MouseArea { anchors.fill: parent }
+
+        ColumnLayout {
             anchors.centerIn: parent
-            implicitWidth: Math.min(parent ? parent.width * 0.9 : 500, Kirigami.Units.gridUnit * 35)
-            implicitHeight: Math.min(parent ? parent.height * 0.9 : 600, permLayout.implicitHeight + padding * 2)
-            padding: Kirigami.Units.largeSpacing
+            width: Math.min(parent.width - Metrics.pagePadding * 2, Metrics.countdownWidth)
+            spacing: Metrics.x4
 
-            property bool installing: false
-            property string installResult: ""
-
-            onAboutToShow: {
-                installing = false;
-                installResult = "";
+            SectionLabel {
+                Layout.alignment: Qt.AlignHCenter
+                label: qsTrId("dashboard.countdown_title")
             }
 
-            background: Rectangle {
-                radius: Kirigami.Units.largeSpacing
-                color: Kirigami.Theme.backgroundColor
-                border.color: Kirigami.Theme.focusColor
-                border.width: 1
-                opacity: 0.95
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: countdown.remaining
+                color: Colors.accent
+                font.pixelSize: Metrics.numeral
+                font.bold: true
             }
 
-            contentItem: ColumnLayout {
-                id: permLayout
-                spacing: Kirigami.Units.largeSpacing
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Kirigami.Units.largeSpacing
-
-                    Kirigami.Icon {
-                        source: permissionPopup.installResult === "ok" ? "dialog-ok" : "dialog-warning"
-                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                        Kirigami.Theme.colorSet: Kirigami.Theme.Button
-                        Kirigami.Theme.inherit: false
-                    }
-
-                    Kirigami.Heading {
-                        text: permissionPopup.installResult === "ok" 
-                            ? qsTrId("engine.installed_ok")
-                            : qsTrId("dashboard.permission_popup_title")
-                        level: 2
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                    }
-                }
-
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                }
-
-                Controls.ScrollView {
-                    id: permScrollView
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    clip: true
-                    Controls.ScrollBar.horizontal.policy: Controls.ScrollBar.AlwaysOff
-                    visible: permissionPopup.installResult !== "ok"
-
-                    ColumnLayout {
-                        width: permScrollView.availableWidth
-                        spacing: Kirigami.Units.largeSpacing
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            text: qsTrId("onboarding.requirement_description")
-                            font.pointSize: Kirigami.Theme.defaultFont.pointSize + 1
-                            opacity: 0.9
-                        }
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            text: qsTrId("onboarding.install_description")
-                            opacity: 0.85
-                            visible: !backend.canAutoInstallEngine()
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: permInstallRow.implicitHeight + Kirigami.Units.smallSpacing * 2
-                            color: Kirigami.Theme.alternateBackgroundColor
-                            radius: Kirigami.Units.smallSpacing
-                            border.color: Kirigami.Theme.focusColor
-                            border.width: 1
-                            opacity: 0.9
-                            visible: !backend.canAutoInstallEngine()
-
-                            RowLayout {
-                                id: permInstallRow
-                                anchors.fill: parent
-                                anchors.margins: Kirigami.Units.smallSpacing
-                                spacing: Kirigami.Units.smallSpacing
-
-                                Controls.TextArea {
-                                    id: permCmdField
-                                    Layout.fillWidth: true
-                                    text: "bash <(curl -fsSL " + appInfo.installScriptUrl + ")"
-                                    font.family: "monospace"
-                                    readOnly: true
-                                    wrapMode: Text.WrapAnywhere
-                                    selectByMouse: true
-                                    background: null
-                                    color: Kirigami.Theme.textColor
-                                    topPadding: 0
-                                    bottomPadding: 0
-                                }
-
-                                Controls.ToolButton {
-                                    icon.name: "edit-copy"
-                                    Layout.alignment: Qt.AlignTop
-                                    Controls.ToolTip.text: qsTrId("common.copy_command")
-                                    Controls.ToolTip.visible: hovered
-                                    onClicked: {
-                                        permCmdField.selectAll();
-                                        permCmdField.copy();
-                                        permCmdField.deselect();
-                                        icon.name = "dialog-ok";
-                                        permCopyTimer.start();
-                                    }
-
-                                    Timer {
-                                        id: permCopyTimer
-                                        interval: 2000
-                                        onTriggered: parent.icon.name = "edit-copy"
-                                    }
-                                }
-                            }
-                        }
-
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: permWarnLabel.implicitHeight + Kirigami.Units.smallSpacing * 2
-                            color: Kirigami.Theme.neutralBackgroundColor
-                            border.color: Kirigami.Theme.neutralTextColor
-                            border.width: 1
-                            radius: Kirigami.Units.smallSpacing
-                            opacity: 0.9
-                            visible: !backend.canAutoInstallEngine()
-
-                            Controls.Label {
-                                id: permWarnLabel
-                                anchors {
-                                    left: parent.left
-                                    right: parent.right
-                                    top: parent.top
-                                    margins: Kirigami.Units.smallSpacing
-                                }
-                                wrapMode: Text.Wrap
-                                text: qsTrId("dashboard.permission_reopen_warning")
-                                opacity: 0.9
-                            }
-                        }
-
-                        Controls.Label {
-                            Layout.fillWidth: true
-                            wrapMode: Text.Wrap
-                            visible: permissionPopup.installResult !== "" && permissionPopup.installResult !== "ok"
-                            text: permissionPopup.installResult
-                            color: Kirigami.Theme.negativeTextColor
-                            opacity: 0.9 
-                        }
-                    }
-                }
-
-                Kirigami.Separator {
-                    Layout.fillWidth: true
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Item { Layout.fillWidth: true }
-
-                    Controls.Button {
-                        text: qsTrId("engine.install_button")
-                        icon.name: permissionPopup.installing ? "view-refresh" : "system-run"
-                        highlighted: true
-                        enabled: !permissionPopup.installing
-                        visible: backend.canAutoInstallEngine() && permissionPopup.installResult !== "ok"
-                        onClicked: {
-                            permissionPopup.installing = true;
-                            var err = backend.tryAutoInstallEngine();
-                            permissionPopup.installing = false;
-                            if (err === "") {
-                                permissionPopup.installResult = "ok";
-                                banner.visible = false;
-                                backend.refreshStatus();
-                            } else {
-                                permissionPopup.installResult = err;
-                            }
-                        }
-                    }
-
-                    Controls.Button {
-                        text: qsTrId("common.got_it")
-                        icon.name: "dialog-ok"
-                        highlighted: !backend.canAutoInstallEngine() || permissionPopup.installResult === "ok"
-                        onClicked: permissionPopup.close()
-
-                        Component.onCompleted: forceActiveFocus()
-                    }
-                }
-            }
-        }
-
-    Controls.Dialog {
-        id: historyDialog
-        parent: Controls.Overlay.overlay
-        title: qsTrId("dashboard.history_title")
-        modal: true
-        standardButtons: Controls.Dialog.Close
-        implicitWidth: Math.min(620, page.width > 0 ? page.width - Kirigami.Units.gridUnit * 4 : 600)
-        x: parent ? Math.round((parent.width - width) / 2) : 0
-        y: parent ? Math.round((parent.height - height) / 2) : 0
-
-        property var entries: []
-        property string selectedId: ""
-
-        onAboutToShow: {
-            entries = backend.logHistory();
-            selectedId = entries.length > 0 ? entries[0].id : "";
-        }
-
-        function formatTimestamp(raw) {
-            if (raw.length < 15) {
-                return raw;
-            }
-            return raw.slice(0, 4) + "-" + raw.slice(4, 6) + "-" + raw.slice(6, 8)
-                + " " + raw.slice(9, 11) + ":" + raw.slice(11, 13) + ":" + raw.slice(13, 15);
-        }
-
-        function formatSize(bytes) {
-            if (bytes < 1024) {
-                return bytes + " B";
-            }
-            if (bytes < 1048576) {
-                return (bytes / 1024).toFixed(1) + " KB";
-            }
-            return (bytes / 1048576).toFixed(1) + " MB";
-        }
-
-        contentItem: ColumnLayout {
-            spacing: Kirigami.Units.largeSpacing
-
-            Controls.Label {
+            Text {
                 Layout.fillWidth: true
-                visible: historyDialog.entries.length === 0
-                wrapMode: Text.WordWrap
-                opacity: 0.8
-                text: qsTrId("dashboard.history_empty")
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTrId("dashboard.countdown_body").arg(page.displayName)
+                color: Colors.foreground
+                font.pixelSize: Metrics.body
+                wrapMode: Text.Wrap
             }
 
-            ListView {
-                id: historyList
-                Layout.fillWidth: true
-                
-                Layout.preferredHeight: Math.min(contentHeight, maxListHeight)
-                readonly property int maxListHeight: Math.min(360, page.height > 0 ? page.height - Kirigami.Units.gridUnit * 16 : 240)
-                
-                visible: historyDialog.entries.length > 0
-                clip: true
-                spacing: Kirigami.Units.smallSpacing
-                model: historyDialog.entries
-                currentIndex: -1
-
-                delegate: Controls.ItemDelegate {
-                    id: historyDelegate
-                    width: ListView.view.width
-                    highlighted: modelData.id === historyDialog.selectedId
-                    onClicked: {
-                        historyDialog.selectedId = modelData.id;
-                        historyList.currentIndex = index;
-                    }
-
-                    background: Rectangle {
-                        radius: Kirigami.Units.smallSpacing
-                        color: historyDelegate.highlighted ? Kirigami.Theme.highlightColor
-                             : (historyDelegate.hovered ? Kirigami.Theme.alternateBackgroundColor : "transparent")
-                        opacity: historyDelegate.highlighted ? 0.25 : 1
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                    }
-
-                    contentItem: RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Kirigami.Icon {
-                            source: "text-x-log"
-                            Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                            Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-
-                            Controls.Label {
-                                Layout.fillWidth: true
-                                text: historyDialog.formatTimestamp(modelData.timestamp)
-                                font.bold: historyDelegate.highlighted
-                            }
-
-                            Controls.Label {
-                                Layout.fillWidth: true
-                                text: historyDialog.formatSize(modelData.size)
-                                opacity: 0.7
-                                font.pixelSize: Math.max(9, Kirigami.Theme.defaultFont.pixelSize - 1)
-                            }
-                        }
-                    }
-                }
+            AppButton {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: Metrics.md
+                large: true
+                icon: "close"
+                text: qsTrId("common.cancel")
+                onClicked: countdown.stand_down()
             }
+        }
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: Kirigami.Units.smallSpacing
-
-                Controls.Button {
-                    text: qsTrId("dashboard.view")
-                    icon.name: "document-preview"
-                    enabled: historyDialog.selectedId.length > 0
-                    onClicked: {
-                        let selectedEntry = historyDialog.entries.find(e => e.id === historyDialog.selectedId);
-                        let timestampStr = selectedEntry ? historyDialog.formatTimestamp(selectedEntry.timestamp) : historyDialog.selectedId;
-
-                        let rawContent = backend.readHistoryLog(historyDialog.selectedId);
-                        
-                        if (rawContent !== undefined && rawContent !== "") {
-                            if (page.viewingHistoryId === "") {
-                                page.liveLogCache = logArea.text;
-                            }
-                            
-                            page.viewingHistoryId = historyDialog.selectedId;
-                            page.viewingHistoryName = timestampStr;
-
-                            let lines = rawContent.split('\n');
-                            let formattedLines = [];
-                            for (let i = 0; i < lines.length; i++) {
-                                if (i === lines.length - 1 && lines[i] === "") continue;
-                                formattedLines.push(logArea.getFormattedLine(lines[i]));
-                            }
-                            
-                            logArea.text = formattedLines.join("<br/>");
-                            historyDialog.close();
-                        } else {
-                            page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.read_log_failed"), false, false, false);
-                        }
-                    }
-                }
-
-                Controls.Button {
-                    text: qsTrId("dashboard.history_copy")
-                    icon.name: "edit-copy"
-                    enabled: historyDialog.selectedId.length > 0
-                    onClicked: {
-                        const ok = backend.copyHistoryLogToClipboard(historyDialog.selectedId);
-                        historyDialog.close();
-                        page.showBanner(ok ? Kirigami.MessageType.Positive : Kirigami.MessageType.Error,
-                                       ok ? qsTrId("dashboard.log_copied") : qsTrId("dashboard.history_action_failed"),
-                                       false, false, false);
-                    }
-                }
-
-                Controls.Button {
-                    text: qsTrId("dashboard.history_download")
-                    icon.name: "document-save"
-                    enabled: historyDialog.selectedId.length > 0
-                    onClicked: {
-                        const path = backend.exportHistoryLog(historyDialog.selectedId);
-                        historyDialog.close();
-                        if (path.length > 0) {
-                            page.showBanner(Kirigami.MessageType.Positive, qsTrId("dashboard.log_saved").arg(path), false, false, false);
-                        } else {
-                            page.showBanner(Kirigami.MessageType.Error, qsTrId("dashboard.history_action_failed"), false, false, false);
-                        }
-                    }
-                }
-
-                Item {
-                    Layout.fillWidth: true
+        Timer {
+            id: ticker
+            interval: 1000
+            repeat: true
+            onTriggered: {
+                countdown.remaining -= 1;
+                if (countdown.remaining <= 0) {
+                    countdown.stand_down();
+                    backend.enterConsole();
                 }
             }
         }

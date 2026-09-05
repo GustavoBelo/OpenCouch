@@ -23,8 +23,9 @@ QString normalizeValue(const QString &raw)
 
 QString autostartCommand()
 {
-    const QString appImagePath = qEnvironmentVariable("APPIMAGE");
-    return appImagePath.isEmpty() ? QStringLiteral("opencouch") : appImagePath;
+    // Just the name. It is on PATH whether a package installed it or a build
+    // did, and there is no bundle to point at any more.
+    return QStringLiteral("opencouch");
 }
 
 QString desktopEntryArgument(const QString &argument)
@@ -79,15 +80,6 @@ bool updateAutostartEntry(bool enabled)
     return stream.status() == QTextStream::Ok;
 }
 
-bool runningInFlatpak()
-{
-    return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
-}
-
-bool runningInAppImage()
-{
-    return !qEnvironmentVariable("APPIMAGE").isEmpty();
-}
 }
 
 ConfigStore::ConfigStore(QObject *parent)
@@ -158,18 +150,13 @@ bool ConfigStore::autostartEnabled() const
 
 bool ConfigStore::setAutostart(bool enabled) const
 {
-    if (runningInAppImage()) {
-        const bool success = updateAutostartEntry(enabled);
-        if (success) {
-            QSettings().setValue(QStringLiteral("autostartEnabled"), enabled);
-        }
-        return success;
-    }
-
+    // The portal first, because a desktop that has one wants to know; the
+    // autostart entry when it does not answer. There is no sandbox left to
+    // decide between, so both paths are simply tried in order.
     bool success = requestBackgroundPortal(enabled);
-    if (!success && !runningInFlatpak()) {
+    if (!success) {
         success = updateAutostartEntry(enabled);
-    } else if (success && !enabled) {
+    } else if (!enabled) {
         updateAutostartEntry(false);
     }
 
@@ -232,56 +219,6 @@ void ConfigStore::setOnboardingSeen(bool seen) const
 {
     QSettings settings;
     settings.setValue(QStringLiteral("onboardingSeen"), seen);
-}
-
-bool ConfigStore::closeAppsEnabled() const
-{
-    return loadConfig().value(QStringLiteral("CLOSE_APPS_ENABLED")).toString() == QLatin1String("true");
-}
-
-bool ConfigStore::setCloseAppsEnabled(bool enabled) const
-{
-    QVariantMap config = loadConfig();
-    config.insert(QStringLiteral("CLOSE_APPS_ENABLED"), enabled ? QStringLiteral("true") : QStringLiteral("false"));
-    return saveConfig(config);
-}
-
-int ConfigStore::closeAppsWaitSeconds() const
-{
-    bool ok = false;
-    const int value = loadConfig().value(QStringLiteral("CLOSE_APPS_WAIT_SECONDS")).toString().toInt(&ok);
-    if (!ok) {
-        return 5;
-    }
-    if (value < 0) {
-        return 0;
-    }
-    if (value > 60) {
-        return 60;
-    }
-    return value;
-}
-
-bool ConfigStore::setCloseAppsWaitSeconds(int seconds) const
-{
-    if (seconds < 0) {
-        seconds = 0;
-    }
-    if (seconds > 60) {
-        seconds = 60;
-    }
-    QVariantMap config = loadConfig();
-    config.insert(QStringLiteral("CLOSE_APPS_WAIT_SECONDS"), QString::number(seconds));
-    return saveConfig(config);
-}
-
-QStringList ConfigStore::appsToClose() const
-{
-    const QString raw = loadConfig().value(QStringLiteral("APPS_TO_CLOSE")).toString();
-    if (raw.isEmpty()) {
-        return {};
-    }
-    return raw.split(',', Qt::SkipEmptyParts);
 }
 
 bool ConfigStore::setAppsToClose(const QStringList &apps) const

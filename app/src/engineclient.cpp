@@ -8,9 +8,22 @@
 namespace {
     constexpr const char *kEngineName = "open-couch-engine";
 
-    // Bump this when the engine script changes in a way that requires users to reinstall
+    // Bump this when the engine changes in a way that requires users to reinstall
     // Leave it alone for app-only releases (UI, settings, translations, etc.)
-    constexpr const char *kMinEngineVersion = "1.7.0";
+    //
+    // 2.0.0 is the console-mode rewrite. A 1.x engine shares nothing with it but
+    // the name: it drove KDE's display layout and answered `status` with log
+    // lines. kCheckIdentity below already refuses the bash one by content; this
+    // refuses an older Go build, which passes that check and would then be asked
+    // to host a session it knows nothing about.
+    constexpr const char *kMinEngineVersion = "2.0.0";
+
+    // What `check` must print. An exit code alone cannot tell this engine from
+    // the bash one it replaced: that one's `check` also succeeds, reports the
+    // same version, and then answers `status` with log lines instead of JSON.
+    // The app would talk to it, parse nothing, and show "not ready" for ever
+    // with nothing to say why -- so identity is checked by content.
+    constexpr const char *kCheckIdentity = "open-couch-engine console-mode/1";
 
     // Returns true if version string `a` is semantically less than `b` (X.Y.Z).
     bool versionLessThan(const QString &a, const QString &b)
@@ -39,12 +52,10 @@ QString EngineClient::engineName() const
 
 QStringList EngineClient::commandLine(const QStringList &args) const
 {
-    QStringList command;
-    if (runningInFlatpakSandbox()) {
-        command << QStringLiteral("flatpak-spawn") << QStringLiteral("--host") << engineName();
-    } else {
-        command << engineName();
-    }
+    // Just the name. The engine is on PATH -- a package puts it in /usr/bin and
+    // the installer in ~/.local/bin -- and there is no sandbox left to reach
+    // out of.
+    QStringList command{engineName()};
     command.append(args);
     return command;
 }
@@ -67,8 +78,8 @@ QString EngineClient::runSync(const QStringList &args, bool *ok) const
 bool EngineClient::engineAvailable() const
 {
     bool ok = false;
-    runSync({QStringLiteral("check")}, &ok);
-    return ok;
+    const QString output = runSync({QStringLiteral("check")}, &ok);
+    return ok && output.trimmed() == QLatin1String(kCheckIdentity);
 }
 
 QString EngineClient::engineVersion() const
@@ -88,75 +99,4 @@ bool EngineClient::engineNeedsUpdate() const
     if (engineVer.isEmpty())
         return true; // engine ran but couldn't report version - it's broken/stripped
     return versionLessThan(engineVer, QString::fromLatin1(kMinEngineVersion));
-}
-
-bool EngineClient::runningInFlatpakSandbox()
-{
-    return QFileInfo::exists(QStringLiteral("/.flatpak-info"));
-}
-
-static QString bundledEngineDir()
-{
-    const QString appDir = QString::fromLocal8Bit(qgetenv("APPDIR"));
-    if (!appDir.isEmpty()) {
-        const QString candidate = appDir + QStringLiteral("/usr/share/open-couch");
-        if (QFileInfo::exists(candidate + QStringLiteral("/open-couch-engine"))) {
-            return candidate;
-        }
-    }
-
-    // Flatpak installs bundled scripts below /app, while AppImage uses APPDIR.
-    const QString flatpakDir = QStringLiteral("/app/share/open-couch");
-    if (QFileInfo::exists(flatpakDir + QStringLiteral("/open-couch-engine"))) {
-        return flatpakDir;
-    }
-
-    return QString(); 
-}
-
-bool EngineClient::canAutoInstall()
-{
-    const QString dir = bundledEngineDir();
-    return QFileInfo::exists(dir + QStringLiteral("/open-couch-engine"));
-}
-
-bool EngineClient::installBundledEngine(QString *errorMessage) const
-{
-    const QString destDir = QDir::homePath() + QStringLiteral("/.local/bin");
-    QDir dir;
-    if (!dir.mkpath(destDir)) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("Could not create ~/.local/bin directory");
-        return false;
-    }
-
-    const QString srcDir = bundledEngineDir();
-    const QStringList scripts = {
-        QStringLiteral("open-couch-engine"),
-        QStringLiteral("open-couch-log-viewer")
-    };
-    
-    for (const QString &script : scripts) {
-        const QString src = srcDir + QLatin1Char('/') + script;
-        const QString dest = destDir + QLatin1Char('/') + script;
-
-        QFile::remove(dest);
-        if(!QFile::copy(src, dest)) {
-            if (errorMessage)
-                    *errorMessage = QStringLiteral("Could not copy %1").arg(script);
-            return false;
-        }
-
-        const bool chmodOk = QFile(dest).setPermissions(
-            QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner |
-            QFile::ReadGroup | QFile::ExeGroup |
-            QFile::ReadOther | QFile::ExeOther
-        );
-        if (!chmodOk) {
-            if (errorMessage)
-                *errorMessage = QStringLiteral("Could not set permissions on %1").arg(script);
-            return false;
-        }
-    }
-    return true;
 }

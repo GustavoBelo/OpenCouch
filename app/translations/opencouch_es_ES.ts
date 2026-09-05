@@ -8,138 +8,70 @@
 <message id="tray.quit"><source>tray.quit</source><translation>Salir</translation></message>
 <message id="engine.completed"><source>engine.completed</source><translation>¡Todo listo!</translation></message>
 <message id="engine.failed"><source>engine.failed</source><translation>Ha fallado (código %1)</translation></message>
-<message id="watcher.failed"><source>watcher.failed</source><translation>ERROR: el monitor de Big Picture está desactivado (código %1)</translation></message>
-<message id="engine.start_couch"><source>engine.start_couch</source><translation>Activando el Modo Salón...</translation></message>
-<message id="engine.restore_desktop"><source>engine.restore_desktop</source><translation>Volviendo al monitor del PC...</translation></message>
-<message id="status.desktop"><source>status.desktop</source><translation>Monitor del PC</translation></message>
-<message id="status.couch"><source>status.couch</source><translation>Tele del salón</translation></message>
-<message id="status.disconnected"><source>status.disconnected</source><translation>desconectado</translation></message>
-<message id="status.disabled"><source>status.disabled</source><translation>apagado</translation></message>
-<message id="status.enabled"><source>status.enabled</source><translation>encendido</translation></message>
-<message id="status.format"><source>status.format</source><translation>%1: %2 — %3</translation></message>
-<message id="status.unavailable"><source>status.unavailable</source><translation>No se pudo consultar el estado (servicio caído).</translation></message>
 <message id="app.settings"><source>app.settings</source><translation>Ajustes</translation></message>
-<message id="common.back"><source>common.back</source><translation>Atrás</translation></message>
 <message id="common.got_it"><source>common.got_it</source><translation>Entendido</translation></message>
-<message id="common.loading"><source>common.loading</source><translation>Cargando...</translation></message>
-<message id="common.log"><source>common.log</source><translation>Registros</translation></message>
-<message id="common.save"><source>common.save</source><translation>Guardar</translation></message>
-<message id="dashboard.copy_log"><source>dashboard.copy_log</source><translation>Copiar registros</translation></message>
-<message id="dashboard.couch_active"><source>dashboard.couch_active</source><translation>Modo Salón activado</translation></message>
-<message id="dashboard.download_log"><source>dashboard.download_log</source><translation>Descargar registros</translation></message>
-<message id="dashboard.display_status"><source>dashboard.display_status</source><translation>Estado de las pantallas</translation></message>
-<message id="dashboard.enter_couch"><source>dashboard.enter_couch</source><translation>Ir a la tele</translation></message>
 <message id="dashboard.help"><source>dashboard.help</source><translation>¿Cómo funciona?</translation></message>
 <message id="dashboard.refresh_status"><source>dashboard.refresh_status</source><translation>Actualizar</translation></message>
-<message id="dashboard.return_desktop"><source>dashboard.return_desktop</source><translation>Volver al PC</translation></message>
-<message id="dashboard.status_updated"><source>dashboard.status_updated</source><translation>Estado de las pantallas actualizado.</translation></message>
-<message id="dashboard.log_copied"><source>dashboard.log_copied</source><translation>Registros copiados al portapapeles.</translation></message>
 <message id="dashboard.log_saved"><source>dashboard.log_saved</source><translation>Registro guardado en: %1</translation></message>
-<message id="dashboard.log_save_failed"><source>dashboard.log_save_failed</source><translation>No se ha podido guardar el registro.</translation></message>
-<message id="dashboard.clear_log"><source>dashboard.clear_log</source><translation>Borrar registros</translation></message>
-<message id="dashboard.log_cleared"><source>dashboard.log_cleared</source><translation>¡Registros borrados! El historial anterior se ha guardado.</translation></message>
 <message id="dashboard.log_history"><source>dashboard.log_history</source><translation>Historial</translation></message>
-<message id="dashboard.log_resize_hint"><source>dashboard.log_resize_hint</source><translation>Arrastra para ajustar el tamaño (doble clic para volver al predeterminado).</translation></message>
-<message id="dashboard.history_title"><source>dashboard.history_title</source><translation>Historial de registros</translation></message>
-<message id="dashboard.history_empty"><source>dashboard.history_empty</source><translation>Aún no hay ningún registro.</translation></message>
-<message id="dashboard.history_copy"><source>dashboard.history_copy</source><translation>Copiar seleccionado</translation></message>
-<message id="dashboard.history_download"><source>dashboard.history_download</source><translation>Descargar seleccionado</translation></message>
-<message id="dashboard.history_action_failed"><source>dashboard.history_action_failed</source><translation>No se ha podido completar la acción.</translation></message>
 <message id="engine.missing"><source>engine.missing</source><translation>Falta un componente del sistema para usar el Modo Sala.</translation></message>
 <message id="engine.outdated"><source>engine.outdated</source><translation>El componente del sistema está desactualizado. Por favor, actualízalo para garantizar el funcionamiento del Modo Sala.</translation></message>
-<message id="dashboard.install_action"><source>dashboard.install_action</source><translation>Ver cómo instalar</translation></message>
-<message id="dashboard.update_action"><source>dashboard.update_action</source><translation>Ver cómo actualizar</translation></message>
 <message id="onboarding.welcome"><source>onboarding.welcome</source><translation>Te damos la bienvenida a Open Couch</translation></message>
-<message id="onboarding.introduction"><source>onboarding.introduction</source><translation>Open Couch cambia de pantalla en un solo clic: juega en el salón o usa el PC en el escritorio sin líos.</translation></message>
-<message id="onboarding.configuration_title"><source>onboarding.configuration_title</source><translation>1. Configuración</translation></message>
-<message id="onboarding.configuration_description"><source>onboarding.configuration_description</source><translation>Elige las pantallas del PC y de la tele, además de la resolución y el zoom (escala). El valor por defecto 1 equivale al 100%.</translation></message>
-<message id="onboarding.desktop_display_title"><source>onboarding.desktop_display_title</source><translation>2. Monitor del PC en Modo Salón</translation></message>
-<message id="onboarding.desktop_display_description"><source>onboarding.desktop_display_description</source><translation>Por defecto, la pantalla del PC se apaga cuando te vas al salón; así evitas que el juego se abra en el monitor equivocado... pero puedes dejar las dos encendidas si prefieres.</translation></message>
-<message id="onboarding.usage_title"><source>onboarding.usage_title</source><translation> 3. ¿Cómo usarlo?</translation></message>
-<message id="onboarding.usage_description"><source>onboarding.usage_description</source><translation>Haz clic en "Ir a la tele" para encender la tele y abrir Steam en pantalla completa, o en "Volver al PC" para dejarlo todo como estaba.</translation></message>
-<message id="onboarding.requirement_title"><source>onboarding.requirement_title</source><translation>Permiso necesario</translation></message>
-<message id="onboarding.requirement_description"><source>onboarding.requirement_description</source><translation>Para poder cambiar de pantalla y abrir Steam, Open Couch necesita un asistente instalado directamente en el sistema operativo.</translation></message>
-<message id="onboarding.install_description"><source>onboarding.install_description</source><translation>Abre la terminal en la carpeta del proyecto, pega el siguiente comando y pulsa Intro:</translation></message>
-<message id="settings.desktop_display"><source>settings.desktop_display</source><translation>Monitor del PC:</translation></message>
-<message id="settings.desktop_display_label"><source>settings.desktop_display_label</source><translation>Monitor del PC:</translation></message>
-<message id="settings.desktop_mode"><source>settings.desktop_mode</source><translation>Resolución y tasa de Hz (PC):</translation></message>
-<message id="settings.desktop_scale"><source>settings.desktop_scale</source><translation>Zoom/Escala del PC:</translation></message>
-<message id="settings.couch_display"><source>settings.couch_display</source><translation>Tele del salón:</translation></message>
-<message id="settings.couch_mode"><source>settings.couch_mode</source><translation>Resolución y tasa de Hz (Tele):</translation></message>
-<message id="settings.couch_scale"><source>settings.couch_scale</source><translation>Zoom/Escala de la tele:</translation></message>
-<message id="settings.big_picture_label"><source>settings.big_picture_label</source><translation>Steam Big Picture:</translation></message>
-<message id="settings.keep_desktop_description"><source>settings.keep_desktop_description</source><translation>Si se activa, la pantalla del PC se queda encendida mientras juegas en la tele.</translation></message>
-<message id="settings.watch_big_picture_description"><source>settings.watch_big_picture_description</source><translation>Al abrir Big Picture desde el mando (suele activarse al pulsar el botón PS o XBOX), la app cambia a la tele al instante y solo vuelve al monitor del PC cuando cierras Steam o sales del modo Big Picture.</translation></message>
 <message id="settings.autostart_description"><source>settings.autostart_description</source><translation>Abre Open Couch automáticamente en cuanto inicias sesión en el sistema.</translation></message>
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Al cerrar la ventana, la app sigue funcionando junto al reloj para monitorizar Steam. Usa su icono ahí para reabrirla o salir.</translation></message>
-<message id="settings.displays"><source>settings.displays</source><translation>Monitores y pantallas</translation></message>
-<message id="settings.displays_description"><source>settings.displays_description</source><translation>Indica qué monitor está en el escritorio y cuál es la tele del salón para alternar fácilmente.</translation></message>
-<message id="settings.desktop_scale_tooltip"><source>settings.desktop_scale_tooltip</source><translation>Zoom de la interfaz: 1 = 100% (por defecto), 1.5 = 150%. Ante la duda, déjalo en 1.</translation></message>
-<message id="settings.couch_scale_tooltip"><source>settings.couch_scale_tooltip</source><translation>Zoom de la tele: auméntalo si los textos e iconos se ven enanos desde el sofá. Si no estás seguro, deja el valor por defecto de Linux y ve ajustándolo.</translation></message>
-<message id="settings.couch_behavior"><source>settings.couch_behavior</source><translation>Comportamiento del Modo Salón</translation></message>
-<message id="settings.startup"><source>settings.startup</source><translation>Inicio</translation></message>
-<message id="settings.detect_again"><source>settings.detect_again</source><translation>Buscar pantallas de nuevo</translation></message>
-<message id="settings.keep_desktop_enabled"><source>settings.keep_desktop_enabled</source><translation>Mantener encendido el monitor del PC en modo tele</translation></message>
-<message id="settings.watch_big_picture"><source>settings.watch_big_picture</source><translation>Activar al abrir Steam desde el mando</translation></message>
-<message id="settings.controllers_label"><source>settings.controllers_label</source><translation>Mandos de juego</translation></message>
-<message id="settings.exit_on_controllers_off"><source>settings.exit_on_controllers_off</source><translation>Volver al escritorio cuando todos los mandos estén apagados</translation></message>
-<message id="settings.exit_on_controllers_off_description"><source>settings.exit_on_controllers_off_description</source><translation>Cuando está activado, si apagas todos los mandos durante el modo salón, Open Couch cierra Big Picture y restaura el escritorio. Solo actúa tras al menos un minuto de uso del mando.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar con el sistema</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimizar a la bandeja del sistema al cerrar</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Invitar a un café al dev</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch es de código abierto y lo desarrollo en mi tiempo libre. Si te ha servido en tu día a día, ¡échame un cable!</translation></message>
-<message id="status.scale"><source>status.scale</source><translation> (zoom %1x)</translation></message>
-<message id="settings.error.select_desktop"><source>settings.error.select_desktop</source><translation>Elige el monitor del PC.</translation></message>
-<message id="settings.error.select_tv"><source>settings.error.select_tv</source><translation>Elige la tele del salón.</translation></message>
-<message id="settings.error.same_output"><source>settings.error.same_output</source><translation>El monitor del PC y la tele no pueden ser la misma pantalla.</translation></message>
-<message id="settings.error.desktop_scale"><source>settings.error.desktop_scale</source><translation>La escala del PC tiene que ser un número mayor que cero.</translation></message>
-<message id="settings.error.tv_scale"><source>settings.error.tv_scale</source><translation>La escala de la tele tiene que ser un número mayor que cero.</translation></message>
-<message id="settings.error.desktop_pos"><source>settings.error.desktop_pos</source><translation>La posición de la pantalla del PC debe tener el formato: x,y</translation></message>
-<message id="settings.error.tv_pos"><source>settings.error.tv_pos</source><translation>La posición de la tele debe tener el formato: x,y</translation></message>
-<message id="settings.error.scale_value"><source>settings.error.scale_value</source><translation>El valor de %1 tiene que ser mayor que cero.</translation></message>
-<message id="settings.error.no_outputs"><source>settings.error.no_outputs</source><translation>No se ha encontrado ninguna pantalla o el servicio open-couch-engine no está instalado.</translation></message>
-<message id="settings.error.save_failed"><source>settings.error.save_failed</source><translation>No se han podido guardar los ajustes.</translation></message>
-<message id="dashboard.viewing_history"><source>dashboard.viewing_history</source><translation>Viendo registro anterior: %1</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Volver al registro en tiempo real</translation></message>
-<message id="common.version"><source>common.version</source><translation>Versión %1</translation></message>
-<message id="dashboard.view"><source>dashboard.view</source><translation>Ver</translation></message>
-<message id="dashboard.read_log_failed"><source>dashboard.read_log_failed</source><translation>No se ha podido leer el registro o el archivo está vacío.</translation></message>
-<message id="settings.no_monitors"><source>settings.no_monitors</source><translation>No se ha encontrado ningún monitor.</translation></message>
-<message id="settings.desktop_environment"><source>settings.desktop_environment</source><translation>Configuración del PC / Escritorio</translation></message>
-<message id="settings.resolution"><source>settings.resolution</source><translation>Resolución:</translation></message>
-<message id="settings.refresh_rate"><source>settings.refresh_rate</source><translation>Tasa de refresco (Hz):</translation></message>
-<message id="settings.couch_environment"><source>settings.couch_environment</source><translation>Configuración de la tele / Salón</translation></message>
-<message id="settings.mirroring"><source>settings.mirroring</source><translation>Duplicación de pantalla</translation></message>
-<message id="settings.mirror_desktop"><source>settings.mirror_desktop</source><translation>Duplicar la pantalla del PC en la tele al estar en el salón</translation></message>
-<message id="settings.mirror_desktop_description"><source>settings.mirror_desktop_description</source><translation>Si está marcado, el monitor del PC mostrará lo mismo que la tele del salón. Como las dos pantallas deben tener la misma resolución, la pantalla más grande se reducirá para igualar a la más pequeña.</translation></message>
-<message id="settings.system"><source>settings.system</source><translation>Sistema</translation></message>
-<message id="settings.background"><source>settings.background</source><translation>Segundo plano</translation></message>
-<message id="settings.outputs_detected"><source>settings.outputs_detected</source><translation>¡Pantallas detectadas de nuevo!</translation></message>
-<message id="settings.saved"><source>settings.saved</source><translation>¡Ajustes guardados correctamente!</translation></message>
-<message id="common.copy_command"><source>common.copy_command</source><translation>Copiar comando</translation></message>
-<message id="dashboard.permission_popup_title"><source>dashboard.permission_popup_title</source><translation>Permiso necesario para usar el Modo Salón</translation></message>
-<message id="dashboard.permission_reopen_warning"><source>dashboard.permission_reopen_warning</source><translation>Después de ejecutar el comando, haz clic en Actualizar estado en el panel para aplicar los cambios.</translation></message>
-<message id="engine.installed_ok"><source>engine.installed_ok</source><translation>¡Engine instalado con éxito!</translation></message>
-<message id="engine.install_button"><source>engine.install_button</source><translation>Instalar Engine</translation></message>
-<message id="onboarding.auto_install_description"><source>onboarding.auto_install_description</source><translation>El engine ya está incluido en esta app y se instalará automáticamente en el primer uso.</translation></message>
-<message id="resource_control.heading"><source>resource_control.heading</source><translation type="unfinished">Resource Control</translation></message>
-<message id="resource_control.description"><source>resource_control.description</source><translation type="unfinished">Choose which apps are automatically closed when couch mode opens.</translation></message>
-<message id="resource_control.app_cleanup_heading"><source>resource_control.app_cleanup_heading</source><translation type="unfinished">App cleanup</translation></message>
-<message id="resource_control.enable_cleanup"><source>resource_control.enable_cleanup</source><translation type="unfinished">Close selected apps after couch mode opens</translation></message>
-<message id="resource_control.enable_cleanup_description"><source>resource_control.enable_cleanup_description</source><translation type="unfinished">After Big Picture is visible, OpenCouch waits for the delay below, then closes your selected apps.</translation></message>
-<message id="resource_control.warning_terminate"><source>resource_control.warning_terminate</source><translation type="unfinished">Selected apps are terminated directly. Unsaved work may be lost.</translation></message>
-<message id="resource_control.apps_to_close"><source>resource_control.apps_to_close</source><translation type="unfinished">Apps to close</translation></message>
-<message id="resource_control.apps_to_close_description"><source>resource_control.apps_to_close_description</source><translation type="unfinished">Only the apps you select here are closed when couch mode opens. Everything else keeps running.</translation></message>
-<message id="resource_control.choose_app"><source>resource_control.choose_app</source><translation type="unfinished">Choose app…</translation></message>
-<message id="resource_control.running_apps"><source>resource_control.running_apps</source><translation type="unfinished">Running apps…</translation></message>
-<message id="resource_control.no_apps_selected"><source>resource_control.no_apps_selected</source><translation type="unfinished">No apps selected.</translation></message>
-<message id="resource_control.remove_app"><source>resource_control.remove_app</source><translation type="unfinished">Remove</translation></message>
-<message id="resource_control.wait_before_closing"><source>resource_control.wait_before_closing</source><translation type="unfinished">Wait before closing</translation></message>
-<message id="resource_control.wait_before_closing_description"><source>resource_control.wait_before_closing_description</source><translation type="unfinished">Seconds to wait after couch mode opens before closing your selected apps.</translation></message>
-<message id="resource_control.picker_title"><source>resource_control.picker_title</source><translation type="unfinished">Choose application</translation></message>
-<message id="resource_control.picker_empty"><source>resource_control.picker_empty</source><translation type="unfinished">No applications found.</translation></message>
-<message id="resource_control.running_picker_title"><source>resource_control.running_picker_title</source><translation type="unfinished">Running applications</translation></message>
-<message id="resource_control.running_picker_empty"><source>resource_control.running_picker_empty</source><translation type="unfinished">No running applications detected.</translation></message>
-<message id="resource_control.running_picker_requires_wmctrl"><source>resource_control.running_picker_requires_wmctrl</source><translation type="unfinished">Detecting running apps requires the optional `wmctrl` package installed on the system.</translation></message>
+<message id="common.copy"><source>common.copy</source><translation type="unfinished"></translation></message>
+<message id="engine.enter_console"><source>engine.enter_console</source><translation type="unfinished"></translation></message>
+<message id="dashboard.enter_console"><source>dashboard.enter_console</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_status"><source>dashboard.console_status</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_ready"><source>dashboard.console_ready</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_ready_body"><source>dashboard.console_ready_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_not_ready"><source>dashboard.console_not_ready</source><translation type="unfinished"></translation></message>
+<message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation type="unfinished"></translation></message>
+<message id="settings.console_description"><source>settings.console_description</source><translation type="unfinished"></translation></message>
+<message id="settings.ready"><source>settings.ready</source><translation type="unfinished"></translation></message>
+<message id="settings.not_ready"><source>settings.not_ready</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck"><source>settings.recheck</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_session"><source>settings.hosting_session</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_description"><source>settings.hosting_description</source><translation type="unfinished"></translation></message>
+<message id="settings.run_setup"><source>settings.run_setup</source><translation type="unfinished"></translation></message>
+<message id="settings.no_displays"><source>settings.no_displays</source><translation type="unfinished"></translation></message>
+<message id="settings.console_behavior"><source>settings.console_behavior</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_label"><source>settings.boot_label</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_desktop"><source>settings.boot_desktop</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_console"><source>settings.boot_console</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_last"><source>settings.boot_last</source><translation type="unfinished"></translation></message>
+<message id="settings.boot_description"><source>settings.boot_description</source><translation type="unfinished"></translation></message>
+<message id="settings.enter_on_controller"><source>settings.enter_on_controller</source><translation type="unfinished"></translation></message>
+<message id="settings.enter_on_controller_description"><source>settings.enter_on_controller_description</source><translation type="unfinished"></translation></message>
+<message id="common.cancel"><source>common.cancel</source><translation type="unfinished"></translation></message>
+<message id="dashboard.logs"><source>dashboard.logs</source><translation type="unfinished"></translation></message>
+<message id="dashboard.copy_logs"><source>dashboard.copy_logs</source><translation type="unfinished"></translation></message>
+<message id="dashboard.download_logs"><source>dashboard.download_logs</source><translation type="unfinished"></translation></message>
+<message id="dashboard.clear_logs"><source>dashboard.clear_logs</source><translation type="unfinished"></translation></message>
+<message id="settings.console_display"><source>settings.console_display</source><translation type="unfinished"></translation></message>
+<message id="settings.console_display_description"><source>settings.console_display_description</source><translation type="unfinished"></translation></message>
+<message id="settings.display_connected"><source>settings.display_connected</source><translation type="unfinished"></translation></message>
+<message id="settings.display_waiting"><source>settings.display_waiting</source><translation type="unfinished"></translation></message>
+<message id="settings.choose_display"><source>settings.choose_display</source><translation type="unfinished"></translation></message>
+<message id="dashboard.copy_install_command"><source>dashboard.copy_install_command</source><translation type="unfinished"></translation></message>
+<message id="dashboard.install_command_copied"><source>dashboard.install_command_copied</source><translation type="unfinished"></translation></message>
+<message id="onboarding.introduction"><source>onboarding.introduction</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_title"><source>onboarding.needs_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.needs_body"><source>onboarding.needs_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_title"><source>onboarding.session_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.session_body"><source>onboarding.session_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_title"><source>onboarding.display_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.display_body"><source>onboarding.display_body</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_title"><source>onboarding.entering_title</source><translation type="unfinished"></translation></message>
+<message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation type="unfinished"></translation></message>
+<message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation type="unfinished"></translation></message>
+<message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation type="unfinished"></translation></message>
 </context>
 </TS>
