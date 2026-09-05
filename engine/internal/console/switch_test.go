@@ -2,6 +2,7 @@ package console
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -194,4 +195,72 @@ func TestDropCancelClearsWithoutActingOnIt(t *testing.T) {
 	}
 	// Dropping nothing is not an error: every countdown does it.
 	DropCancel(t.TempDir())
+}
+
+// The switch that dropped the user at the login screen: the compositor accepted
+// the stop, the wrapper was still running SettleJobs when the wait ran out, and
+// the caller cleared the request -- so the wrapper found nothing and treated the
+// exit as a logout. StopCompositor has to say "pending", not "failed", so the
+// request survives to be acted on.
+func TestStopCompositorReportsPendingWhenTheStopWorkedButTheNextSessionIsLate(t *testing.T) {
+	dir := t.TempDir()
+	if err := WriteLive(dir, Live{Mode: ModeDesktop, Generation: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Request(dir, ModeConsole); err != nil {
+		t.Fatal(err)
+	}
+
+	// Accepts the stop, but nothing advances the generation: the wrapper is
+	// still sanitising when the wait gives up.
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+
+	err := StopCompositor(ctx, dir, stubCompositor{})
+	if !errors.Is(err, ErrSwitchPending) {
+		t.Fatalf("want ErrSwitchPending so the caller keeps the request, got %v", err)
+	}
+	if _, ok := TakeRequest(dir); !ok {
+		t.Fatal("the request was lost; the wrapper would log the user out instead of switching")
+	}
+}
+
+type stubCompositor struct{}
+
+func (stubCompositor) Name() string               { return "stub" }
+func (stubCompositor) Stop(context.Context) error { return nil }
+
+// The wrapper must still honour a request when the process that wrote it died
+// stopping the compositor -- which is the normal case on uwsm, where `uwsm stop`
+// ends the session the caller is running in. Nothing cleans up after it, so the
+// request has to stand on its own.
+func TestTakeRequestHonoursOneLeftBehindByACallerThatDied(t *testing.T) {
+	dir := t.TempDir()
+	if err := Request(dir, ModeConsole); err != nil {
+		t.Fatal(err)
+	}
+	mode, ok := TakeRequest(dir)
+	if !ok || mode != ModeConsole {
+		t.Fatalf("want console, got %q (ok=%v): the wrapper would log the user out", mode, ok)
+	}
+}
+
+// A request nobody consumed must not fire at some unrelated logout hours later.
+// This is what replaced clearing it, so it is the guarantee that makes leaving
+// the request behind safe.
+func TestTakeRequestIgnoresOneOlderThanItsWindow(t *testing.T) {
+	dir := t.TempDir()
+	if err := Request(dir, ModeConsole); err != nil {
+		t.Fatal(err)
+	}
+	stale := time.Now().Add(-requestMaxAge - time.Minute)
+	if err := os.Chtimes(RequestPath(dir), stale, stale); err != nil {
+		t.Fatal(err)
+	}
+	if mode, ok := TakeRequest(dir); ok {
+		t.Fatalf("a stale request was acted on (%q): an ordinary logout would jump to the console", mode)
+	}
+	if _, err := os.Stat(RequestPath(dir)); !os.IsNotExist(err) {
+		t.Fatal("the stale request was left on disk to be found again")
+	}
 }

@@ -36,15 +36,36 @@ func Request(runtimeDir string, mode Mode) error {
 	return os.WriteFile(RequestPath(runtimeDir), []byte(string(mode)+"\n"), 0o600)
 }
 
+// requestMaxAge is how long a switch request stays meaningful.
+//
+// It exists so that nobody has to clear a request to keep it from doing harm
+// later. The process that writes one is running inside the compositor it is
+// about to stop, and stopping the compositor kills it -- so it cannot be relied
+// on to come back and tidy up, and code that tried raced the wrapper for the
+// file. Losing that race is how `enter` dropped the user at the login screen:
+// the request was cleared, and the wrapper read a compositor exit with nothing
+// pending as an ordinary logout.
+//
+// The window only has to cover a compositor's exit, which is seconds. Anything
+// older was written for a switch that never happened, and acting on it would
+// jump to the console at some unrelated logout hours later.
+const requestMaxAge = 2 * time.Minute
+
 // TakeRequest reads and clears a pending request.
 //
 // Clearing is the point: a request that survived being acted on would switch
-// again on the next exit, and the user would be unable to log out.
+// again on the next exit, and the user would be unable to log out. A request
+// older than requestMaxAge is cleared and ignored, which is what lets writers
+// leave one behind without having to clean up after themselves.
 func TakeRequest(runtimeDir string) (Mode, bool) {
 	path := RequestPath(runtimeDir)
+	info, statErr := os.Stat(path)
 	data, err := os.ReadFile(path)
 	_ = os.Remove(path)
 	if err != nil {
+		return "", false
+	}
+	if statErr == nil && time.Since(info.ModTime()) > requestMaxAge {
 		return "", false
 	}
 	switch mode := Mode(strings.TrimSpace(string(data))); mode {
@@ -84,13 +105,30 @@ func StopCompositor(ctx context.Context, runtimeDir string, c Compositor) error 
 		return err
 	}
 	if !AwaitSessionEnd(ctx, runtimeDir, before, stopTimeout) {
-		return fmt.Errorf("%s accepted the request to end its session, but it is still running", c.Name())
+		return fmt.Errorf("%s accepted the request to end its session: %w", c.Name(), ErrSwitchPending)
 	}
 	return nil
 }
 
-// stopTimeout is how long a compositor gets to act on the request.
-const stopTimeout = 10 * time.Second
+// ErrSwitchPending says the compositor accepted the request to stop but the
+// wrapper had not started the next session before the wait ran out.
+//
+// It is not a failure, and the difference matters more than it looks: a caller
+// that treats it as one and clears the request turns a slow switch into a
+// logout. The compositor is going away either way, and when it does the wrapper
+// reads the request and acts on it -- but only if the request is still there.
+// That is exactly how `enter` dropped the user at the login screen: the stop
+// worked, the confirmation was late, the request was cleared, and the wrapper
+// found nothing to switch to.
+var ErrSwitchPending = errors.New("the switch is under way but has not finished yet")
+
+// stopTimeout is how long to wait for the next session to appear.
+//
+// It has to cover the whole gap, not just the compositor's exit: before the
+// wrapper records a new generation it runs Sanitize and then SettleJobs, which
+// alone is allowed twenty seconds. A timeout shorter than that reports a switch
+// as stalled while it is merely proceeding.
+const stopTimeout = 45 * time.Second
 
 // StopConsoleSession ends a running gamescope session.
 //

@@ -263,17 +263,33 @@ func enter(ctx context.Context, args []string) error {
 		}
 	}
 
+	// The wrapper's log is the only place these two lines can be read back: by
+	// the time anything goes wrong the compositor is gone and so is the
+	// terminal this was typed into.
+	logf := logger(e.StateDir)
+
 	if err := console.Request(e.RuntimeDir, console.ModeConsole); err != nil {
 		return err
 	}
-	if err := console.StopCompositor(ctx, e.RuntimeDir, console.DetectCompositor()); err != nil {
-		// The request outlives this process, and a request nobody acted on
-		// would switch the next time the compositor ended for any reason at
-		// all -- an ordinary logout, hours later.
-		console.ClearRequest(e.RuntimeDir)
+	logf("enter: asked for the console, request left in %s", console.RequestPath(e.RuntimeDir))
+
+	err = console.StopCompositor(ctx, e.RuntimeDir, console.DetectCompositor())
+	switch {
+	case err == nil:
+		logf("enter: the compositor stopped and the wrapper took over")
+		return nil
+	case errors.Is(err, console.ErrSwitchPending):
+		logf("enter: the compositor accepted the stop; the wrapper has not started the next session yet")
+		return nil
+	default:
+		// Deliberately not cleared. Stopping the compositor kills this process,
+		// so an error here often means the stop worked and took the reporter
+		// down with it -- `uwsm stop` ends the very session this is running in.
+		// Clearing on that reading is what turned switches into logouts. A
+		// request nobody consumes expires on its own (requestMaxAge).
+		logf("enter: could not confirm the stop, leaving the request to expire on its own: %v", err)
 		return err
 	}
-	return nil
 }
 
 func leave(ctx context.Context) error {
