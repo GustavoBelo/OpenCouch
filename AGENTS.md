@@ -168,10 +168,12 @@ cat app/version.txt
 packaging/release.sh X.Y.Z
 # valida X.Y.Z, tag inexistente, árvore limpa,
 # atualiza app/version.txt (RELEASE_DATE=date -u), SELF_VERSION,
-# ENGINE_VERSION, manifest tag, MIN_VERSION (de kMinEngineVersion),
-# regenera backend/SHA256SUMS, valida metainfo/next
+# MIN_VERSION (de kMinEngineVersion), valida metainfo/next
+#
+# O engine não tem versão gravada em arquivo: é um binário Go e a versão
+# chega por -ldflags no build. Quem publica o binário e o SHA256SUMS é o
+# workflow de release, não este script.
 git log --oneline -2 && git show --stat HEAD
-sha256sum -c backend/SHA256SUMS
 ```
 
 Revisar `app/version.txt:1`, `packaging/host/install.sh:5`. Conferir com `open-couch-engine version`.
@@ -312,7 +314,7 @@ Para agentes de IA: isso não muda a regra existente de **nunca fazer commit ou 
 
 ## Fluxo de trabalho recomendado para agentes
 
-1. Entender a mudança dentro da divisão app/backend/packaging (a lógica de display fica no engine, não na GUI).
+1. Entender a mudança dentro da divisão app/engine/packaging (a lógica de sessão e display fica no engine, não na GUI).
 2. Implementar seguindo as convenções acima.
 3. Validar com `cmake --build` e `go test ./...`; testar manualmente se a mudança afeta comportamento visível.
 4. Nunca versionar manualmente; para releases seguir **Publicação de release — boa prática** (`packaging/release.sh` + push + GitHub Release idempotente).
