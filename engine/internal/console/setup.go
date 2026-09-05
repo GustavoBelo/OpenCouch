@@ -103,6 +103,33 @@ Type=Application
 // HostingEntryFile is the name `console setup` writes. Recognising it is a
 // safety net for entries generated before the marker existed: they point at a
 // wrapper script, so neither the marker nor the Exec line gives them away.
+// AutologinDropIn is what to call the file that points SDDM's autologin at the
+// hosting session.
+//
+// The name carries the whole point. SDDM reads /etc/sddm.conf.d/ in alphabetical
+// order and the last file to set a key wins, and Steam's "Switch to Desktop"
+// runs steam-set-session, which writes zz-steamos-autologin.conf naming a
+// session of its own. Anything sorting before "zz" is overruled the first time
+// the user leaves the console -- so the console session works exactly once and
+// then quietly stops being what the machine logs into.
+const AutologinDropIn = "zzz-open-couch.conf"
+
+// autologinPrefix is the part of AutologinDropIn that has to sort last.
+const autologinPrefix = "zzz-"
+
+// currentUser is who the autologin line should name. A wrong guess is harmless
+// here -- the text is printed for a person to read and edit -- but the right one
+// saves them looking it up.
+func currentUser() string {
+	if u := os.Getenv("USER"); u != "" {
+		return u
+	}
+	if u := os.Getenv("LOGNAME"); u != "" {
+		return u
+	}
+	return "YOUR-USERNAME"
+}
+
 const HostingEntryFile = "open-couch-session.desktop"
 
 func HostsConsole(e Entry) bool {
@@ -257,11 +284,19 @@ func SetupInstructions(lm LoginManager, entryPath, entryName, wrapperCommand str
 	switch lm.Kind {
 	case LoginSDDM:
 		fmt.Fprintf(&b, "2. Point SDDM at it.\n\n")
-		fmt.Fprintf(&b, "   If you log in through the greeter, just pick %q there.\n\n", entryName)
-		fmt.Fprintf(&b, "   If SDDM logs you in automatically, edit the [Autologin]\n")
-		fmt.Fprintf(&b, "   section in /etc/sddm.conf.d/ so it reads:\n\n")
-		fmt.Fprintf(&b, "     Session=%s\n\n", file)
-		fmt.Fprintf(&b, "   To undo: put the previous Session= value back.\n")
+		fmt.Fprintf(&b, "   If your greeter offers a session picker, choose %q there.\n", entryName)
+		fmt.Fprintf(&b, "   Not every theme has one -- several minimal themes pick a session for\n")
+		fmt.Fprintf(&b, "   you and show no way to change it -- so if you cannot find the list,\n")
+		fmt.Fprintf(&b, "   use autologin instead:\n\n")
+		fmt.Fprintf(&b, "     sudo tee /etc/sddm.conf.d/%s <<'EOF'\n", AutologinDropIn)
+		fmt.Fprintf(&b, "     [Autologin]\n     User=%s\n     Session=%s\n     EOF\n\n", currentUser(), file)
+		fmt.Fprintf(&b, "   The %q prefix is not decoration. SDDM reads that directory in\n", autologinPrefix)
+		fmt.Fprintf(&b, "   alphabetical order and the last file wins, and Steam's \"Switch to\n")
+		fmt.Fprintf(&b, "   Desktop\" writes zz-steamos-autologin.conf on its way out. A name that\n")
+		fmt.Fprintf(&b, "   sorts before that one loses the console session after its first use.\n\n")
+		fmt.Fprintf(&b, "   Autologin is read when SDDM starts, so reboot -- logging out only\n")
+		fmt.Fprintf(&b, "   returns you to the greeter, which never re-reads it.\n\n")
+		fmt.Fprintf(&b, "   To undo: sudo rm /etc/sddm.conf.d/%s\n", AutologinDropIn)
 	case LoginGreetd:
 		fmt.Fprintf(&b, "2. Point greetd at it: in /etc/greetd/config.toml, set the\n")
 		fmt.Fprintf(&b, "   session's `command` to\n\n     %s\n\n", wrapperCommand)
@@ -280,7 +315,8 @@ func SetupInstructions(lm LoginManager, entryPath, entryName, wrapperCommand str
 		fmt.Fprintf(&b, "   To undo: put the previous session back.\n")
 	}
 
-	fmt.Fprintf(&b, "\n3. Log out and back in, then run `open-couch-engine doctor`.\n")
+	fmt.Fprintf(&b, "\n3. Start the session: log out if you picked it in a greeter, or reboot\n")
+	fmt.Fprintf(&b, "   if you set up autologin. Then run `open-couch-engine doctor`.\n")
 	return b.String()
 }
 

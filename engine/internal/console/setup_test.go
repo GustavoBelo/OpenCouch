@@ -188,3 +188,26 @@ func TestEntryContentDeclaresTryExecSoADeletedEngineHidesTheEntry(t *testing.T) 
 		t.Fatalf("Exec does not run the wrapper:\n%s", body)
 	}
 }
+
+// Steam's "Switch to Desktop" writes zz-steamos-autologin.conf, and SDDM lets
+// the alphabetically last file win. Instructions naming a file that sorts
+// before it hand the user a console session that works once and then stops
+// being what the machine logs into.
+func TestSDDMInstructionsNameAnAutologinFileThatOutsortsSteams(t *testing.T) {
+	out := SetupInstructions(
+		LoginManager{Kind: LoginSDDM, Unit: "sddm.service"},
+		"/home/u/.config/open-couch/open-couch-session.desktop",
+		"Open Couch (console switch)",
+		"open-couch-engine host-session",
+	)
+	if !contains(out, AutologinDropIn) {
+		t.Fatalf("instructions do not name %s:\n%s", AutologinDropIn, out)
+	}
+	if AutologinDropIn <= "zz-steamos-autologin.conf" {
+		t.Fatalf("%q does not sort after Steam's zz-steamos-autologin.conf, so Steam overrules it", AutologinDropIn)
+	}
+	// The greeter is not a reliable route: plenty of themes show no picker.
+	if !contains(out, "Not every theme has one") {
+		t.Fatalf("instructions still promise a session picker that many themes lack:\n%s", out)
+	}
+}
