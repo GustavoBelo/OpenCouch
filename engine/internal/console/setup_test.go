@@ -58,7 +58,7 @@ func TestHostsConsoleTrustsTheMarkerWhateverTheCommand(t *testing.T) {
 }
 
 func TestEntryContentCarriesTheMarker(t *testing.T) {
-	if !contains(EntryContent("X", "open-couch-engine host-session"), HostingMarker+"=true") {
+	if !contains(EntryContent("X", "open-couch-engine"), HostingMarker+"=true") {
 		t.Error("the generated entry does not mark itself as hosting")
 	}
 }
@@ -123,7 +123,7 @@ func TestHostingEntryNameNamesTheProduct(t *testing.T) {
 		t.Errorf("%q would not be recognised as a hosting entry", HostingEntryName())
 	}
 	// The desktop it hosts moves to the Comment, where there is room for it.
-	body := EntryContent("Omarchy (Hyprland uwsm)", "cmd host-session")
+	body := EntryContent("Omarchy (Hyprland uwsm)", "cmd")
 	if !contains(body, "Name=Open Couch (console switch)") {
 		t.Errorf("entry = %q", body)
 	}
@@ -173,4 +173,18 @@ func TestInstalledHostingEntryFindsOnlyOursInASystemDirectory(t *testing.T) {
 
 func contains(haystack, needle string) bool {
 	return strings.Contains(haystack, needle)
+}
+
+// A hosting entry whose Exec exists but whose binary has been removed is an
+// unbreakable login loop: the login manager starts the session, it dies at
+// once, and the greeter comes back with the same entry selected. TryExec is
+// what makes the entry disappear instead.
+func TestEntryContentDeclaresTryExecSoADeletedEngineHidesTheEntry(t *testing.T) {
+	body := EntryContent("Omarchy", "/home/u/.local/bin/open-couch-engine")
+	if !contains(body, "\nTryExec=/home/u/.local/bin/open-couch-engine\n") {
+		t.Fatalf("entry has no TryExec, so a deleted engine would lock the user out:\n%s", body)
+	}
+	if !contains(body, "\nExec=/home/u/.local/bin/open-couch-engine "+WrapperCommand+"\n") {
+		t.Fatalf("Exec does not run the wrapper:\n%s", body)
+	}
 }

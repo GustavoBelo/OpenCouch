@@ -70,7 +70,15 @@ func DetectLoginManager(ctx context.Context, sc Runner) LoginManager {
 // to the same desktop -- so the identity is exported by the wrapper, which is
 // the one thing that knows which desktop it is about to start. That also makes
 // the entry `setup` writes and the entry a package installs the same file.
-func EntryContent(desktopName, wrapperCommand string) string {
+//
+// TryExec is what keeps a deleted engine from locking the user out. A login
+// manager runs an entry whose Exec exists and shows the greeter again when the
+// session dies, so an entry pointing at a binary that has been removed becomes
+// an unbreakable password loop: the session starts, exits at once, and the
+// greeter comes back with the same entry selected. TryExec is checked before
+// any of that -- the entry is simply hidden -- which turns a lockout into a
+// missing menu item.
+func EntryContent(desktopName, execPath string) string {
 	comment := "Hosts your desktop and the gamescope console session in one login session"
 	if desktopName != "" {
 		comment = "Hosts " + desktopName + " and the gamescope console session in one login session"
@@ -78,10 +86,11 @@ func EntryContent(desktopName, wrapperCommand string) string {
 	return fmt.Sprintf(`[Desktop Entry]
 Name=%s
 Comment=%s
-Exec=%s
+Exec=%s %s
+TryExec=%s
 Type=Application
 %s=true
-`, HostingEntryName(), comment, wrapperCommand, HostingMarker)
+`, HostingEntryName(), comment, execPath, WrapperCommand, execPath, HostingMarker)
 }
 
 // HostsConsole reports whether a session entry is a hosting session -- ours or

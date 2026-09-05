@@ -427,7 +427,6 @@ func setup(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	wrapperCommand := self + " " + console.WrapperCommand
 
 	// A package may have installed the entry already, in which case the only
 	// thing left to do is record the choice and log out. --force writes it
@@ -443,7 +442,8 @@ func setup(ctx context.Context, args []string) error {
 		fmt.Printf("\nTo write it again anyway: open-couch-engine setup --force\n")
 		return nil
 	}
-	body := console.EntryContent(entry.Name, wrapperCommand)
+	wrapperCommand := self + " " + console.WrapperCommand
+	body := console.EntryContent(entry.Name, self)
 
 	path := filepath.Join(e.Base, console.HostingEntryFile)
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
