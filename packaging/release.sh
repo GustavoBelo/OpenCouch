@@ -57,6 +57,52 @@ if ! grep -q "^SELF_VERSION=\"${VERSION}\"" "$INSTALL_FILE"; then
     exit 1
 fi
 
+# Sync version into the native packages.
+#
+# These carry the version in their own files and are built from the tag's
+# tarball, so one left behind does not fail loudly -- it fetches the *previous*
+# tag and ships it under the new version's name. Every one is verified after
+# writing, because a silent sed miss here is a package that lies about what is
+# inside it.
+PKGBUILDS=(
+    "${SCRIPT_DIR}/aur/open-couch-engine/PKGBUILD"
+    "${SCRIPT_DIR}/aur/open-couch/PKGBUILD"
+)
+for pkgbuild in "${PKGBUILDS[@]}"; do
+    sed -i -e "s/^pkgver=.*/pkgver=${VERSION}/" -e "s/^pkgrel=.*/pkgrel=1/" "$pkgbuild"
+    if ! grep -q "^pkgver=${VERSION}$" "$pkgbuild"; then
+        printf 'Error: failed to update pkgver in %s.\n' "$pkgbuild" >&2
+        exit 1
+    fi
+done
+
+SPEC="${SCRIPT_DIR}/rpm/open-couch.spec"
+sed -i -e "0,/^Version:.*/s//Version:        ${VERSION}/" -e "0,/^Release:.*/s//Release:        1%{?dist}/" "$SPEC"
+if ! grep -q "^Version:        ${VERSION}$" "$SPEC"; then
+    printf 'Error: failed to update Version in %s.\n' "$SPEC" >&2
+    exit 1
+fi
+
+# rpmlint treats a version with no changelog entry as an error, and a package
+# whose changelog stops before its own version tells the user nothing about what
+# they are installing. The entry points at the release notes rather than trying
+# to summarise them here, where nobody would keep it honest.
+PACKAGER_NAME="$(git -C "$PROJECT_DIR" config user.name || echo 'Gustavo Belo')"
+PACKAGER_EMAIL="$(git -C "$PROJECT_DIR" config user.email || echo 'gustavobelo28@gmail.com')"
+if ! grep -q "^\* .* - ${VERSION}-1$" "$SPEC"; then
+    CHANGELOG_ENTRY="* $(LC_ALL=C date -u '+%a %b %d %Y') ${PACKAGER_NAME} <${PACKAGER_EMAIL}> - ${VERSION}-1
+- See https://github.com/GustavoBelo/OpenCouch/releases/tag/${TAG}
+"
+    awk -v entry="$CHANGELOG_ENTRY" '
+        /^%changelog$/ { print; print entry; next }
+        { print }
+    ' "$SPEC" > "${SPEC}.tmp" && mv "${SPEC}.tmp" "$SPEC"
+    if ! grep -q "^\* .* - ${VERSION}-1$" "$SPEC"; then
+        printf 'Error: failed to add a %%changelog entry for %s.\n' "$VERSION" >&2
+        exit 1
+    fi
+fi
+
 # Validate AppStream metainfo BEFORE commit/tag — fail if invalid (when tool is available)
 if command -v appstreamcli >/dev/null 2>&1; then
     TMP_META="$(mktemp)"
@@ -74,7 +120,7 @@ else
     printf 'Warning: appstreamcli not found; skipping metainfo validation.\n' >&2
 fi
 
-git -C "$PROJECT_DIR" add "$VERSION_FILE" "$INSTALL_FILE"
+git -C "$PROJECT_DIR" add "$VERSION_FILE" "$INSTALL_FILE" "${PKGBUILDS[@]}" "$SPEC"
 git -C "$PROJECT_DIR" commit -m "Release ${TAG}"
 
 git -C "$PROJECT_DIR" tag "$TAG"

@@ -10,7 +10,13 @@ namespace {
 
     // Bump this when the engine changes in a way that requires users to reinstall
     // Leave it alone for app-only releases (UI, settings, translations, etc.)
-    constexpr const char *kMinEngineVersion = "1.7.0";
+    //
+    // 2.0.0 is the console-mode rewrite. A 1.x engine shares nothing with it but
+    // the name: it drove KDE's display layout and answered `status` with log
+    // lines. kCheckIdentity below already refuses the bash one by content; this
+    // refuses an older Go build, which passes that check and would then be asked
+    // to host a session it knows nothing about.
+    constexpr const char *kMinEngineVersion = "2.0.0";
 
     // What `check` must print. An exit code alone cannot tell this engine from
     // the bash one it replaced: that one's `check` also succeeds, reports the
