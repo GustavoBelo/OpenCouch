@@ -60,7 +60,14 @@ open-couch-engine tv HDMI-A-1         # choose the one on the television
 open-couch-engine setup               # writes the hosting session entry, tells you where to put it
 ```
 
-Then log out, pick the new session at your login screen, and:
+`setup` prints the last step, which depends on your login screen. If it offers a
+session picker, choose **Open Couch (console switch)** there. Plenty of themes
+have no picker -- they choose a session for you and show no way to change it --
+in which case `setup` gives you an autologin snippet instead. Autologin is read
+when the display manager starts, so that route needs a reboot; logging out only
+returns you to the greeter, which never re-reads it.
+
+Then:
 
 ```sh
 open-couch-engine enter
@@ -71,12 +78,43 @@ over ssh.
 
 To start there every time: `open-couch-engine boot console`.
 
-## 🧹 Remove
+If a switch does not do what you expected, `~/.cache/open-couch/console.log` says
+what the wrapper did. It survives between sessions, which the display manager's
+own session log does not.
+
+## 🆘 If you cannot log in
+
+The hosting session is what your machine logs into, so anything that breaks the
+engine breaks your login. The entry declares `TryExec`, so a **missing** binary
+just hides the session -- but one that is present and failing will start, exit,
+and hand you back to the greeter, which may offer the same session again.
+
+Switch to a text console with **Ctrl+Alt+F2**, log in there, and remove the entry:
 
 ```sh
+sudo rm -f /usr/local/share/wayland-sessions/open-couch-session.desktop
+rm -f ~/.local/share/wayland-sessions/open-couch-session.desktop
+```
+
+If you set up autologin, also undo that:
+
+```sh
+sudo rm -f /etc/sddm.conf.d/zzz-open-couch.conf
+```
+
+Then reboot. `~/.cache/open-couch/console.log` will still be there afterwards and
+is the first thing to read.
+
+## 🧹 Remove
+
+Take the session entry out **first**. A machine that still offers a session whose
+engine you have deleted is a machine you may not be able to log into.
+
+```sh
+sudo rm -f /usr/local/share/wayland-sessions/open-couch-session.desktop
+sudo rm -f /etc/sddm.conf.d/zzz-open-couch.conf     # only if you set up autologin
 rm -f ~/.local/bin/open-couch-engine
 rm -rf ~/.config/open-couch ~/.cache/open-couch
-sudo rm -f /usr/local/share/wayland-sessions/open-couch-session.desktop
 ```
 
 ## 📄 License
