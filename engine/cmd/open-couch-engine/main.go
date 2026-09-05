@@ -193,19 +193,33 @@ func hostSession(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	desktop, ok := console.FindEntryByFile(e.Entries, e.Config.DesktopSession)
-	if !ok {
-		return fmt.Errorf("the desktop session %q was not found; run `open-couch-engine setup` or set desktop_session in %s",
-			e.Config.DesktopSession, console.ConfigPath(e.Base))
-	}
-	if console.HostsConsole(desktop) {
-		return fmt.Errorf("the configured desktop session %s is a hosting session; it would host itself forever", desktop.File())
-	}
-
 	// A session's stderr goes wherever the login manager decided, which on SDDM
 	// is nowhere a person can reach. Without a file there is no way to find out
 	// why a session that lasted five seconds gave up.
 	logf := logger(e.StateDir)
+
+	// Nothing below refuses to start. This process is what the login manager
+	// ran, so returning an error here ends the session as fast as it began, and
+	// the greeter answers by offering the same hosting entry again -- a password
+	// loop with no way out on a greeter that shows no session picker. Whatever
+	// is wrong with the configuration can be fixed from inside a desktop; it
+	// cannot be fixed from a login screen.
+	desktop, ok := console.FindEntryByFile(e.Entries, e.Config.DesktopSession)
+	if ok && console.HostsConsole(desktop) {
+		logf("console: %s is a hosting session and would host itself forever; looking for another desktop", desktop.File())
+		ok = false
+	}
+	if !ok {
+		fallback, found := console.FallbackDesktop(e.Entries)
+		if !found {
+			return fmt.Errorf("the desktop session %q was not found and no other desktop is installed; "+
+				"run `open-couch-engine setup` or set desktop_session in %s",
+				e.Config.DesktopSession, console.ConfigPath(e.Base))
+		}
+		logf("console: the configured desktop %q is not installed; hosting %s instead. Run `open-couch-engine setup` to choose again",
+			e.Config.DesktopSession, fallback.File())
+		desktop = fallback
+	}
 
 	w := &console.Wrapper{
 		DesktopExec:    desktop.Exec,

@@ -211,3 +211,34 @@ func TestSDDMInstructionsNameAnAutologinFileThatOutsortsSteams(t *testing.T) {
 		t.Fatalf("instructions still promise a session picker that many themes lack:\n%s", out)
 	}
 }
+
+// The wrapper is what the login manager starts, so it must never refuse to run:
+// exiting immediately produces a greeter that offers the hosting entry again,
+// and on a theme with no session picker the user cannot escape it. A configured
+// desktop that no longer exists has to resolve to some other desktop.
+func TestFallbackDesktopSkipsHostingAndConsoleEntries(t *testing.T) {
+	entries := []Entry{
+		{Path: "/u/s/open-couch-session.desktop", Name: HostingEntryName(), Exec: []string{"open-couch-engine", "host-session"}},
+		{Path: "/u/s/gamescope-session.desktop", Name: "Gamescope", Exec: []string{"start-gamescope-session"}, DesktopNames: []string{"gamescope"}},
+		{Path: "/u/s/hyprland-uwsm.desktop", Name: "Hyprland (uwsm-managed)", Exec: []string{"uwsm", "start", "hyprland.desktop"}},
+	}
+	got, ok := FallbackDesktop(entries)
+	if !ok {
+		t.Fatal("no fallback found; the wrapper would refuse to start and lock the user out")
+	}
+	if got.File() != "hyprland-uwsm.desktop" {
+		t.Fatalf("fell back to %s, which is not a desktop to come back to", got.File())
+	}
+}
+
+// With nothing but hosting and console entries there is no way back, and saying
+// so plainly beats hosting something that would host itself.
+func TestFallbackDesktopFindsNothingWhenOnlyHostingEntriesExist(t *testing.T) {
+	entries := []Entry{
+		{Path: "/u/s/open-couch-session.desktop", Name: HostingEntryName(), Exec: []string{"open-couch-engine", "host-session"}},
+		{Path: "/u/s/gamescope-session.desktop", Name: "Gamescope", Exec: []string{"start-gamescope-session"}, DesktopNames: []string{"gamescope"}},
+	}
+	if got, ok := FallbackDesktop(entries); ok {
+		t.Fatalf("picked %s, which cannot be a way back", got.File())
+	}
+}

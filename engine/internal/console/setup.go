@@ -103,6 +103,30 @@ Type=Application
 // HostingEntryFile is the name `console setup` writes. Recognising it is a
 // safety net for entries generated before the marker existed: they point at a
 // wrapper script, so neither the marker nor the Exec line gives them away.
+// FallbackDesktop picks a desktop to host when the configured one is gone.
+//
+// Refusing instead is a lockout, and a complete one. The wrapper is what the
+// login manager starts, so a wrapper that exits immediately means the session
+// ends immediately, the greeter comes back, and the greeter offers the session
+// it last used -- the hosting entry -- which exits immediately again. The user
+// types their password into a loop, and greeters that show no session picker
+// leave them no way out of it.
+//
+// Any real desktop beats that. It may not be the one they chose, and the log
+// says so, but they are logged in and can fix the configuration from inside it.
+//
+// Hosting entries are skipped because one would host itself forever, and the
+// gamescope session because it is the thing being switched to, not a way back.
+func FallbackDesktop(entries []Entry) (Entry, bool) {
+	for _, entry := range entries {
+		if len(entry.Exec) == 0 || HostsConsole(entry) || IsGamescopeSession(entry) {
+			continue
+		}
+		return entry, true
+	}
+	return Entry{}, false
+}
+
 // AutologinDropIn is what to call the file that points SDDM's autologin at the
 // hosting session.
 //
