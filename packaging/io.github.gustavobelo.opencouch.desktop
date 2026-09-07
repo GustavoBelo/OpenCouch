@@ -10,3 +10,5 @@ Terminal=false
 Categories=Game;Utility;
 Keywords=steam;bigpicture;gamescope;console;couch;tv;display;
 StartupNotify=true
+# X11 and XWayland match a window to this entry by class rather than by app id.
+StartupWMClass=io.github.gustavobelo.opencouch

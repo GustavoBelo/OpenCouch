@@ -28,6 +28,12 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("OpenCouch"));
     app.setApplicationVersion(QStringLiteral(OPENCOUCH_VERSION_STRING));
     app.setOrganizationName(QStringLiteral("io.github.gustavobelo"));
+    // The Wayland app id comes from here, and without it Qt falls back to the
+    // executable's name -- so the window announced itself as "opencouch" while
+    // the desktop entry, the icon and every window rule a user could write are
+    // named io.github.gustavobelo.opencouch. Nothing matched: no icon in the
+    // switcher, and a float rule for this window had nothing to attach to.
+    app.setDesktopFileName(QStringLiteral("io.github.gustavobelo.opencouch"));
     app.setWindowIcon(applicationIcon());
 
     QTranslator enFallback;

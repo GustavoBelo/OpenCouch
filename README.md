@@ -80,7 +80,19 @@ To start there every time: `open-couch-engine boot console`.
 
 If a switch does not do what you expected, `~/.cache/open-couch/console.log` says
 what the wrapper did. It survives between sessions, which the display manager's
-own session log does not.
+own session log does not, and the login before this one is filed under
+`~/.cache/open-couch/logs/` -- which is usually the one worth reading, because
+the switch that failed is what ended it. The application shows both;
+`open-couch-engine log`, `log --list` and `log --session <ID>` are the same thing
+from a terminal.
+
+## 🎮 Entering with a controller
+
+`open-couch-engine controller on` -- or the switch in the application -- offers
+the console when a gamepad is switched on. It announces itself first and waits
+twenty seconds, with a Cancel button in the notification and the same countdown
+in the application if it is open: switching a pad on by accident should not close
+your desktop.
 
 ## 🆘 If you cannot log in
 

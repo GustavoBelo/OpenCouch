@@ -34,6 +34,7 @@
 <message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation>Something is still missing. Open Settings to finish setting up.</translation></message>
 <message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation>Entering console mode</translation></message>
 <message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation>This desktop session is about to close and Steam will take over %1. Anything still open goes with it.</translation></message>
+<message id="dashboard.countdown_trigger_controller"><source>dashboard.countdown_trigger_controller</source><translation>A controller connected.</translation></message>
 <message id="settings.console_description"><source>settings.console_description</source><translation>Console mode hands the whole machine to Steam's gamescope session on your television, and gives it back when you leave. Your desktop session closes while it runs.</translation></message>
 <message id="settings.ready"><source>settings.ready</source><translation>Console mode is ready</translation></message>
 <message id="settings.not_ready"><source>settings.not_ready</source><translation>Console mode is not ready yet</translation></message>

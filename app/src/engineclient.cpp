@@ -16,7 +16,13 @@ namespace {
     // lines. kCheckIdentity below already refuses the bash one by content; this
     // refuses an older Go build, which passes that check and would then be asked
     // to host a session it knows nothing about.
-    constexpr const char *kMinEngineVersion = "2.0.0";
+    //
+    // 2.0.1 adds `log` and `controller`. A 2.0.0 engine has neither, and it
+    // fails them the way it fails any unknown command -- so the log panel would
+    // simply be empty and the controller switch would simply do nothing, with
+    // nothing anywhere to say why. Refusing it is what turns both into a
+    // sentence the user can act on.
+    constexpr const char *kMinEngineVersion = "2.0.1";
 
     // What `check` must print. An exit code alone cannot tell this engine from
     // the bash one it replaced: that one's `check` also succeeds, reports the

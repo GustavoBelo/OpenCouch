@@ -34,6 +34,7 @@
 <message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation>Falta alguma coisa. Abra as Configurações para terminar.</translation></message>
 <message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation>Entrando no modo console</translation></message>
 <message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation>Esta sessão do desktop está prestes a fechar e o Steam vai assumir a %1. Tudo que estiver aberto vai junto.</translation></message>
+<message id="dashboard.countdown_trigger_controller"><source>dashboard.countdown_trigger_controller</source><translation>Um controle foi conectado.</translation></message>
 <message id="settings.console_description"><source>settings.console_description</source><translation>O modo console entrega a máquina inteira para a sessão gamescope do Steam na sua TV, e devolve quando você sai. Sua sessão do desktop fecha enquanto ele roda.</translation></message>
 <message id="settings.ready"><source>settings.ready</source><translation>O modo console está pronto</translation></message>
 <message id="settings.not_ready"><source>settings.not_ready</source><translation>O modo console ainda não está pronto</translation></message>

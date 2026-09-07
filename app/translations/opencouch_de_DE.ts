@@ -34,6 +34,7 @@
 <message id="dashboard.console_not_ready_body"><source>dashboard.console_not_ready_body</source><translation type="unfinished"></translation></message>
 <message id="dashboard.countdown_title"><source>dashboard.countdown_title</source><translation type="unfinished"></translation></message>
 <message id="dashboard.countdown_body"><source>dashboard.countdown_body</source><translation type="unfinished"></translation></message>
+<message id="dashboard.countdown_trigger_controller"><source>dashboard.countdown_trigger_controller</source><translation>Ein Controller wurde verbunden.</translation></message>
 <message id="settings.console_description"><source>settings.console_description</source><translation type="unfinished"></translation></message>
 <message id="settings.ready"><source>settings.ready</source><translation type="unfinished"></translation></message>
 <message id="settings.not_ready"><source>settings.not_ready</source><translation type="unfinished"></translation></message>

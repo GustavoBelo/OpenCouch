@@ -20,20 +20,29 @@ Item {
         // this window is the first thing able to say what happened.
         if (page.status.failure) {
             banner.show(page.status.failure, true);
+            // And the account of it is one click away, behind a section the
+            // user has no reason to suspect is there. A failure is the one time
+            // the log is the point of the window, so it opens itself.
+            logSection.expanded = true;
         }
     }
 
     function loadLog() {
+        page.viewingHistory = "";
         const raw = backend.readLog();
         logView.text = (raw === undefined || raw === "") ? "" : raw.trim();
         logView.cursorPosition = logView.length;
+        historySelect.entries = backend.logHistory();
     }
 
     Component.onCompleted: {
-        backend.clearLog();
+        // Deliberately no clearLog() here. This used to empty the log every
+        // time the window opened, which destroyed the one account of why the
+        // console did not start last time -- read, by definition, on the next
+        // desktop that comes up. Clearing is the button that says so.
         page.reload();
         page.loadLog();
-        historySelect.entries = backend.logHistory();
+        countdown.sync();
 
         if (!backend.engineAvailable()) {
             banner.show(qsTrId("engine.missing"), true);
@@ -52,15 +61,26 @@ Item {
             banner.show(message, !success);
             page.reload();
         }
+        // The settings page is pushed over this one rather than replacing it,
+        // so nothing here is rebuilt when the user comes back. Without this the
+        // dashboard went on showing the display that was chosen when it was
+        // built, and Refresh was the only way to find out otherwise.
+        function onConfigChanged() {
+            page.reload();
+        }
+        function onPendingEntryChanged() {
+            countdown.sync();
+        }
     }
 
     Controls.ScrollView {
+        id: scroll
         anchors.fill: parent
         contentWidth: availableWidth
         clip: true
 
         ColumnLayout {
-            width: parent.parent.width
+            width: scroll.availableWidth
             spacing: Metrics.sectionGap
 
             Item { Layout.preferredHeight: Metrics.xs }
@@ -227,6 +247,7 @@ Item {
                     onClicked: {
                         page.reload();
                         page.loadLog();
+                        historySelect.currentIndex = -1;
                     }
                 }
             }
@@ -330,7 +351,7 @@ Item {
                         visible: page.viewingHistory !== ""
                         text: qsTrId("dashboard.back_to_live_log")
                         icon: "refresh"
-                        onClicked: { page.viewingHistory = ""; page.loadLog(); historySelect.currentIndex = -1; }
+                        onClicked: { page.loadLog(); historySelect.currentIndex = -1; }
                     }
                 }
 
@@ -414,6 +435,12 @@ Item {
         z: 10
 
         property int remaining: 10
+        // An entry announced by the engine -- a controller switched on -- is
+        // counted down by the wrapper, and it is the wrapper that will stop the
+        // compositor. This window only shows the same clock and offers the same
+        // way out, so it must not enter anything itself when it reaches zero.
+        property bool external: false
+        property string trigger: ""
 
         function arm() {
             if (!backend.engineAvailable()) {
@@ -421,14 +448,33 @@ Item {
                 return;
             }
             banner.visible = false;
+            external = false;
+            trigger = "";
             remaining = 10;
             opacity = 1;
             ticker.restart();
         }
 
+        // Armed from the announcement the wrapper left, seconds remaining and
+        // all: the window may have been opened halfway through one.
+        function sync() {
+            const pending = backend.pendingEntry();
+            if (pending && pending.seconds > 0) {
+                banner.visible = false;
+                external = true;
+                trigger = pending.trigger || "";
+                remaining = pending.seconds;
+                opacity = 1;
+                ticker.restart();
+            } else if (external) {
+                stand_down();
+            }
+        }
+
         function stand_down() {
             ticker.stop();
             opacity = 0;
+            external = false;
         }
 
         Behavior on opacity { NumberAnimation { duration: Metrics.moveDuration; easing.type: Easing.OutCubic } }
@@ -456,6 +502,16 @@ Item {
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
+                visible: countdown.trigger === "controller"
+                text: qsTrId("dashboard.countdown_trigger_controller")
+                color: Colors.muted
+                font.pixelSize: Metrics.body
+                wrapMode: Text.Wrap
+            }
+
+            Text {
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
                 text: qsTrId("dashboard.countdown_body").arg(page.displayName)
                 color: Colors.foreground
                 font.pixelSize: Metrics.body
@@ -468,7 +524,14 @@ Item {
                 large: true
                 icon: "close"
                 text: qsTrId("common.cancel")
-                onClicked: countdown.stand_down()
+                onClicked: {
+                    // The engine is counting down too, and the file it polls
+                    // for is the only thing that reaches it.
+                    if (countdown.external) {
+                        backend.cancelEntry();
+                    }
+                    countdown.stand_down();
+                }
             }
         }
 
@@ -478,8 +541,12 @@ Item {
             repeat: true
             onTriggered: {
                 countdown.remaining -= 1;
-                if (countdown.remaining <= 0) {
-                    countdown.stand_down();
+                if (countdown.remaining > 0) {
+                    return;
+                }
+                const ours = !countdown.external;
+                countdown.stand_down();
+                if (ours) {
                     backend.enterConsole();
                 }
             }

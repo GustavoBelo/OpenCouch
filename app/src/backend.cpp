@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -17,11 +18,16 @@
 #include <QMenu>
 #include <QProcess>
 #include <QSettings>
+#include <QStandardPaths>
 #include <QSystemTrayIcon>
 #include <QTextStream>
 #include <QWindow>
 
 namespace {
+// The engine's own name for the announcement it leaves in $XDG_RUNTIME_DIR.
+// It has to match pendingFile in engine/internal/console/pending.go.
+const QLatin1String kPendingEntryFile("open-couch-entry-pending");
+
 QIcon trayIcon()
 {
     return applicationIcon();
@@ -52,11 +58,66 @@ Backend::Backend(QObject *parent)
                 });
         m_trayIcon->setContextMenu(menu);
     }
+
+    watchPendingEntry();
 }
 
-QString Backend::configFilePath() const
+// The wrapper leaves an announcement in the runtime directory when something
+// other than this window asks for the console -- a controller being switched
+// on. Watching the directory as well as the file is the point: the file appears
+// and disappears, and a watch on a path that does not exist yet watches nothing.
+void Backend::watchPendingEntry()
 {
-    return ConfigStore::configFilePath();
+    m_runtimeDir = qEnvironmentVariable("XDG_RUNTIME_DIR");
+    if (m_runtimeDir.isEmpty()) {
+        return;
+    }
+
+    const QString path = m_runtimeDir + QStringLiteral("/") + kPendingEntryFile;
+    const auto reread = [this, path]() {
+        if (QFileInfo::exists(path) && !m_runtimeWatcher.files().contains(path)) {
+            m_runtimeWatcher.addPath(path);
+        }
+        emit pendingEntryChanged();
+    };
+    connect(&m_runtimeWatcher, &QFileSystemWatcher::directoryChanged, this, reread);
+    connect(&m_runtimeWatcher, &QFileSystemWatcher::fileChanged, this, reread);
+
+    m_runtimeWatcher.addPath(m_runtimeDir);
+    if (QFileInfo::exists(path)) {
+        m_runtimeWatcher.addPath(path);
+    }
+}
+
+QVariantMap Backend::pendingEntry()
+{
+    if (m_runtimeDir.isEmpty()) {
+        return {};
+    }
+    QFile file(m_runtimeDir + QStringLiteral("/") + kPendingEntryFile);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+
+    const QJsonObject entry = QJsonDocument::fromJson(file.readAll()).object();
+    const QDateTime deadline =
+        QDateTime::fromString(entry.value(QStringLiteral("deadline")).toString(), Qt::ISODate);
+    if (!deadline.isValid()) {
+        return {};
+    }
+    // Seconds left, not the length of the countdown: the announcement may have
+    // been written a moment or a minute ago, and a clock that starts over every
+    // time the window looks at it is not a countdown.
+    const qint64 remaining = QDateTime::currentDateTime().secsTo(deadline);
+    if (remaining <= 0) {
+        return {};
+    }
+
+    return QVariantMap{
+        {QStringLiteral("seconds"), static_cast<int>(remaining)},
+        {QStringLiteral("trigger"), entry.value(QStringLiteral("trigger")).toString()},
+        {QStringLiteral("display"), entry.value(QStringLiteral("display")).toString()},
+    };
 }
 
 QString Backend::engineCommand() const
@@ -134,16 +195,6 @@ QVariantList Backend::listDisplays()
         result.append(value.toObject().toVariantMap());
     }
     return result;
-}
-
-QVariantMap Backend::loadConfig()
-{
-    return m_configStore->loadConfig();
-}
-
-bool Backend::saveConfig(const QVariantMap &config)
-{
-    return m_configStore->saveConfig(config);
 }
 
 bool Backend::autostartEnabled()
@@ -236,6 +287,9 @@ QString Backend::runSetup()
 {
     bool ok = false;
     const QString output = runEngineSync({QStringLiteral("setup")}, &ok);
+    if (ok) {
+        emit configChanged();
+    }
     return ok ? output : QString();
 }
 
@@ -243,6 +297,9 @@ bool Backend::setTv(const QString &connector)
 {
     bool ok = false;
     runEngineSync({QStringLiteral("tv"), connector}, &ok);
+    if (ok) {
+        emit configChanged();
+    }
     return ok;
 }
 
@@ -250,37 +307,45 @@ bool Backend::setBootMode(const QString &mode)
 {
     bool ok = false;
     runEngineSync({QStringLiteral("boot"), mode}, &ok);
+    if (ok) {
+        emit configChanged();
+    }
+    return ok;
+}
+
+// Written through the engine, like every other console setting. The app used to
+// put this in a config.env of its own, which the engine that reads it has never
+// looked at: the switch saved, and nothing on the machine was any different.
+bool Backend::setEnterOnController(bool enabled)
+{
+    bool ok = false;
+    runEngineSync({QStringLiteral("controller"),
+                   enabled ? QStringLiteral("on") : QStringLiteral("off")}, &ok);
+    if (ok) {
+        emit configChanged();
+    }
     return ok;
 }
 
 void Backend::copyLogToClipboard()
 {
-    bool ok = false;
-    const QString output = runEngineSync({QStringLiteral("log")}, &ok);
-    if (ok) {
-        QGuiApplication::clipboard()->setText(output);
-    }
+    QGuiApplication::clipboard()->setText(readLog());
 }
 
 QString Backend::exportLogToHome()
 {
-    bool ok = false;
-    const QString output = runEngineSync({QStringLiteral("export-log")}, &ok);
-    if (!ok) {
-        return QString();
-    }
-    return output.trimmed();
+    return exportText(readLog(), QStringLiteral("current"));
 }
 
 void Backend::clearLog()
 {
-    runEngineSync({QStringLiteral("clear-log")});
+    runEngineSync({QStringLiteral("log"), QStringLiteral("--clear")});
 }
 
 QVariantList Backend::logHistory()
 {
     bool ok = false;
-    const QString output = runEngineSync({QStringLiteral("log-history")}, &ok);
+    const QString output = runEngineSync({QStringLiteral("log"), QStringLiteral("--list")}, &ok);
     QVariantList result;
     if (!ok) {
         return result;
@@ -299,23 +364,40 @@ QVariantList Backend::logHistory()
 
 bool Backend::copyHistoryLogToClipboard(const QString &id)
 {
-    bool ok = false;
-    const QString output = runEngineSync({QStringLiteral("print-history-log"), id}, &ok);
-    if (!ok) {
+    const QString text = readHistoryLog(id);
+    if (text.isEmpty()) {
         return false;
     }
-    QGuiApplication::clipboard()->setText(output);
+    QGuiApplication::clipboard()->setText(text);
     return true;
 }
 
 QString Backend::exportHistoryLog(const QString &id)
 {
-    bool ok = false;
-    const QString output = runEngineSync({QStringLiteral("export-history-log"), id}, &ok);
-    if (!ok) {
+    return exportText(readHistoryLog(id), id);
+}
+
+// Writing the file is the application's, not the engine's: by this point the
+// text is already here, and asking a command-line tool where a desktop wants to
+// put a file is a question it has no way to answer.
+QString Backend::exportText(const QString &text, const QString &suffix) const
+{
+    if (text.isEmpty()) {
         return QString();
     }
-    return output.trimmed();
+    QString directory = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (directory.isEmpty()) {
+        directory = QDir::homePath();
+    }
+    const QString path = directory + QStringLiteral("/open-couch-log-") + suffix
+        + QStringLiteral(".txt");
+
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+        return QString();
+    }
+    QTextStream(&file) << text;
+    return file.error() == QFile::NoError ? path : QString();
 }
 
 bool Backend::onboardingSeen()
@@ -328,35 +410,17 @@ void Backend::setOnboardingSeen(bool seen)
     m_configStore->setOnboardingSeen(seen);
 }
 
-QString Backend::readHistoryLog(const QString &id) {
-    bool ok = false;
-    const QString output = runEngineSync({QStringLiteral("print-history-log"), id}, &ok);
-    
-    if (!ok) {
-        return QString();
-    }
-    
-    return output;
-}
-
-QString Backend::runSync(const QStringList &args)
+QString Backend::readHistoryLog(const QString &id)
 {
     bool ok = false;
-    const QString output = runEngineSync(args, &ok);
-    if (!ok) {
-        return QString();
-    }
-    return output;
+    const QString output =
+        runEngineSync({QStringLiteral("log"), QStringLiteral("--session"), id}, &ok);
+    return ok ? output : QString();
 }
 
 QString Backend::readLog()
 {
     bool ok = false;
     const QString output = runEngineSync({QStringLiteral("log")}, &ok);
-    
-    if (!ok) {
-        return QString();
-    }
-    
-    return output;
+    return ok ? output : QString();
 }

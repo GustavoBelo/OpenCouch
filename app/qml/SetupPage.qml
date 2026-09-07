@@ -8,10 +8,26 @@ Item {
 
     property var status: ({})
     property var displays: []
+    // Read once per reload rather than bound: neither answer comes from a
+    // property with a change signal, so a binding would be evaluated when the
+    // page was built and never again.
+    property bool autostart: false
+    property bool backgroundOnClose: true
 
     function reload() {
         page.status = backend.consoleStatus();
         page.displays = backend.listDisplays();
+        page.autostart = backend.autostartEnabled();
+        page.backgroundOnClose = backend.backgroundOnClose();
+        // Assigned, not bound. Activating a ComboBox writes currentIndex, and
+        // that write replaces whatever binding was there -- so after the first
+        // choice the control would stop following the engine.
+        bootSelect.currentIndex = page.bootIndex();
+    }
+
+    function bootIndex() {
+        const boot = page.status.boot || "desktop";
+        return boot === "console" ? 1 : (boot === "last" ? 2 : 0);
     }
 
     // The connector is what gamescope takes; the description is what a person
@@ -33,13 +49,22 @@ Item {
 
     Component.onCompleted: page.reload()
 
+    // Every setting here is one engine call. Rather than each of them
+    // remembering to refresh afterwards, the page listens for the engine
+    // having been told something.
+    Connections {
+        target: backend
+        function onConfigChanged() { page.reload(); }
+    }
+
     Controls.ScrollView {
+        id: scroll
         anchors.fill: parent
         contentWidth: availableWidth
         clip: true
 
         ColumnLayout {
-            width: parent.parent.width
+            width: scroll.availableWidth
             spacing: Metrics.sectionGap
 
             Item { Layout.preferredHeight: Metrics.xs }
@@ -173,7 +198,6 @@ Item {
                                     setupOutput.text = instructions;
                                     setupOutput.visible = true;
                                 }
-                                page.reload();
                             }
                         }
 
@@ -247,8 +271,8 @@ Item {
                         placeholder: qsTrId("settings.choose_display")
                         onActivated: {
                             const display = page.displays[currentIndex];
-                            if (display && backend.setTv(display.connector)) {
-                                page.reload();
+                            if (display) {
+                                backend.setTv(display.connector);
                             }
                         }
                     }
@@ -323,6 +347,7 @@ Item {
                         }
 
                         Select {
+                            id: bootSelect
                             Layout.fillWidth: true
                             textRole: "label"
                             valueRole: "value"
@@ -331,11 +356,7 @@ Item {
                                 { value: "console", label: qsTrId("settings.boot_console") },
                                 { value: "last",    label: qsTrId("settings.boot_last") }
                             ]
-                            currentIndex: {
-                                const boot = page.status.boot || "desktop";
-                                return boot === "console" ? 1 : (boot === "last" ? 2 : 0);
-                            }
-                            onActivated: { if (backend.setBootMode(currentValue)) page.reload(); }
+                            onActivated: backend.setBootMode(currentValue)
                         }
 
                         Text {
@@ -352,27 +373,31 @@ Item {
                         label: qsTrId("settings.enter_on_controller")
                         description: qsTrId("settings.enter_on_controller_description")
                         checked: page.status.enter_on_controller_connect === true
-                        onToggled: function(value) {
-                            var config = backend.loadConfig();
-                            config["ENTER_ON_CONTROLLER_CONNECT"] = value ? "true" : "false";
-                            backend.saveConfig(config);
-                        }
+                        onToggled: function(value) { backend.setEnterOnController(value); }
                     }
 
                     SettingSwitch {
                         Layout.fillWidth: true
                         label: qsTrId("settings.autostart")
                         description: qsTrId("settings.autostart_description")
-                        checked: backend.autostartEnabled()
-                        onToggled: function(value) { backend.setAutostart(value); }
+                        checked: page.autostart
+                        // The portal can refuse, so the switch follows what the
+                        // attempt actually achieved rather than what was asked.
+                        onToggled: function(value) {
+                            backend.setAutostart(value);
+                            page.autostart = backend.autostartEnabled();
+                        }
                     }
 
                     SettingSwitch {
                         Layout.fillWidth: true
                         label: qsTrId("settings.background_on_close")
                         description: qsTrId("settings.background_on_close_description")
-                        checked: backend.backgroundOnClose()
-                        onToggled: function(value) { backend.setBackgroundOnClose(value); }
+                        checked: page.backgroundOnClose
+                        onToggled: function(value) {
+                            backend.setBackgroundOnClose(value);
+                            page.backgroundOnClose = backend.backgroundOnClose();
+                        }
                     }
                 }
             }

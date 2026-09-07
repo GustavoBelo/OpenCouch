@@ -3,6 +3,11 @@ import io.github.gustavobelo.opencouch
 
 // A switch. The track carries the accent when on, because the state has to be
 // readable without finding the knob first.
+//
+// It shows a state, it does not keep one. Writing to `checked` here would break
+// the binding the owner set up, and from then on the control would report what
+// it was last clicked to rather than what the engine actually did -- which is
+// how a setting comes to look saved while nothing on the machine changed.
 Item {
     id: root
 
@@ -44,9 +49,6 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            root.checked = !root.checked;
-            root.toggled(root.checked);
-        }
+        onClicked: root.toggled(!root.checked)
     }
 }

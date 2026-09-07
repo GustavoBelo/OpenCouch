@@ -18,10 +18,9 @@ MouseArea {
 
     implicitHeight: row.implicitHeight
     cursorShape: Qt.PointingHandCursor
-    onClicked: {
-        control.checked = !control.checked;
-        root.toggled(control.checked);
-    }
+    // Asks, like the switch inside it: the state comes back from whoever owns
+    // the setting, so a call that fails leaves the switch where it was.
+    onClicked: root.toggled(!root.checked)
 
     RowLayout {
         id: row
