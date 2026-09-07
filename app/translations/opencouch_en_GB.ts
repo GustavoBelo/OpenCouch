@@ -21,6 +21,8 @@
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>When closing the window, the app stays running in the system tray to keep an eye on Steam. Use the tray icon to reopen or quit.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Start automatically on login</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimise to system tray on close</translation></message>
+<message id="settings.start_minimized_description"><source>settings.start_minimized_description</source><translation>Launches hidden in the system tray instead of opening the window.</translation></message>
+<message id="settings.start_minimized"><source>settings.start_minimized</source><translation>Start minimised</translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Buy the dev a coffee</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch is open-source and built in my spare time. If it made your life a bit easier, consider supporting the project!</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Back to live log</translation></message>

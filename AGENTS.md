@@ -85,7 +85,7 @@ A GUI é apenas uma camada; ela invoca o engine via `QProcess` (`app/src/enginec
   arquivo fica apontando para um inode morto). Registrado como **singleton QML**, não context
   property: `Colors.qml` é singleton, e singletons não enxergam context properties.
 - `src/configstore.{h,cpp}` — só o que é **do app**: autostart (desktop entry / portal
-  Background), `backgroundOnClose`, onboarding — tudo em `QSettings`. Configuração do
+  Background), `backgroundOnClose`, `startMinimized`, onboarding — tudo em `QSettings`. Configuração do
   **console** não passa por aqui: ela mora no `console.json` e só o engine escreve nela.
   (Havia um `config.env` do engine bash sendo gravado por este arquivo até a 2.0.1; o
   engine Go nunca leu esse arquivo, então toda preferência escrita ali era silenciosamente
@@ -307,6 +307,7 @@ depois da tag) — e é por isso que o `release.sh` valida com `--no-net`.
 - O engine tem suíte Go (`internal/console` ~77% de cobertura). Rode sempre:
   `cd engine && go test ./... && go vet ./... && gofmt -l ./cmd ./internal`.
   Pelo ctest: `ctest --test-dir app-build --output-on-failure`.
+  Tudo isso também roda na esteira (`ci.yml`) em todo push na `main` e todo PR.
 - A GUI não tem testes. Para pegar erro de QML sem sessão gráfica:
   `QT_QPA_PLATFORM=offscreen ./app-build/opencouch` — `main.cpp` imprime todo warning de QML em
   stderr, e sair sozinho significa que o QML não carregou.
@@ -391,6 +392,18 @@ que não existiam mais. O que está entre crases é `grep`-ável.
   `DashboardPage`, que continua vivo e não roda `Component.onCompleted` de novo na volta. É por isso
   que existe o sinal `configChanged` — sem ele o dashboard mostra o que era verdade quando foi
   construído, e o botão *Refresh* vira a única forma de descobrir o contrário.
+- **Autostart tem dois mecanismos e só um pode ficar.** O portal Background e o entry em
+  `~/.config/autostart` lançam o app de formas independentes; um entry órfão (de uma tentativa em
+  que o portal falhou) dispara segunda instância no login, e o `WAKEUP` dela abre a janela da
+  primeira — um "iniciar minimizado" que não minimiza. `ConfigStore::setAutostart` sincroniza os
+  dois a cada mudança. No Hyprland com uwsm o entry vira o serviço *generated*
+  `app-io.github.gustavobelo.opencouch@autostart.service` (sem unit file persistente).
+- **"Iniciar minimizado" esconde sem depender do tray.** A janela nasce com `visible: false`
+  (`main.qml` lê `backend.startMinimized()`), porque esconder logo depois do `show()` corre contra
+  o primeiro frame do Wayland. O tray pode subir **depois** do app no boot — por isso o
+  `QSystemTrayIcon` é criado lazy em `Backend::showTray()`, e `attachWindow` repete a tentativa
+  com `QTimer::singleShot` até a barra aparecer. Escondido sem tray ainda tem volta: abrir o app
+  de novo acorda a janela via `WAKEUP`.
 
 ## Estratégia de branch
  
@@ -403,16 +416,14 @@ Segue o modelo **GitHub Flow** — simples, adequado a um projeto de porte peque
   - `refactor/<descrição-curta>` — refatoração sem mudança de comportamento
   - `docs/<descrição-curta>` — documentação (README, AGENTS.md, etc.)
   - Exemplo: `fix/wmctrl-wayland-noop`
-- **Merge em `main` via Pull Request** quando a mudança merecer revisão — mantém o histórico
-  revisável. Squash merge é preferível (um commit por PR, no padrão `feat:`/`fix:`/etc.).
-  **Ressalva honesta:** hoje o único workflow é o `release.yml`, disparado só por tag `v*`. Não há
-  esteira em pull request, então abrir PR não faz nada rodar antes do merge — o valor dele é
-  revisão humana, não CI. Enquanto for assim, commit direto em `main` é aceitável para mudanças
-  cuja revisão já aconteceu na conversa. Se um dia entrar um workflow em `push`/`pull_request`,
-  esta ressalva sai e o PR volta a ser obrigatório.
-- **Commit direto em `main` só com pedido explícito do usuário** (ver a ressalva sobre CI acima), ou
-  pelos commits automáticos do `packaging/release.sh` (`Release vX.Y.Z`), que fazem parte do próprio
-  fluxo de release e são validados para rodar **apenas em `main`** (o `release.sh` aborta fora dela).
+- **Merge em `main` via Pull Request** — a esteira (`ci.yml`) roda em todo push na `main` e em
+  todo PR: confere a documentação contra o código, roda `go vet`/`go test` no engine e compila a
+  GUI com o smoke test offscreen. O merge em `main` **exige a esteira verde** (branch protection
+  com required status checks): PR que não passa não pode ser mergeado. Squash merge é preferível
+  (um commit por PR, no padrão `feat:`/`fix:`/etc.).
+- **Commit direto em `main` só com pedido explícito do usuário**, ou pelos commits automáticos do
+  `packaging/release.sh` (`Release vX.Y.Z`), que fazem parte do próprio fluxo de release e são
+  validados para rodar **apenas em `main`** (o `release.sh` aborta fora dela).
 - **Branches de feature são de vida curta**: mergear e deletar assim que a mudança for aceita, para não acumular branches obsoletas.
 - **Tags (`vX.Y.Z`) nunca são criadas em branches que não sejam `main`** (enforçado pelo `release.sh`).
 Para agentes de IA: abrir branch ou Pull Request exige pedido explícito do usuário — não são assumidos automaticamente a partir de uma tarefa de código.

@@ -21,6 +21,8 @@
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Beim Schließen des Fensters läuft die App im System-Tray weiter, um Steam zu überwachen. Nutze das Tray-Icon, um sie wieder zu öffnen oder zu beenden.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Mit dem System starten</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Beim Schließen in den Infobereich (Tray) minimieren</translation></message>
+<message id="settings.start_minimized_description"><source>settings.start_minimized_description</source><translation type="unfinished"></translation></message>
+<message id="settings.start_minimized"><source>settings.start_minimized</source><translation type="unfinished"></translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Dem Dev einen Kaffee spendieren</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch ist Open-Source und in meiner Freizeit entstanden. Wenn es dir den Alltag erleichtert, freue ich mich über deinen Support!</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Zurück zum Live-Log</translation></message>

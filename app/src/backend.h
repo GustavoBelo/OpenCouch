@@ -24,6 +24,8 @@ public:
     Q_INVOKABLE bool setAutostart(bool enabled);
     Q_INVOKABLE bool backgroundOnClose() const;
     Q_INVOKABLE bool setBackgroundOnClose(bool enabled);
+    Q_INVOKABLE bool startMinimized() const;
+    Q_INVOKABLE bool setStartMinimized(bool enabled);
     Q_INVOKABLE void attachWindow(QObject *window);
     Q_INVOKABLE void showWindow();
     Q_INVOKABLE void showTray();

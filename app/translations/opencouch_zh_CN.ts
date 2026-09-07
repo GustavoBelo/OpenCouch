@@ -21,6 +21,8 @@
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>关闭窗口后，应用会在系统托盘常驻后台以监听 Steam。可通过托盘图标重新打开或退出。</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>开机自启动</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>关闭窗口时最小化到系统托盘</translation></message>
+<message id="settings.start_minimized_description"><source>settings.start_minimized_description</source><translation type="unfinished"></translation></message>
+<message id="settings.start_minimized"><source>settings.start_minimized</source><translation type="unfinished"></translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ 请开发者喝杯咖啡</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch 是一个在业余时间完成的开源项目。如果它帮到了你，不妨支持一下！</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>返回实时日志</translation></message>

@@ -15,6 +15,9 @@ public:
     bool backgroundOnClose() const;
     bool setBackgroundOnClose(bool enabled) const;
 
+    bool startMinimized() const;
+    bool setStartMinimized(bool enabled) const;
+
     bool onboardingSeen() const;
     void setOnboardingSeen(bool seen) const;
 

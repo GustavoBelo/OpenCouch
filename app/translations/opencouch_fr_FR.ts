@@ -21,6 +21,8 @@
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>En fermant la fenêtre, l'application reste active près de l'horloge pour surveiller Steam. Utilisez cette icône pour rouvrir ou quitter.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Lancer au démarrage du système</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Réduire dans la zone de notification à la fermeture</translation></message>
+<message id="settings.start_minimized_description"><source>settings.start_minimized_description</source><translation type="unfinished"></translation></message>
+<message id="settings.start_minimized"><source>settings.start_minimized</source><translation type="unfinished"></translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Offrir un café au dév</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch est un projet open source développé sur mon temps libre. Si l'appli vous est utile au quotidien, un petit coup de pouce fait toujours plaisir !</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Revenir au journal en direct</translation></message>

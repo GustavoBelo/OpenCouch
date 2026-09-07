@@ -21,6 +21,8 @@
 <message id="settings.background_on_close_description"><source>settings.background_on_close_description</source><translation>Al cerrar la ventana, la app sigue funcionando junto al reloj para monitorizar Steam. Usa su icono ahí para reabrirla o salir.</translation></message>
 <message id="settings.autostart"><source>settings.autostart</source><translation>Iniciar con el sistema</translation></message>
 <message id="settings.background_on_close"><source>settings.background_on_close</source><translation>Minimizar a la bandeja del sistema al cerrar</translation></message>
+<message id="settings.start_minimized_description"><source>settings.start_minimized_description</source><translation type="unfinished"></translation></message>
+<message id="settings.start_minimized"><source>settings.start_minimized</source><translation type="unfinished"></translation></message>
 <message id="support.buy_coffee"><source>support.buy_coffee</source><translation>☕ Invitar a un café al dev</translation></message>
 <message id="support.description"><source>support.description</source><translation>Open Couch es de código abierto y lo desarrollo en mi tiempo libre. Si te ha servido en tu día a día, ¡échame un cable!</translation></message>
 <message id="dashboard.back_to_live_log"><source>dashboard.back_to_live_log</source><translation>Volver al registro en tiempo real</translation></message>

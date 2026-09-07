@@ -17,7 +17,7 @@ MouseArea {
     signal toggled(bool value)
 
     implicitHeight: row.implicitHeight
-    cursorShape: Qt.PointingHandCursor
+    cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
     // Asks, like the switch inside it: the state comes back from whoever owns
     // the setting, so a call that fails leaves the switch where it was.
     onClicked: root.toggled(!root.checked)
@@ -26,6 +26,7 @@ MouseArea {
         id: row
         anchors.fill: parent
         spacing: Metrics.xxl
+        opacity: root.enabled ? 1 : 0.4
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -53,6 +54,7 @@ MouseArea {
             id: control
             Layout.alignment: Qt.AlignVCenter
             checked: root.checked
+            enabled: root.enabled
             onToggled: function(value) { root.toggled(value); }
         }
     }

@@ -91,7 +91,10 @@ bool ConfigStore::setAutostart(bool enabled) const
     bool success = requestBackgroundPortal(enabled);
     if (!success) {
         success = updateAutostartEntry(enabled);
-    } else if (!enabled) {
+    } else {
+        // The portal took the request: an entry left from a previous attempt
+        // would launch a second instance at login, whose wake-up opens the
+        // window of the first -- the opposite of starting minimized.
         updateAutostartEntry(false);
     }
 
@@ -141,6 +144,18 @@ bool ConfigStore::setBackgroundOnClose(bool enabled) const
 {
     QSettings settings;
     settings.setValue(QStringLiteral("backgroundOnClose"), enabled);
+    return true;
+}
+
+bool ConfigStore::startMinimized() const
+{
+    return QSettings().value(QStringLiteral("startMinimized"), false).toBool();
+}
+
+bool ConfigStore::setStartMinimized(bool enabled) const
+{
+    QSettings settings;
+    settings.setValue(QStringLiteral("startMinimized"), enabled);
     return true;
 }
 
