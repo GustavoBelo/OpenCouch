@@ -27,9 +27,19 @@ Item {
     // Authored on a 24 grid; the transform carries everything to the drawn
     // size, stroke weight included, so the icon keeps its proportion.
     Shape {
+        id: shape
         anchors.fill: parent
-        preferredRendererType: Shape.CurveRenderer
         transform: Scale { xScale: root.size / 24; yScale: root.size / 24 }
+
+        // CurveRenderer gives the strokes native anti-aliasing, but the
+        // property only exists since Qt 6.6 and the CI builds against 6.4 --
+        // there, declaring it fails at runtime. Without it the shape takes
+        // the default renderer, which is all 6.4 has to offer anyway.
+        Component.onCompleted: {
+            if (typeof shape.preferredRendererType !== "undefined") {
+                shape.preferredRendererType = Shape.CurveRenderer;
+            }
+        }
 
         ShapePath {
             strokeColor: root.strokePath === "" ? "transparent" : root.color
