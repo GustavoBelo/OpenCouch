@@ -231,8 +231,9 @@ void Backend::attachWindow(QObject *window)
     }
 
     // Starting minimized hides even without a tray: launching the app again
-    // wakes the window up, so there is always a way back.
-    if (m_window && startMinimized()) {
+    // wakes the window up, so there is always a way back. Like the QML
+    // `visible`, only for a launch the autostart did.
+    if (m_window && startMinimized() && autostartEnabled()) {
         m_window->hide();
     }
 }
@@ -263,6 +264,9 @@ void Backend::showTray()
         m_trayIcon->setToolTip(qtTrId("tray.tooltip"));
 
         auto *menu = new QMenu;
+        // setContextMenu does not take ownership, so the menu follows the
+        // icon's lifetime instead of leaking for the app's.
+        connect(m_trayIcon, &QObject::destroyed, menu, &QObject::deleteLater);
         QAction *openAction = menu->addAction(qtTrId("tray.open"));
         QAction *quitAction = menu->addAction(qtTrId("tray.quit"));
         connect(openAction, &QAction::triggered, this, &Backend::showWindow);
