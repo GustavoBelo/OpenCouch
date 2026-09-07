@@ -63,7 +63,9 @@ bool updateAutostartEntry(bool enabled)
     stream << "[Desktop Entry]\n"
            << "Type=Application\n"
            << "Name=Open Couch\n"
-           << "Exec=" << desktopEntryArgument(autostartCommand()) << "\n"
+           // --autostart marks the launch this entry does, so the app can start
+           // it hidden without hiding a manual launch too.
+           << "Exec=" << desktopEntryArgument(autostartCommand()) << " --autostart\n"
            << "Icon=io.github.gustavobelo.opencouch\n"
            << "Terminal=false\n"
            << "X-GNOME-Autostart-enabled=true\n"
@@ -118,7 +120,7 @@ bool ConfigStore::requestBackgroundPortal(bool enabled) const
     options[QStringLiteral("reason")] =
         QStringLiteral("Used to monitor Steam and automatically switch displays.");
     options[QStringLiteral("autostart")] = enabled;
-    options[QStringLiteral("commandline")] = QStringList{autostartCommand()};
+    options[QStringLiteral("commandline")] = QStringList{autostartCommand(), QStringLiteral("--autostart")};
     options[QStringLiteral("dbus-activatable")] = false;
 
     QDBusPendingCall pending = portal.asyncCall(

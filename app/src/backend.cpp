@@ -214,7 +214,23 @@ bool Backend::startMinimized() const
 
 bool Backend::setStartMinimized(bool enabled)
 {
-    return m_configStore->setStartMinimized(enabled);
+    const bool ok = m_configStore->setStartMinimized(enabled);
+    // --autostart is what tells a login launch from a manual one. An entry (or
+    // portal registration) written before this setting existed does not carry
+    // it yet, so refresh whichever one is in place while autostart is on.
+    if (ok && m_configStore->autostartEnabled()) {
+        m_configStore->setAutostart(true);
+    }
+    return ok;
+}
+
+bool Backend::startsHidden() const
+{
+    // The switch says what the user wants; --autostart says this is the launch
+    // it applies to. autostartEnabled() alone will not do -- it is the stored
+    // setting, so a manual launch while autostart is on would read as true and
+    // come up hidden with no window and, if the bar is late, no tray.
+    return m_launchedFromAutostart && startMinimized();
 }
 
 void Backend::attachWindow(QObject *window)
@@ -223,7 +239,7 @@ void Backend::attachWindow(QObject *window)
 
     // The tray host -- a bar, a shell -- can still be starting while an
     // autostart brings the app up, so the icon is registered when it appears.
-    if (backgroundOnClose() || startMinimized()) {
+    if (backgroundOnClose() || startsHidden()) {
         showTray();
         QTimer::singleShot(2000, this, [this]() { showTray(); });
         QTimer::singleShot(5000, this, [this]() { showTray(); });
@@ -231,9 +247,8 @@ void Backend::attachWindow(QObject *window)
     }
 
     // Starting minimized hides even without a tray: launching the app again
-    // wakes the window up, so there is always a way back. Like the QML
-    // `visible`, only for a launch the autostart did.
-    if (m_window && startMinimized() && autostartEnabled()) {
+    // wakes the window up, so there is always a way back.
+    if (m_window && startsHidden()) {
         m_window->hide();
     }
 }

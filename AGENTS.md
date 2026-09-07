@@ -395,19 +395,26 @@ que não existiam mais. O que está entre crases é `grep`-ável.
 - **Autostart tem dois mecanismos e só um deve ficar.** O portal Background e o entry em
   `~/.config/autostart` lançam o app de formas independentes; `ConfigStore::setAutostart` tenta o
   portal primeiro e só cai para o entry quando ele não responde, e desligar o autostart remove o
-  entry. O portal responde assíncrono — uma chamada que "passou" pode ter sido negada depois, por
+  entry. O comando que ele registra — no `Exec` do entry e no `commandline` do portal — leva
+  `--autostart`, a marca que o app usa para saber que aquele processo veio do login e não da mão do
+  usuário. O portal responde assíncrono — uma chamada que "passou" pode ter sido negada depois, por
   isso o caminho de sucesso **não** apaga entry por conta própria. Um entry órfão (de uma tentativa
   em que o portal falhou) dispara segunda instância no login, e o `WAKEUP` dela abre a janela da
   primeira — um "iniciar minimizado" que não minimiza; se os dois saírem rodando, apague o entry à
   mão. No Hyprland com uwsm o entry vira o serviço *generated*
   `app-io.github.gustavobelo.opencouch@autostart.service` (sem unit file persistente).
-- **"Iniciar minimizado" esconde sem depender do tray, e só no lançamento do autostart.** A janela
-  nasce com `visible: false` (`main.qml` lê `backend.startMinimized()` **e** `autostartEnabled()`),
-  porque esconder logo depois do `show()` corre contra o primeiro frame do Wayland; lançar o app à
-  mão com autostart desligado mostra a janela, mesmo com o switch ligado. O tray pode subir
-  **depois** do app no boot — por isso o `QSystemTrayIcon` é criado lazy em `Backend::showTray()`,
-  e `attachWindow` repete a tentativa com `QTimer::singleShot` até a barra aparecer. Escondido sem
-  tray ainda tem volta: abrir o app de novo acorda a janela via `WAKEUP`.
+- **"Iniciar minimizado" esconde sem depender do tray, e só no lançamento do autostart.**
+  `Backend::startsHidden()` é o predicado único — processo lançado com `--autostart` **e** o switch
+  ainda ligado. `main.qml` (`visible`), o `hide()` do `attachWindow` e o tray que o `attachWindow`
+  arma leem os três esse mesmo `startsHidden()`, então não divergem. Não dá para ler só
+  `autostartEnabled()`: é o setting salvo, então abrir o app à mão com autostart ligado cairia como
+  `true` e a janela nasceria escondida sem volta fácil. `main.cpp` marca a flag lendo
+  `app.arguments()`; ligar o switch com autostart já ativo reescreve entry/portal para incluir
+  `--autostart`. A janela nasce com `visible: false` porque esconder logo depois do `show()` corre
+  contra o primeiro frame do Wayland. O tray pode subir **depois** do app no boot — por isso o
+  `QSystemTrayIcon` é criado lazy em `Backend::showTray()`, e `attachWindow` repete a tentativa com
+  `QTimer::singleShot` até a barra aparecer. Escondido sem tray ainda tem volta: abrir o app de novo
+  acorda a janela via `WAKEUP`.
 
 ## Estratégia de branch
  

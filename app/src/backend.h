@@ -26,6 +26,13 @@ public:
     Q_INVOKABLE bool setBackgroundOnClose(bool enabled);
     Q_INVOKABLE bool startMinimized() const;
     Q_INVOKABLE bool setStartMinimized(bool enabled);
+    // True only for the process the autostart entry started -- it passes
+    // --autostart. A manual launch is always false, even with autostart on.
+    void setLaunchedFromAutostart(bool value) { m_launchedFromAutostart = value; }
+    // The one predicate for "this launch comes up hidden": started by autostart
+    // and the switch still on. main.qml's `visible`, the hide in attachWindow
+    // and the tray it arms all read this, so the three cannot drift apart.
+    Q_INVOKABLE bool startsHidden() const;
     Q_INVOKABLE void attachWindow(QObject *window);
     Q_INVOKABLE void showWindow();
     Q_INVOKABLE void showTray();
@@ -81,6 +88,7 @@ private:
     void watchPendingEntry();
 
     bool m_running = false;
+    bool m_launchedFromAutostart = false;
     QProcess *m_asyncProcess = nullptr;
     class QSystemTrayIcon *m_trayIcon = nullptr;
     class QWindow *m_window = nullptr;

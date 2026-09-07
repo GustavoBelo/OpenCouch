@@ -26,11 +26,14 @@ MouseArea {
         id: row
         anchors.fill: parent
         spacing: Metrics.xxl
-        opacity: root.enabled ? 1 : 0.4
 
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Metrics.xxs
+            // Disabled dims the label here and the switch inside Toggle; the
+            // whole row must not dim too, or the two opacities multiply and the
+            // switch fades to almost nothing while the label is merely greyed.
+            opacity: root.enabled ? 1 : 0.4
 
             Text {
                 Layout.fillWidth: true

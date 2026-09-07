@@ -53,6 +53,11 @@ int main(int argc, char *argv[])
     }
 
     Backend backend;
+    // The autostart entry and the portal's commandline both pass --autostart,
+    // so the window can come up hidden for that launch alone while a manual one
+    // always shows.
+    backend.setLaunchedFromAutostart(app.arguments().contains(QStringLiteral("--autostart")));
+
     DesktopTheme desktopTheme;
     AppInfoModel appInfoModel;
 

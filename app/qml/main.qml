@@ -12,9 +12,9 @@ Controls.ApplicationWindow {
     minimumHeight: 560
     // Starting minimized never shows the window: hiding right after the show
     // races the first frame on Wayland, so the window simply is not born
-    // visible. Only for a launch the autostart did: a manual launch with
-    // autostart off shows the window, whatever the switch remembers.
-    visible: !(backend.startMinimized() && backend.autostartEnabled())
+    // visible. Only the launch the autostart entry did (it passes --autostart)
+    // starts hidden; a manual launch always shows, whatever the switch remembers.
+    visible: !backend.startsHidden()
     title: appInfo.displayName + " v" + appInfo.version
     color: Colors.background
 
