@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    name: Docs and engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Cheap, and it catches the class of error nobody catches by reading:
+      # documentation that describes files, commands or strings that no
+      # longer exist.
+      - name: Check the documentation against the code
+        run: packaging/check-docs.sh
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      - name: Vet and test
+        working-directory: engine
+        run: |
+          go vet ./...
+          go test ./...
+
+  app:
+    name: Build and smoke-test the app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools \
+            qt6-tools-dev qt6-tools-dev-tools qt6-l10n-tools \
+            qml6-module-qtquick qml6-module-qtquick-controls
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      - name: Configure
+        run: cmake -S app -B app-build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build app-build --parallel "$(nproc)"
+
+      # The one smoke test the GUI has: every QML warning prints to stderr and
+      # the window staying up is what proves the QML loaded. 124 is timeout
+      # killing a healthy app; anything else means it never came up or failed.
+      - name: Smoke test (offscreen)
+        run: |
+          set +e
+          output="$(timeout 10 env QT_QPA_PLATFORM=offscreen ./app-build/opencouch 2>&1)"
+          code=$?
+          set -e
+          if [ "${code}" -ne 124 ] || [ -n "${output}" ]; then
+            echo "exit code: ${code}"
+            echo "${output}"
+            exit 1
+          fi
