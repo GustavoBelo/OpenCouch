@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/GustavoBelo/OpenCouch/engine/internal/notify"
 )
 
 // Launcher starts a compositor and returns when it has exited. It is a field so
@@ -59,6 +61,21 @@ type Wrapper struct {
 	Systemctl Runner
 	Launch    Launcher
 	Logf      func(string, ...any)
+
+	// Controllers counts the gamepads attached, and Notifier finds somewhere to
+	// announce. Both are fields so the controller trigger can be exercised
+	// without a pad and without a notification server; nil takes the real one.
+	Controllers    func() int
+	Notifier       func() notify.Notifier
+	ControllerPoll time.Duration
+	// ControllerGrace is how long the announcement waits. TriggerGrace when
+	// unset; a test that had to sit through twenty real seconds would not be
+	// run often enough to catch anything.
+	ControllerGrace time.Duration
+	// StopDesktop ends the hosted desktop session. A field for the same reason
+	// Launch is one: the trigger's whole job is to stop a compositor, and a test
+	// for it must not.
+	StopDesktop func(ctx context.Context) error
 
 	// ShortRun is how long a compositor has to last to count as a real session,
 	// and ShortRunLimit how many consecutive short ones end the loop.
@@ -171,7 +188,15 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		}
 		w.logf("console: starting the %s session: %s", mode, strings.Join(argv, " "))
 		started := time.Now()
+		// The controller trigger belongs to the desktop session and to no other:
+		// switching a pad on inside the console has nothing left to ask for, and
+		// a watch outliving the compositor would arm itself against the next one.
+		session, endSession := context.WithCancel(ctx)
+		if mode == ModeDesktop {
+			go w.watchControllers(session)
+		}
 		runErr := w.Launch(ctx, argv, env)
+		endSession()
 		lasted := time.Since(started)
 		w.logf("console: the %s session ended after %s (%v)", mode, lasted.Round(time.Second), runErr)
 

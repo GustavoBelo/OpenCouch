@@ -13,6 +13,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -101,6 +102,10 @@ func run(args []string) error {
 		return setTV(rest)
 	case "boot":
 		return setBoot(rest)
+	case "controller":
+		return setController(rest)
+	case "log":
+		return showLog(rest)
 	case "help", "-h", "--help":
 		usage()
 		return nil
@@ -123,6 +128,10 @@ func usage() {
   outputs        every connector on the machine, as JSON
   tv <CONNECTOR> choose the display the console takes over
   boot <MODE>    where a fresh login starts: desktop, console or last
+  controller <on|off>
+                 offer the console when a gamepad is switched on
+  log [--clear | --list | --session <ID>]
+                 the wrapper's log for this login, or the logins kept before it
   config-path    where the settings file lives
   check          succeed if this engine can run
   version        print the engine version
@@ -196,6 +205,12 @@ func hostSession(ctx context.Context) error {
 	// A session's stderr goes wherever the login manager decided, which on SDDM
 	// is nowhere a person can reach. Without a file there is no way to find out
 	// why a session that lasted five seconds gave up.
+	// A login begins here, so this is where the previous one's log stops being
+	// the current one. Filed rather than overwritten: the account of a session
+	// that ended badly is worth more than the one that is starting fine.
+	if err := console.RotateLog(e.StateDir); err != nil {
+		fmt.Fprintln(os.Stderr, "could not file the previous log away:", err)
+	}
 	logf := logger(e.StateDir)
 
 	// Nothing below refuses to start. This process is what the login manager
@@ -551,6 +566,82 @@ func setTV(args []string) error {
 		fmt.Println("It is not plugged in or switched on right now; the console will wait for it when it starts.")
 	}
 	return nil
+}
+
+// setController records whether a gamepad switching on should offer the
+// console. Only the preference: acting on it is the wrapper's, in trigger.go.
+func setController(args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: open-couch-engine controller <on|off>")
+	}
+	var enabled bool
+	switch strings.ToLower(strings.TrimSpace(args[0])) {
+	case "on", "true", "yes", "1":
+		enabled = true
+	case "off", "false", "no", "0":
+		enabled = false
+	default:
+		return fmt.Errorf("%q is not on or off", args[0])
+	}
+	base, err := ensureBaseDir()
+	if err != nil {
+		return err
+	}
+	cfg, err := console.LoadConfig(base)
+	if err != nil {
+		return err
+	}
+	cfg.EnterOnControllerConnect = enabled
+	return console.SaveConfig(base, cfg)
+}
+
+// showLog is the whole of the log contract with the application.
+//
+// One command with flags rather than the six the app used to call -- `log`,
+// `clear-log`, `log-history`, `print-history-log`, `export-log`,
+// `export-history-log` -- none of which this engine ever had. Writing a file to
+// the user's home is not among them: the app already holds the text by then,
+// and where to put it is a question for whatever is drawing the dialog.
+func showLog(args []string) error {
+	fs := flag.NewFlagSet("log", flag.ContinueOnError)
+	clear := fs.Bool("clear", false, "empty the log for this login")
+	list := fs.Bool("list", false, "the logins kept, as JSON")
+	session := fs.String("session", "", "print one kept login by id")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	stateDir, err := console.StateDir()
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case *clear:
+		return console.ClearLog(stateDir)
+	case *list:
+		sessions, err := console.LogSessions(stateDir)
+		if err != nil {
+			return err
+		}
+		encoder := json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(sessions)
+	case *session != "":
+		text, err := console.ReadLogSession(stateDir, *session)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(os.Stdout, text)
+		return err
+	}
+
+	text, err := console.ReadLog(stateDir)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(os.Stdout, text)
+	return err
 }
 
 func setBoot(args []string) error {

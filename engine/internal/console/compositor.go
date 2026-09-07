@@ -36,6 +36,17 @@ type Compositor interface {
 func DetectCompositor() Compositor {
 	names := strings.Split(os.Getenv("XDG_CURRENT_DESKTOP"), ":")
 	names = append(names, os.Getenv("DESKTOP_SESSION"))
+	return CompositorFor(names...)
+}
+
+// CompositorFor picks the compositor from names the caller already holds.
+//
+// The wrapper needs this rather than DetectCompositor: it has no
+// XDG_CURRENT_DESKTOP of its own, because it is the process that builds that
+// variable for the compositor it launches. What it has instead is the session
+// entry's DesktopNames and the identity setup captured from the running
+// session, which is the same answer arriving by a different road.
+func CompositorFor(names ...string) Compositor {
 	for _, name := range names {
 		switch strings.ToLower(strings.TrimSpace(name)) {
 		case "kde", "plasma", "plasmawayland":
