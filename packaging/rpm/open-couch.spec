@@ -1,5 +1,5 @@
 Name:           open-couch
-Version:        2.0.0
+Version:        2.0.1
 Release:        1%{?dist}
 Summary:        Console mode for your Linux desktop
 
@@ -93,5 +93,8 @@ install -Dm755 %{_builddir}/open-couch-engine %{buildroot}%{_bindir}/open-couch-
 %{_datadir}/wayland-sessions/open-couch-session.desktop
 
 %changelog
+* Mon Sep 07 2026 Gustavo Belo <gustavobelo28@gmail.com> - 2.0.1-1
+- See https://github.com/GustavoBelo/OpenCouch/releases/tag/v2.0.1
+
 * Fri Sep 04 2026 Gustavo Belo <gustavobelo28@gmail.com> - 2.0.0-1
 - Console mode: hands the machine to Steam's gamescope session and back

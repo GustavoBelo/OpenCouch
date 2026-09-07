@@ -1,6 +1,6 @@
 # Maintainer: Gustavo Belo <gustavobelo28@gmail.com>
 pkgname=open-couch-engine
-pkgver=2.0.0
+pkgver=2.0.1
 pkgrel=1
 pkgdesc="Hand the machine to Steam's gamescope session on the television, and back"
 arch=('x86_64' 'aarch64')

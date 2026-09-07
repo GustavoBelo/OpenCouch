@@ -15,7 +15,7 @@ set -euo pipefail
 #   curl -fsSL https://raw.githubusercontent.com/GustavoBelo/OpenCouch/main/packaging/host/install.sh | bash
 
 # Bumped automatically by release.sh, do not edit manually
-SELF_VERSION="2.0.0"
+SELF_VERSION="2.0.1"
 
 REPO="GustavoBelo/OpenCouch"
 DEST_DIR="${HOME}/.local/bin"
