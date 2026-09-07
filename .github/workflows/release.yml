@@ -28,6 +28,11 @@ jobs:
           fi
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
+      # Barato, e pega a classe de erro que ninguém pega lendo: documentação que
+      # descreve arquivos, comandos ou strings que não existem mais.
+      - name: Check the documentation against the code
+        run: packaging/check-docs.sh
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: engine/go.mod
