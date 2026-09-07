@@ -154,8 +154,15 @@ install(FILES ${OPENCOUCH_PACKAGING_DIR}/io.github.gustavobelo.opencouch.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/generated/io.github.gustavobelo.opencouch.metainfo.xml
         DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo)
-install(FILES ${OPENCOUCH_PACKAGING_DIR}/icons/io.github.gustavobelo.opencouch.svg
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
+# The icon is a drawing, not a diagram: it ships as a resampled PNG per size
+# rather than as one scalable file. There is deliberately nothing in
+# hicolor/scalable -- a stale SVG left there would win over every one of these,
+# because the theme spec prefers scalable to any fixed size.
+foreach(OPENCOUCH_ICON_SIZE 16 24 32 48 64 128 256 512)
+    install(FILES
+        "${OPENCOUCH_PACKAGING_DIR}/icons/hicolor/${OPENCOUCH_ICON_SIZE}x${OPENCOUCH_ICON_SIZE}/apps/io.github.gustavobelo.opencouch.png"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/${OPENCOUCH_ICON_SIZE}x${OPENCOUCH_ICON_SIZE}/apps")
+endforeach()
 
 # The engine is a separate Go binary rather than part of this target: it runs as
 # the login session itself, long before and long after the app, and the app only

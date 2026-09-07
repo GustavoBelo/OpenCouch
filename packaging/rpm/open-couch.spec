@@ -81,7 +81,7 @@ install -Dm755 %{_builddir}/open-couch-engine %{buildroot}%{_bindir}/open-couch-
 %doc README.md
 %{_bindir}/opencouch
 %{_datadir}/applications/io.github.gustavobelo.opencouch.desktop
-%{_datadir}/icons/hicolor/scalable/apps/io.github.gustavobelo.opencouch.svg
+%{_datadir}/icons/hicolor/*/apps/io.github.gustavobelo.opencouch.png
 %{_metainfodir}/io.github.gustavobelo.opencouch.metainfo.xml
 
 %files engine

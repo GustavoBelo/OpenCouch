@@ -1,5 +1,11 @@
 <!DOCTYPE RCC><RCC version="1.0">
-    <qresource prefix="/">
-        <file alias="io.github.gustavobelo.opencouch.svg">../packaging/icons/io.github.gustavobelo.opencouch.svg</file>
+    <qresource prefix="/icons">
+        <file alias="16.png">../packaging/icons/hicolor/16x16/apps/io.github.gustavobelo.opencouch.png</file>
+        <file alias="24.png">../packaging/icons/hicolor/24x24/apps/io.github.gustavobelo.opencouch.png</file>
+        <file alias="32.png">../packaging/icons/hicolor/32x32/apps/io.github.gustavobelo.opencouch.png</file>
+        <file alias="48.png">../packaging/icons/hicolor/48x48/apps/io.github.gustavobelo.opencouch.png</file>
+        <file alias="64.png">../packaging/icons/hicolor/64x64/apps/io.github.gustavobelo.opencouch.png</file>
+        <file alias="128.png">../packaging/icons/hicolor/128x128/apps/io.github.gustavobelo.opencouch.png</file>
+        <file alias="256.png">../packaging/icons/hicolor/256x256/apps/io.github.gustavobelo.opencouch.png</file>
     </qresource>
 </RCC>
