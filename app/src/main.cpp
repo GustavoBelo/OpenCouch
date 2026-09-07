@@ -23,17 +23,24 @@ int main(int argc, char *argv[])
         return 0;
     }
 
+    // Set before QApplication exists, for two reasons. It is the Wayland app
+    // id: without it Qt falls back to the executable's name ("opencouch") while
+    // the desktop entry, the icon and every window rule a user could write are
+    // named io.github.gustavobelo.opencouch -- nothing matched, so no icon in
+    // the switcher and a float rule with nothing to attach to. And
+    // QDesktopUnixServices registers the app id with xdg-desktop-portal from
+    // its constructor, which runs inside QApplication's: with the name already
+    // set it registers once; set afterwards it defers the call *and* arms a
+    // service-watcher retry, the two race, and the portal rejects the second
+    // with "connection already associated" -- a qt.qpa.services warning on
+    // every launch.
+    QApplication::setDesktopFileName(QStringLiteral("io.github.gustavobelo.opencouch"));
+
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
     app.setApplicationName(QStringLiteral("OpenCouch"));
     app.setApplicationVersion(QStringLiteral(OPENCOUCH_VERSION_STRING));
     app.setOrganizationName(QStringLiteral("io.github.gustavobelo"));
-    // The Wayland app id comes from here, and without it Qt falls back to the
-    // executable's name -- so the window announced itself as "opencouch" while
-    // the desktop entry, the icon and every window rule a user could write are
-    // named io.github.gustavobelo.opencouch. Nothing matched: no icon in the
-    // switcher, and a float rule for this window had nothing to attach to.
-    app.setDesktopFileName(QStringLiteral("io.github.gustavobelo.opencouch"));
     app.setWindowIcon(applicationIcon());
 
     QTranslator enFallback;
