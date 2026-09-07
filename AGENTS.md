@@ -435,7 +435,9 @@ Segue o modelo **GitHub Flow** — simples, adequado a um projeto de porte peque
 - **Commit direto em `main` só com pedido explícito do usuário**, ou pelos commits automáticos do
   `packaging/release.sh` (`Release vX.Y.Z`), que fazem parte do próprio fluxo de release e são
   validados para rodar **apenas em `main`** (o `release.sh` aborta fora dela).
-- **Branches de feature são de vida curta**: mergear e deletar assim que a mudança for aceita, para não acumular branches obsoletas.
+- **Toda branch mergeada é deletada** — `feat/`, `fix/`, `docs/`, qualquer uma. O GitHub apaga a
+  head branch sozinho ao mergear o PR (repo com *Automatically delete head branches* ligado); se
+  sobrar alguma, delete na hora. Branch de vida curta, nada de obsoleta acumulando.
 - **Tags (`vX.Y.Z`) nunca são criadas em branches que não sejam `main`** (enforçado pelo `release.sh`).
 Para agentes de IA: abrir branch ou Pull Request exige pedido explícito do usuário — não são assumidos automaticamente a partir de uma tarefa de código.
 
