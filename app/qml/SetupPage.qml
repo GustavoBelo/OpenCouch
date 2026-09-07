@@ -12,12 +12,14 @@ Item {
     // property with a change signal, so a binding would be evaluated when the
     // page was built and never again.
     property bool autostart: false
+    property bool startMinimized: false
     property bool backgroundOnClose: true
 
     function reload() {
         page.status = backend.consoleStatus();
         page.displays = backend.listDisplays();
         page.autostart = backend.autostartEnabled();
+        page.startMinimized = backend.startMinimized();
         page.backgroundOnClose = backend.backgroundOnClose();
         // Assigned, not bound. Activating a ComboBox writes currentIndex, and
         // that write replaces whatever binding was there -- so after the first
@@ -386,6 +388,21 @@ Item {
                         onToggled: function(value) {
                             backend.setAutostart(value);
                             page.autostart = backend.autostartEnabled();
+                        }
+                    }
+
+                    SettingSwitch {
+                        Layout.fillWidth: true
+                        label: qsTrId("settings.start_minimized")
+                        description: qsTrId("settings.start_minimized_description")
+                        checked: page.startMinimized
+                        // It only means something at login, so it follows the
+                        // autostart switch. The value itself is kept: turning
+                        // autostart back on restores the behaviour.
+                        enabled: page.autostart
+                        onToggled: function(value) {
+                            backend.setStartMinimized(value);
+                            page.startMinimized = backend.startMinimized();
                         }
                     }
 

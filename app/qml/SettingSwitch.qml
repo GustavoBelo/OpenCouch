@@ -17,7 +17,7 @@ MouseArea {
     signal toggled(bool value)
 
     implicitHeight: row.implicitHeight
-    cursorShape: Qt.PointingHandCursor
+    cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
     // Asks, like the switch inside it: the state comes back from whoever owns
     // the setting, so a call that fails leaves the switch where it was.
     onClicked: root.toggled(!root.checked)
@@ -30,6 +30,10 @@ MouseArea {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: Metrics.xxs
+            // Disabled dims the label here and the switch inside Toggle; the
+            // whole row must not dim too, or the two opacities multiply and the
+            // switch fades to almost nothing while the label is merely greyed.
+            opacity: root.enabled ? 1 : 0.4
 
             Text {
                 Layout.fillWidth: true
@@ -53,6 +57,7 @@ MouseArea {
             id: control
             Layout.alignment: Qt.AlignVCenter
             checked: root.checked
+            enabled: root.enabled
             onToggled: function(value) { root.toggled(value); }
         }
     }

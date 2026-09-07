@@ -21,6 +21,7 @@
 #include <QStandardPaths>
 #include <QSystemTrayIcon>
 #include <QTextStream>
+#include <QTimer>
 #include <QWindow>
 
 namespace {
@@ -40,25 +41,6 @@ Backend::Backend(QObject *parent)
       m_configStore(new ConfigStore(this)),
       m_engineClient(new EngineClient(this))
 {
-    const QIcon icon = trayIcon();
-    if (!icon.isNull() && QSystemTrayIcon::isSystemTrayAvailable()) {
-        m_trayIcon = new QSystemTrayIcon(icon, this);
-        m_trayIcon->setToolTip(qtTrId("tray.tooltip"));
-
-        auto *menu = new QMenu;
-        QAction *openAction = menu->addAction(qtTrId("tray.open"));
-        QAction *quitAction = menu->addAction(qtTrId("tray.quit"));
-        connect(openAction, &QAction::triggered, this, &Backend::showWindow);
-        connect(quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
-        connect(m_trayIcon, &QSystemTrayIcon::activated, this,
-                [this](QSystemTrayIcon::ActivationReason reason) {
-                    if (reason == QSystemTrayIcon::Trigger) {
-                        showWindow();
-                    }
-                });
-        m_trayIcon->setContextMenu(menu);
-    }
-
     watchPendingEntry();
 }
 
@@ -217,18 +199,57 @@ bool Backend::setBackgroundOnClose(bool enabled)
     if (m_configStore) {
         m_configStore->setBackgroundOnClose(enabled);
     }
-    if (m_trayIcon && !m_trayIcon->icon().isNull() && QSystemTrayIcon::isSystemTrayAvailable()) {
-        m_trayIcon->setVisible(enabled);
+    if (enabled) {
+        showTray();
+    } else if (m_trayIcon) {
+        m_trayIcon->setVisible(false);
     }
     return true;
+}
+
+bool Backend::startMinimized() const
+{
+    return m_configStore->startMinimized();
+}
+
+bool Backend::setStartMinimized(bool enabled)
+{
+    const bool ok = m_configStore->setStartMinimized(enabled);
+    // --autostart is what tells a login launch from a manual one. An entry (or
+    // portal registration) written before this setting existed does not carry
+    // it yet, so refresh whichever one is in place while autostart is on.
+    if (ok && m_configStore->autostartEnabled()) {
+        m_configStore->setAutostart(true);
+    }
+    return ok;
+}
+
+bool Backend::startsHidden() const
+{
+    // The switch says what the user wants; --autostart says this is the launch
+    // it applies to. autostartEnabled() alone will not do -- it is the stored
+    // setting, so a manual launch while autostart is on would read as true and
+    // come up hidden with no window and, if the bar is late, no tray.
+    return m_launchedFromAutostart && startMinimized();
 }
 
 void Backend::attachWindow(QObject *window)
 {
     m_window = qobject_cast<QWindow *>(window);
-    if (m_window && backgroundOnClose() && m_trayIcon && !m_trayIcon->icon().isNull()
-        && QSystemTrayIcon::isSystemTrayAvailable()) {
-        m_trayIcon->show();
+
+    // The tray host -- a bar, a shell -- can still be starting while an
+    // autostart brings the app up, so the icon is registered when it appears.
+    if (backgroundOnClose() || startsHidden()) {
+        showTray();
+        QTimer::singleShot(2000, this, [this]() { showTray(); });
+        QTimer::singleShot(5000, this, [this]() { showTray(); });
+        QTimer::singleShot(10000, this, [this]() { showTray(); });
+    }
+
+    // Starting minimized hides even without a tray: launching the app again
+    // wakes the window up, so there is always a way back.
+    if (m_window && startsHidden()) {
+        m_window->hide();
     }
 }
 
@@ -244,7 +265,36 @@ void Backend::showWindow()
 
 void Backend::showTray()
 {
-    if (m_trayIcon && !m_trayIcon->icon().isNull() && QSystemTrayIcon::isSystemTrayAvailable()) {
+    // Built lazily: at login the tray host may not be up yet, and a
+    // QSystemTrayIcon created then never registers itself later.
+    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
+        return;
+    }
+    if (!m_trayIcon) {
+        const QIcon icon = trayIcon();
+        if (icon.isNull()) {
+            return;
+        }
+        m_trayIcon = new QSystemTrayIcon(icon, this);
+        m_trayIcon->setToolTip(qtTrId("tray.tooltip"));
+
+        auto *menu = new QMenu;
+        // setContextMenu does not take ownership, so the menu follows the
+        // icon's lifetime instead of leaking for the app's.
+        connect(m_trayIcon, &QObject::destroyed, menu, &QObject::deleteLater);
+        QAction *openAction = menu->addAction(qtTrId("tray.open"));
+        QAction *quitAction = menu->addAction(qtTrId("tray.quit"));
+        connect(openAction, &QAction::triggered, this, &Backend::showWindow);
+        connect(quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
+        connect(m_trayIcon, &QSystemTrayIcon::activated, this,
+                [this](QSystemTrayIcon::ActivationReason reason) {
+                    if (reason == QSystemTrayIcon::Trigger) {
+                        showWindow();
+                    }
+                });
+        m_trayIcon->setContextMenu(menu);
+    }
+    if (!m_trayIcon->isVisible()) {
         m_trayIcon->show();
     }
 }
