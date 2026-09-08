@@ -166,6 +166,8 @@ jobs:
         run: |
           apt-get install -y --no-install-recommends \
             dpkg-dev devscripts lintian xz-utils
+          # "build-dep ./" reads debian/control and resolves against the binary
+          # indices, so no deb-src is needed in the image. Verified on debian:trixie.
           apt-get build-dep -y ./
 
       - name: Build
