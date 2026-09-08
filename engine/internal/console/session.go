@@ -212,9 +212,10 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	if heldSession {
 		w.logf("console: hosting the desktop only -- %s", heldReason)
 		if !w.Disabled {
-			RecordFailure(w.StateDir, "Open Couch started your desktop and is holding the console "+
-				"back: "+heldReason+". Fix the setup and log in once with the console available and it "+
-				"returns on its own, or run `open-couch-engine disable` to stop offering it.")
+			// Only the persistent breadcrumb: `status` reads it every poll, so
+			// the panel keeps saying so for as long as it is true. A one-shot
+			// console-failure alongside it would just be a second, near-identical
+			// line racing this one onto the same banner.
 			WriteSafeMode(w.StateDir, heldReason, time.Now())
 		}
 	}

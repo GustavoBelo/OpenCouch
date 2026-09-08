@@ -26,9 +26,10 @@ Item {
             logSection.expanded = true;
         }
         // The wrapper is hosting only the desktop -- after too many failed
-        // logins, or because the user asked it to. The reason string comes
-        // from the engine, same as a failure, and the log says the rest.
-        if (page.status.safe_mode) {
+        // logins, or because the user asked it to. Reason string from the
+        // engine, same as a failure; the log and the buttons below say the
+        // rest. else-if, so a one-shot failure this same poll is not clobbered.
+        else if (page.status.safe_mode) {
             banner.show(page.status.safe_mode, true);
             logSection.expanded = true;
         }
@@ -223,23 +224,38 @@ Item {
 
             // Safe mode / disabled --------------------------------------------
             //
-            // The wrapper is hosting only the desktop. From here the user can
-            // make that stick -- so a machine that was looping stops trying --
-            // or, once the setup is fixed, offer the console again. No root:
-            // it is a marker file in the user's own config directory.
-            AppButton {
+            // The wrapper is hosting only the desktop. In safe mode it lifts on
+            // its own after one login that lasts; these are the shortcuts --
+            // offer the console again now, or make the hold stick so a machine
+            // that was looping stops trying. When disabled, only the first one
+            // applies. No root: a marker file in the user's own config directory.
+            RowLayout {
+                id: holdActions
                 Layout.fillWidth: true
                 Layout.leftMargin: Metrics.pagePadding
                 Layout.rightMargin: Metrics.pagePadding
                 visible: !!page.status.safe_mode || page.status.disabled === true
-                icon: page.status.disabled === true ? "enter" : "close"
-                text: page.status.disabled === true ? qsTrId("dashboard.console_enable")
-                                                    : qsTrId("dashboard.console_disable")
-                onClicked: {
-                    if (backend.setConsoleEnabled(page.status.disabled === true)) {
+                spacing: Metrics.md
+
+                function apply(enable) {
+                    if (backend.setConsoleEnabled(enable)) {
                         page.reload();
                         page.loadLog();
                     }
+                }
+
+                AppButton {
+                    Layout.fillWidth: true
+                    icon: "enter"
+                    text: qsTrId("dashboard.console_enable")
+                    onClicked: holdActions.apply(true)
+                }
+                AppButton {
+                    Layout.fillWidth: true
+                    visible: page.status.disabled !== true
+                    icon: "close"
+                    text: qsTrId("dashboard.console_disable")
+                    onClicked: holdActions.apply(false)
                 }
             }
 

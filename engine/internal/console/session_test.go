@@ -206,6 +206,11 @@ func TestWrapperHoldsTheDesktopInSafeMode(t *testing.T) {
 	if _, _, held := ReadSafeMode(w.StateDir); !held {
 		t.Error("safe mode left nothing for status to show")
 	}
+	// The persistent breadcrumb only -- a one-shot console-failure alongside it
+	// would race the same near-identical line onto the app's banner.
+	if reason, ok := TakeFailure(w.StateDir); ok {
+		t.Errorf("safe mode also wrote a one-shot failure breadcrumb: %q", reason)
+	}
 }
 
 // `open-couch-engine disable` holds the desktop the same way, for the whole
