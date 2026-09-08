@@ -68,7 +68,10 @@ func Sanitize(ctx context.Context, sc Runner) {
 	_ = sc.Run(ctx, append([]string{"unset-environment"}, staleEnvironment...)...)
 }
 
-// SettleJobs waits for the user manager to finish whatever it is doing.
+// SettleJobs waits for the user manager to finish whatever it is doing. It
+// reports whether the queue was seen empty (true) or not (false -- the wait ran
+// out, or list-jobs could not be read). That is only for the log line that
+// times it; the caller carries on either way.
 //
 // Stopping a session is not instant, and uwsm refuses to start a compositor on
 // top of units that are still tearing down -- it fails with
@@ -76,19 +79,22 @@ func Sanitize(ctx context.Context, sc Runner) {
 // systemd logs an ordering cycle while the old envelope target unwinds. Waiting
 // for the job queue to drain is the difference between a session that starts and
 // one that dies in five seconds.
-func SettleJobs(ctx context.Context, sc Runner, within time.Duration) {
+func SettleJobs(ctx context.Context, sc Runner, within time.Duration) bool {
 	deadline := time.Now().Add(within)
 	for {
 		out, err := sc.Output(ctx, "list-jobs", "--no-legend")
-		if err != nil || strings.TrimSpace(out) == "" {
-			return
+		if err != nil {
+			return false
+		}
+		if strings.TrimSpace(out) == "" {
+			return true
 		}
 		if time.Now().After(deadline) {
-			return
+			return false
 		}
 		select {
 		case <-ctx.Done():
-			return
+			return false
 		case <-time.After(250 * time.Millisecond):
 		}
 	}

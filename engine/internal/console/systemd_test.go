@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 type fakeRunner struct {
@@ -97,6 +98,28 @@ func TestDirtyIsQuietOnACleanManager(t *testing.T) {
 	f := &fakeRunner{output: map[string]string{"list-units --state=failed --no-legend": ""}}
 	if dirty, why := Dirty(context.Background(), f); dirty {
 		t.Fatalf("a clean manager was reported dirty: %q", why)
+	}
+}
+
+// The return value only feeds the log line that times the wait, but a switch
+// that says "drained" when it timed out would send the next reader looking in
+// the wrong place.
+func TestSettleJobsReportsWhetherTheQueueDrained(t *testing.T) {
+	if !SettleJobs(context.Background(), &fakeRunner{}, time.Second) {
+		t.Error("an empty job queue should report as drained")
+	}
+
+	busy := &fakeRunner{output: map[string]string{
+		"list-jobs --no-legend": "1 graphical-session.target start running",
+	}}
+	if SettleJobs(context.Background(), busy, 10*time.Millisecond) {
+		t.Error("a queue that never empties should report the deadline, not a drain")
+	}
+
+	// list-jobs failing means the queue state is unknown, which is not a drain.
+	broken := &fakeRunner{fail: map[string]bool{"list-jobs --no-legend": true}}
+	if SettleJobs(context.Background(), broken, time.Second) {
+		t.Error("an unreadable job queue should not report as drained")
 	}
 }
 

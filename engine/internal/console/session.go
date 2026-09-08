@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -76,6 +77,10 @@ type Wrapper struct {
 	// Launch is one: the trigger's whole job is to stop a compositor, and a test
 	// for it must not.
 	StopDesktop func(ctx context.Context) error
+	// QuitSteam ends a running desktop Steam before the switch. A field for the
+	// same reason as StopDesktop: a test for the trigger must not shell out to
+	// the real Steam. Nil runs the package QuitSteam.
+	QuitSteam func(ctx context.Context)
 
 	// ShortRun is how long a compositor has to last to count as a real session,
 	// and ShortRunLimit how many consecutive short ones end the loop.
@@ -152,11 +157,21 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	shortRuns := 0
 	generation := 0
 	for {
+		// The screen is black from here until the next compositor draws. Each
+		// step logs how long it took so a real switch shows which one is the
+		// long pole; the total is logged just before the handoff below.
+		prepStart := time.Now()
+
+		sanitizeStart := time.Now()
 		Sanitize(ctx, w.Systemctl)
+		w.logf("console: sanitize took %s", time.Since(sanitizeStart).Round(time.Millisecond))
+
 		// The previous session's units may still be stopping -- a display
 		// manager restart hands the new session over long before the old one
 		// has unwound -- and uwsm refuses to start on top of that.
-		SettleJobs(ctx, w.Systemctl, 20*time.Second)
+		settleStart := time.Now()
+		drained := SettleJobs(ctx, w.Systemctl, 20*time.Second)
+		w.logf("console: settle-jobs took %s (%s)", time.Since(settleStart).Round(time.Millisecond), label(drained, "drained", "not drained"))
 
 		argv, env, err := w.commandFor(ctx, mode)
 		if err != nil {
@@ -186,6 +201,10 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		if err := WriteLive(w.RuntimeDir, Live{Mode: mode, Generation: generation}); err != nil {
 			w.logf("console: could not record the running session: %v", err)
 		}
+		if mode == ModeConsole {
+			w.logf("console: pre-exec prep took %s total; handing off to %s",
+				time.Since(prepStart).Round(time.Millisecond), argv[0])
+		}
 		w.logf("console: starting the %s session: %s", mode, strings.Join(argv, " "))
 		started := time.Now()
 		// The controller trigger belongs to the desktop session and to no other:
@@ -194,6 +213,10 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		session, endSession := context.WithCancel(ctx)
 		if mode == ModeDesktop {
 			go w.watchControllers(session)
+		} else {
+			// Brackets the compositor coming up against the rest of the black
+			// screen: once its socket is there, what is left is Steam.
+			go w.watchGamescopeSocket(session, started)
 		}
 		runErr := w.Launch(ctx, argv, env)
 		endSession()
@@ -313,11 +336,13 @@ func (w *Wrapper) commandFor(ctx context.Context, mode Mode) ([]string, []string
 		return nil, nil, errors.New("no gamescope session is installed")
 	}
 	if cfg.TVDescription != "" {
+		audioStart := time.Now()
 		if err := PrepareAudio(ctx, w.StateDir, cfg.TVDescription, w.logf); err != nil {
 			// Sound on the wrong speakers is a poor console, but it is not a
 			// reason to refuse to start one.
 			w.logf("console: audio stays where it is: %v", err)
 		}
+		w.logf("console: audio prep took %s", time.Since(audioStart).Round(time.Millisecond))
 	}
 	// gamescope picks its output from OUTPUT_CONNECTOR. Setting it on the user
 	// manager rather than writing a drop-in keeps it transient -- no file, no
@@ -332,7 +357,10 @@ func (w *Wrapper) commandFor(ctx context.Context, mode Mode) ([]string, []string
 		// gamescope enumerates connectors once and never looks again, so handing
 		// it the machine before the displays have presented themselves leaves it
 		// running with nothing selected and no way to recover.
-		AwaitConnector(ctx, cfg.TVName, connectorWait, w.logf)
+		connectorStart := time.Now()
+		ready := AwaitConnector(ctx, cfg.TVName, connectorWait, w.logf)
+		w.logf("console: connector wait took %s (%s)",
+			time.Since(connectorStart).Round(time.Millisecond), label(ready, "ready", "not ready"))
 		w.logf("console: pointing gamescope at %s", cfg.TVName)
 		if err := w.Systemctl.Run(ctx, "set-environment", "OUTPUT_CONNECTOR="+cfg.TVName); err != nil {
 			w.logf("console: could not point gamescope at %s: %v", cfg.TVName, err)
@@ -356,6 +384,69 @@ func orDefault(value, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+// label picks between two words for a log line. Go has no conditional
+// expression and "ready"/"not ready" reads badly inline.
+func label(ok bool, yes, no string) string {
+	if ok {
+		return yes
+	}
+	return no
+}
+
+// watchGamescopeSocket logs when gamescope's Wayland socket appears after the
+// session was handed off. It splits the black screen in two: the time up to the
+// socket is the compositor coming up, and whatever is left before Big Picture
+// draws is Steam cold-starting behind it.
+//
+// Best-effort and read-only. The socket is gamescope-N in XDG_RUNTIME_DIR; a
+// stale one from a session that did not clean up is ignored by only reporting a
+// path that was not already there when the handoff began. It gives up after a
+// minute so it never outlives a short-lived session by long, and the session
+// context ends it the moment the compositor exits.
+func (w *Wrapper) watchGamescopeSocket(ctx context.Context, since time.Time) {
+	if w.RuntimeDir == "" {
+		return
+	}
+	// gamescope-0, gamescope-1, ... is the Wayland socket. The glob also catches
+	// gamescope-0.lock, and gamescope-stats is a different socket entirely, so a
+	// match only counts once it is a socket on disk.
+	pattern := filepath.Join(w.RuntimeDir, "gamescope-[0-9]*")
+	isSocket := func(path string) bool {
+		info, err := os.Lstat(path)
+		return err == nil && info.Mode()&os.ModeSocket != 0
+	}
+	already := map[string]bool{}
+	if seen, err := filepath.Glob(pattern); err == nil {
+		for _, path := range seen {
+			if isSocket(path) {
+				already[path] = true
+			}
+		}
+	}
+
+	deadline := time.Now().Add(time.Minute)
+	for {
+		if fresh, err := filepath.Glob(pattern); err == nil {
+			for _, path := range fresh {
+				if !already[path] && isSocket(path) {
+					w.logf("console: gamescope wayland socket up %s after handoff",
+						time.Since(since).Round(time.Millisecond))
+					return
+				}
+			}
+		}
+		if time.Now().After(deadline) {
+			w.logf("console: gamescope wayland socket not seen a minute after handoff")
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(150 * time.Millisecond):
+		}
+	}
 }
 
 // RealLauncher runs a compositor and waits for it.

@@ -297,6 +297,12 @@ func enter(ctx context.Context, args []string) error {
 	// terminal this was typed into.
 	logf := logger(e.StateDir)
 
+	// Ask Steam to quit while X and Wayland are still up: a SIGTERM'd Steam
+	// hangs then crashes on the way out, graphical-session.target waits for it,
+	// and the crash makes the next Steam run a client update. Nothing below
+	// depends on this working.
+	console.QuitSteam(ctx, logf)
+
 	if err := console.Request(e.RuntimeDir, console.ModeConsole); err != nil {
 		return err
 	}
@@ -673,6 +679,13 @@ func displayName(cfg console.Config) string {
 	return cfg.TVName
 }
 
+// logTimeLayout is RFC 3339 with milliseconds. The plain second was too coarse
+// to see where the black screen between the desktop and gamescope goes: the
+// waits it is made of -- Sanitize, SettleJobs, the audio move, the connector --
+// are a few hundred milliseconds each, and rounding them to the second hid which
+// one was the long pole.
+const logTimeLayout = "2006-01-02T15:04:05.000Z07:00"
+
 func logger(stateDir string) func(string, ...any) {
 	path := filepath.Join(stateDir, "console.log")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
@@ -680,7 +693,7 @@ func logger(stateDir string) func(string, ...any) {
 		return func(format string, args ...any) { fmt.Fprintf(os.Stderr, format+"\n", args...) }
 	}
 	return func(format string, args ...any) {
-		line := fmt.Sprintf(time.Now().Format(time.RFC3339)+" "+format+"\n", args...)
+		line := fmt.Sprintf(time.Now().Format(logTimeLayout)+" "+format+"\n", args...)
 		fmt.Fprint(os.Stderr, line)
 		_, _ = file.WriteString(line)
 	}
