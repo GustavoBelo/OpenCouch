@@ -24,6 +24,7 @@ func triggerWrapper(t *testing.T, pads func() int, stopped chan<- struct{}) *Wra
 			}
 			return nil
 		},
+		QuitSteam: func(context.Context) {},
 	}
 }
 

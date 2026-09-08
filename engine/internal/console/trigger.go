@@ -110,6 +110,11 @@ func (w *Wrapper) enterOnTrigger(ctx context.Context, cfg Config) {
 		return
 	}
 
+	// Same clean quit as the `enter` path, and before the request is written for
+	// the same reason: a couple of seconds in which a manual logout could take
+	// the request as its own is a couple of seconds not to leave lying around.
+	w.quitSteam(ctx)
+
 	if err := Request(w.RuntimeDir, ModeConsole); err != nil {
 		w.logf("console: could not record the request: %v", err)
 		return
@@ -130,6 +135,14 @@ func (w *Wrapper) stopDesktop(ctx context.Context) error {
 		return w.StopDesktop(ctx)
 	}
 	return CompositorFor(w.desktopNames()...).Stop(ctx)
+}
+
+func (w *Wrapper) quitSteam(ctx context.Context) {
+	if w.QuitSteam != nil {
+		w.QuitSteam(ctx)
+		return
+	}
+	QuitSteam(ctx, w.logf)
 }
 
 func (w *Wrapper) dial() notify.Notifier {
