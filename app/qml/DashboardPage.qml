@@ -25,6 +25,13 @@ Item {
             // the log is the point of the window, so it opens itself.
             logSection.expanded = true;
         }
+        // The wrapper is hosting only the desktop -- after too many failed
+        // logins, or because the user asked it to. The reason string comes
+        // from the engine, same as a failure, and the log says the rest.
+        if (page.status.safe_mode) {
+            banner.show(page.status.safe_mode, true);
+            logSection.expanded = true;
+        }
     }
 
     function loadLog() {
@@ -212,6 +219,28 @@ Item {
                 text: qsTrId("dashboard.enter_console")
                 enabled: page.ready && !backend.running
                 onClicked: countdown.arm()
+            }
+
+            // Safe mode / disabled --------------------------------------------
+            //
+            // The wrapper is hosting only the desktop. From here the user can
+            // make that stick -- so a machine that was looping stops trying --
+            // or, once the setup is fixed, offer the console again. No root:
+            // it is a marker file in the user's own config directory.
+            AppButton {
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                visible: !!page.status.safe_mode || page.status.disabled === true
+                icon: page.status.disabled === true ? "enter" : "close"
+                text: page.status.disabled === true ? qsTrId("dashboard.console_enable")
+                                                    : qsTrId("dashboard.console_disable")
+                onClicked: {
+                    if (backend.setConsoleEnabled(page.status.disabled === true)) {
+                        page.reload();
+                        page.loadLog();
+                    }
+                }
             }
 
             AppButton {

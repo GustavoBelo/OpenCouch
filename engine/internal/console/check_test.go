@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fakePath decides what is installed, so a requirement check can be exercised
@@ -153,5 +154,40 @@ func TestRequirementsRefuseAHostingEntryAsTheDesktop(t *testing.T) {
 		if strings.Contains(r.Have, "the desktop session to come back to") && !r.OK {
 			t.Error("a real desktop was refused")
 		}
+	}
+}
+
+// Safe mode and `disable` both keep the console from starting, so the doctor,
+// the panel and the enter gate all have to see it -- otherwise `enter` ends the
+// desktop for a switch that is not going to happen.
+func TestRequirementsSurfaceSafeModeAndDisable(t *testing.T) {
+	base := t.TempDir()
+	stateDir := t.TempDir()
+	restore := checkStateDir
+	checkStateDir = func() (string, error) { return stateDir, nil }
+	t.Cleanup(func() { checkStateDir = restore })
+
+	configPath := base + "/console.json"
+	ready := Config{TVName: "HDMI-A-1", DesktopSession: "omarchy.desktop"}
+	entries := []Entry{{Path: "/usr/share/wayland-sessions/omarchy.desktop", Name: "Omarchy", Exec: []string{"uwsm", "start"}}}
+	fakePath(t, "gamescope", "steam")
+
+	// Nothing wrong yet.
+	if anyContains(Unmet(Requirements(context.Background(), ready, systemdWith(), entries, configPath)), "safe mode") {
+		t.Fatal("safe mode reported on a healthy machine")
+	}
+
+	WriteSafeMode(stateDir, "3 logins in a row ended within seconds", time.Now())
+	if !anyContains(Unmet(Requirements(context.Background(), ready, systemdWith(), entries, configPath)), "safe mode") {
+		t.Error("a machine in safe mode did not say so")
+	}
+
+	// `disable` is the standing choice and takes precedence in the wording.
+	if err := SetDisabled(base, true); err != nil {
+		t.Fatal(err)
+	}
+	unmet := Unmet(Requirements(context.Background(), ready, systemdWith(), entries, configPath))
+	if !anyContains(unmet, "switched off") || !anyContains(unmet, "open-couch-engine enable") {
+		t.Errorf("a disabled machine did not point at `enable`: %q", unmet)
 	}
 }

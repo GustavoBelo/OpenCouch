@@ -363,6 +363,19 @@ bool Backend::setBootMode(const QString &mode)
     return ok;
 }
 
+// `disable` writes a marker in the user's own config directory that the wrapper
+// reads before it does anything else; `enable` removes it and clears any
+// safe-mode hold. Both go through the engine, like every other console setting.
+bool Backend::setConsoleEnabled(bool enabled)
+{
+    bool ok = false;
+    runEngineSync({enabled ? QStringLiteral("enable") : QStringLiteral("disable")}, &ok);
+    if (ok) {
+        emit configChanged();
+    }
+    return ok;
+}
+
 // Written through the engine, like every other console setting. The app used to
 // put this in a config.env of its own, which the engine that reads it has never
 // looked at: the switch saved, and nothing on the machine was any different.
