@@ -69,9 +69,9 @@ func Sanitize(ctx context.Context, sc Runner) {
 }
 
 // SettleJobs waits for the user manager to finish whatever it is doing. It
-// reports whether the queue drained (true) or the wait ran out first (false),
-// which is only for the log line that times it -- the caller carries on either
-// way.
+// reports whether the queue was seen empty (true) or not (false -- the wait ran
+// out, or list-jobs could not be read). That is only for the log line that
+// times it; the caller carries on either way.
 //
 // Stopping a session is not instant, and uwsm refuses to start a compositor on
 // top of units that are still tearing down -- it fails with
@@ -83,7 +83,10 @@ func SettleJobs(ctx context.Context, sc Runner, within time.Duration) bool {
 	deadline := time.Now().Add(within)
 	for {
 		out, err := sc.Output(ctx, "list-jobs", "--no-legend")
-		if err != nil || strings.TrimSpace(out) == "" {
+		if err != nil {
+			return false
+		}
+		if strings.TrimSpace(out) == "" {
 			return true
 		}
 		if time.Now().After(deadline) {

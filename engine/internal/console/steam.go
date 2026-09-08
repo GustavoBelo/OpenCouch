@@ -27,6 +27,12 @@ var steamQuitWait = 8 * time.Second
 // handed it next. A variable so tests can stand in for a running Steam without
 // one.
 var steamClientPID = func() (int, bool) {
+	// A home directory that would not resolve leaves steamPidFile relative, and
+	// reading it would then be against the working directory -- some other pid
+	// file, or none. Not knowing where Steam's is means treating it as gone.
+	if !filepath.IsAbs(steamPidFile) {
+		return 0, false
+	}
 	data, err := os.ReadFile(steamPidFile)
 	if err != nil {
 		return 0, false

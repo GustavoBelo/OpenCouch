@@ -115,6 +115,12 @@ func TestSettleJobsReportsWhetherTheQueueDrained(t *testing.T) {
 	if SettleJobs(context.Background(), busy, 10*time.Millisecond) {
 		t.Error("a queue that never empties should report the deadline, not a drain")
 	}
+
+	// list-jobs failing means the queue state is unknown, which is not a drain.
+	broken := &fakeRunner{fail: map[string]bool{"list-jobs --no-legend": true}}
+	if SettleJobs(context.Background(), broken, time.Second) {
+		t.Error("an unreadable job queue should not report as drained")
+	}
 }
 
 func TestTargetKnownFollowsSystemctl(t *testing.T) {

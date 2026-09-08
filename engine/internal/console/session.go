@@ -171,7 +171,7 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		// has unwound -- and uwsm refuses to start on top of that.
 		settleStart := time.Now()
 		drained := SettleJobs(ctx, w.Systemctl, 20*time.Second)
-		w.logf("console: settle-jobs took %s (%s)", time.Since(settleStart).Round(time.Millisecond), label(drained, "drained", "deadline"))
+		w.logf("console: settle-jobs took %s (%s)", time.Since(settleStart).Round(time.Millisecond), label(drained, "drained", "not drained"))
 
 		argv, env, err := w.commandFor(ctx, mode)
 		if err != nil {
