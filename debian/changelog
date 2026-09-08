@@ -1,0 +1,6 @@
+open-couch (2.0.1) unstable; urgency=medium
+
+  * Release v2.0.1; see
+    https://github.com/GustavoBelo/OpenCouch/releases/tag/v2.0.1
+
+ -- Gustavo Belo <gustavobelo28@gmail.com>  Mon, 07 Sep 2026 00:00:00 +0000

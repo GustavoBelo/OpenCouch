@@ -51,6 +51,19 @@ go install github.com/GustavoBelo/OpenCouch/engine/cmd/open-couch-engine@latest
 Or take the binary straight from the [latest release](https://github.com/GustavoBelo/OpenCouch/releases/latest)
 — `open-couch-engine-linux-amd64` or `-arm64`, checksums in `SHA256SUMS`.
 
+### From a package
+
+Two packages, the same split as above: `open-couch-engine`, and `open-couch` for the graphical
+application, which pulls in Qt and needs the engine.
+
+For Fedora, Nobara and Bazzite (`.rpm`) or Debian and Ubuntu (`.deb`), take the files from the
+[latest release](https://github.com/GustavoBelo/OpenCouch/releases/latest):
+
+```sh
+sudo dnf install ./open-couch-engine-*.rpm ./open-couch-*.rpm
+sudo apt install ./open-couch-engine_*.deb ./open-couch_*.deb
+```
+
 ## 🚀 First run
 
 ```sh

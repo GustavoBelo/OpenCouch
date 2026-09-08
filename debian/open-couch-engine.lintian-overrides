@@ -1,0 +1,5 @@
+# The engine runs as the login session itself, before much of the system is up,
+# and must not depend on shared libraries it might not find there. A static Go
+# binary is deliberate, matching the RPM spec and the PKGBUILD. Tag-only, no
+# path context: lintian renders this tag's context differently across releases.
+open-couch-engine: statically-linked-binary

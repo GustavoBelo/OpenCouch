@@ -144,7 +144,15 @@ só o detecta), `gamescope`, `steam`, `pactl`, D-Bus.
 - `release.sh` — **única forma autorizada de versionar** (ver abaixo).
 - `io.github.gustavobelo.opencouch.metainfo.xml` — metadados AppStream.
 - `aur/` — dois PKGBUILDs: `open-couch-engine` (binário + entrada de sessão) e `open-couch` (a GUI).
-- `rpm/open-couch.spec` — o mesmo par, como subpacotes, para o COPR.
+  O `release.sh` sincroniza o `pkgver`/`pkgrel`; ainda **não** há publicação automática (registro
+  de conta na AUR fechado). Constroem do tarball da tag; `sha256sums` fica `SKIP` por ora.
+- `rpm/open-couch.spec` — o mesmo par, como subpacotes. A CI de release (job `rpm`) constrói os
+  `.rpm` num container Fedora (`rpmbuild --nodeps`, Go do `setup-go`) e os anexa à GitHub Release.
+- `debian/` (na **raiz** do repo, não aqui — o debhelper exige) — o mesmo par como pacotes
+  Debian: `control`, `rules` (buildsystem cmake, `--sourcedirectory=app`, `CGO_ENABLED=0`),
+  `open-couch.install` / `open-couch-engine.install` (fazem o split), `changelog`, `copyright`.
+  Source format `3.0 (native)`: a versão é `X.Y.Z`, sem revisão. A CI de release (job `deb`)
+  constrói os `.deb` num container Debian e os anexa à GitHub Release.
 - `host/install.sh` — baixa o binário da release para `~/.local/bin` e confere o SHA256.
 - `check-docs.sh` — confere este arquivo contra o código: todo `src/*` e `qml/*` citado existe,
   todo subcomando do `usage()` do engine está documentado, e todos os catálogos `.ts` carregam o
@@ -177,6 +185,8 @@ A versão é sincronizada em **vários arquivos** e não deve ser editada manual
 - `SELF_VERSION` em `packaging/host/install.sh`
 - `pkgver=`/`pkgrel=` nos dois PKGBUILDs (`packaging/aur/open-couch-engine`, `packaging/aur/open-couch`)
 - `Version:`/`Release:` e uma entrada de `%changelog` em `packaging/rpm/open-couch.spec`
+- uma entrada nova em `debian/changelog` — versão `X.Y.Z` sem `-1`, porque o pacote Debian é
+  source format `3.0 (native)`
 - a versão do engine **não** é sincronizada: é um binário Go e a versão chega por
   `-ldflags -X main.version=` no build, vinda de `app/version.txt` ou da tag
 
@@ -199,9 +209,12 @@ Efeito colateral conhecido: enquanto a tag não existe, o build local injeta a v
 tag, então o app acusa "engine desatualizado" contra o engine que você acabou de compilar. É o
 esperado; some no `release.sh`.
 
-Ao dar push de uma tag `v*`, a CI (`.github/workflows/release.yml`) testa o engine, compila os
-binários estáticos `linux-amd64`/`linux-arm64`, gera o `SHA256SUMS` e publica os três na release.
-Não há AppImage nem Flatpak desde a 2.0.
+Ao dar push de uma tag `v*`, a CI (`.github/workflows/release.yml`) testa o engine e compila os
+binários estáticos `linux-amd64`/`linux-arm64` com o `SHA256SUMS`; em paralelo, os jobs `rpm` e
+`deb` constroem os pacotes em containers Fedora e Debian. O job `release` publica tudo na mesma
+release, idempotente — os binários, o `SHA256SUMS`, os `.rpm` e os `.deb`. `workflow_dispatch` roda
+só os jobs de build (não publica), para exercer o empacotamento sem cortar release. AUR ainda não
+entra (registro de conta fechado). Não há AppImage nem Flatpak desde a 2.0.
 
 ## Publicação de release — boa prática
 
@@ -261,13 +274,16 @@ Modelo publicado: `v1.7.0` — https://github.com/GustavoBelo/OpenCouch/releases
 O passo `Create or update release` do workflow é **idempotente**:
 
 ```sh
-ASSETS=(dist/open-couch-engine-linux-amd64 dist/open-couch-engine-linux-arm64 dist/SHA256SUMS)
+ASSETS=(dist/open-couch-engine-linux-{amd64,arm64} dist/SHA256SUMS rpm/*.rpm deb/*.deb)
 if gh release view "$TAG" >/dev/null 2>&1; then
   gh release upload "$TAG" "${ASSETS[@]}" --clobber      # preserva notes escritas à mão
 else
   gh release create "$TAG" "${ASSETS[@]}" --title "Open Couch $TAG" --generate-notes
 fi
 ```
+
+Os `.rpm`/`.deb` vêm dos artifacts dos jobs `rpm`/`deb`; se um deles não produziu nada, o job
+`release` falha **antes** de publicar, em vez de subir uma release pela metade.
 
 Duas formas válidas:
 
