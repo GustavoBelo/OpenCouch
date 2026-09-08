@@ -1,0 +1,73 @@
+Source: open-couch
+Section: utils
+Priority: optional
+Maintainer: Gustavo Belo <gustavobelo28@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ cmake,
+ ninja-build,
+ g++,
+ golang-go,
+ ca-certificates,
+ qt6-base-dev,
+ qt6-declarative-dev,
+ qt6-declarative-dev-tools,
+ qt6-tools-dev,
+ qt6-tools-dev-tools,
+ qt6-l10n-tools,
+ libgl-dev,
+Standards-Version: 4.7.2
+Rules-Requires-Root: no
+Homepage: https://github.com/GustavoBelo/OpenCouch
+Vcs-Browser: https://github.com/GustavoBelo/OpenCouch
+Vcs-Git: https://github.com/GustavoBelo/OpenCouch.git
+
+Package: open-couch-engine
+Architecture: any
+Depends:
+ ${misc:Depends},
+ systemd,
+ pulseaudio-utils,
+# gamescope lives in contrib on Debian and universe on Ubuntu, so a hard
+# dependency would make this package uninstallable on a stock Debian. It is a
+# Recommends instead: apt still pulls it in wherever it is available, and
+# "open-couch-engine doctor" reports a missing one better than an unmet
+# dependency would. steam is non-free and heavy; a Suggests is enough.
+Recommends:
+ gamescope,
+Suggests:
+ steam,
+ open-couch,
+Description: console mode for your Linux desktop - the engine
+ Open Couch hands the whole machine to Steam's gamescope session on the
+ television and gives it back cleanly when you leave.
+ .
+ This package is the engine: a static binary with no runtime dependencies that
+ hosts your desktop and the gamescope session in one login session, switches
+ between them, and puts the sound and the display back on the way home. It does
+ everything from the command line and does not need the graphical application.
+ .
+ A gamescope-session package from the distribution is required at runtime; the
+ engine detects a missing one and reports it with "open-couch-engine doctor"
+ rather than failing to install.
+
+Package: open-couch
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+ open-couch-engine (= ${binary:Version}),
+ qt6-wayland,
+ qml6-module-qtquick,
+ qml6-module-qtquick-controls,
+ qml6-module-qtquick-layouts,
+ qml6-module-qtquick-templates,
+ qml6-module-qtquick-window,
+ qml6-module-qtquick-shapes,
+ qml6-module-qtqml-workerscript,
+Description: console mode for your Linux desktop - the graphical application
+ Open Couch hands the whole machine to Steam's gamescope session on the
+ television and gives it back cleanly when you leave.
+ .
+ This package is the optional graphical application; everything it does can also
+ be done from the command line with open-couch-engine, which it requires.

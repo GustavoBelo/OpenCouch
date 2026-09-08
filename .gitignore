@@ -1,6 +1,7 @@
 # Build artifacts
 app/build/
 app-build/
+app/obj-*/
 appimage-build/
 appimage-dist/
 *.AppImage
@@ -8,6 +9,16 @@ build/
 *.o
 *.obj
 *.qm
+
+# Debian packaging build output (the .deb/.changes/.buildinfo land in the parent
+# directory, outside the repo)
+/debian/.debhelper/
+/debian/open-couch/
+/debian/open-couch-engine/
+/debian/files
+/debian/debhelper-build-stamp
+/debian/*.substvars
+/debian/*.debhelper.log
 
 # Python (local test tooling only; the shipped app is C++/QML)
 .venv/

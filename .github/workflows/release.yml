@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+  # Lets the packaging jobs be exercised without cutting a release: the build
+  # jobs run and upload artifacts, the publish jobs (release, aur) are gated on
+  # a v* tag and skip.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,18 +19,23 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check version vs tag
+      - name: Resolve version
         id: version
         env:
-          TAG: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          VERSION="${TAG#v}"
           FILE_VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
-          if [[ -z "${VERSION}" || "${VERSION}" != "${FILE_VERSION}" ]]; then
-            echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${TAG}." >&2
-            exit 1
+          if [[ "${REF}" == refs/tags/* ]]; then
+            TAG_VERSION="${REF_NAME#v}"
+            if [[ -z "${TAG_VERSION}" || "${TAG_VERSION}" != "${FILE_VERSION}" ]]; then
+              echo "::error::app/version.txt (${FILE_VERSION}) differs from tag ${REF_NAME}." >&2
+              exit 1
+            fi
+            echo "version=${TAG_VERSION}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "version=${FILE_VERSION}" >> "${GITHUB_OUTPUT}"
           fi
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       # Barato, e pega a classe de erro que ninguém pega lendo: documentação que
       # descreve arquivos, comandos ou strings que não existem mais.
@@ -79,9 +88,109 @@ jobs:
           path: dist/
           if-no-files-found: error
 
+  rpm:
+    name: Build the RPMs
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      # actions/checkout needs git in the container, and setup-go needs tar.
+      - name: Bootstrap the container
+        run: dnf -y install --setopt=install_weak_deps=False git tar
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      # The spec's BuildRequires minus golang: Fedora stable has no go >= 1.26,
+      # so it comes from setup-go on PATH and rpmbuild runs with --nodeps.
+      - name: Install build tooling
+        run: |
+          dnf -y install --setopt=install_weak_deps=False \
+            rpm-build rpmdevtools rpmlint \
+            cmake ninja-build gcc-c++ \
+            qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qttools-devel \
+            libappstream-glib
+
+      - name: Build
+        run: |
+          set -eux
+          git config --global --add safe.directory "${PWD}"
+          VERSION="$(sed -n 's/^VERSION=//p' app/version.txt)"
+          rpmdev-setuptree
+          git archive --format=tar.gz --prefix="OpenCouch-${VERSION}/" \
+            -o "${HOME}/rpmbuild/SOURCES/open-couch-${VERSION}.tar.gz" HEAD
+          cp packaging/rpm/open-couch.spec "${HOME}/rpmbuild/SPECS/"
+          go version
+          rpmbuild -ba --nodeps "${HOME}/rpmbuild/SPECS/open-couch.spec"
+          rpmlint "${HOME}"/rpmbuild/RPMS/*/*.rpm || true
+
+      - name: Collect
+        run: |
+          mkdir -p rpm-out
+          find "${HOME}/rpmbuild/RPMS" -name '*.rpm' \
+            ! -name '*debuginfo*' ! -name '*debugsource*' \
+            -exec cp -v {} rpm-out/ \;
+          ls -l rpm-out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: rpm-out/
+          if-no-files-found: error
+
+  deb:
+    name: Build the DEBs
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    env:
+      # No automatic -dbgsym package: it would be a third .deb on every release
+      # with nothing a user installs from a file wants.
+      DEB_BUILD_OPTIONS: noautodbgsym
+    steps:
+      - name: Bootstrap the container
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      - name: Install build tooling
+        run: |
+          apt-get install -y --no-install-recommends \
+            dpkg-dev devscripts lintian xz-utils
+          apt-get build-dep -y ./
+
+      - name: Build
+        run: |
+          set -eux
+          git config --global --add safe.directory "${PWD}"
+          go version
+          dpkg-buildpackage -b -us -uc
+          mkdir -p deb-out
+          cp -v ../*.deb deb-out/
+          ls -l deb-out
+
+      - name: Lint
+        run: lintian --no-tag-display-limit deb-out/*.deb || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: deb-out/
+          if-no-files-found: error
+
   release:
     name: Create GitHub Release
-    needs: engine
+    needs: [engine, rpm, deb]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -90,6 +199,14 @@ jobs:
         with:
           name: engine
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: rpm
+          path: rpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: deb
 
       # Idempotent on purpose: a release created by hand with detailed notes
       # must survive the workflow running after it, so an existing one only gets
@@ -99,7 +216,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          ASSETS=(dist/open-couch-engine-linux-amd64 dist/open-couch-engine-linux-arm64 dist/SHA256SUMS)
+          shopt -s nullglob
+          RPMS=(rpm/*.rpm)
+          DEBS=(deb/*.deb)
+          if (( ${#RPMS[@]} == 0 || ${#DEBS[@]} == 0 )); then
+            echo "::error::missing rpm (${#RPMS[@]}) or deb (${#DEBS[@]}) artifacts" >&2
+            exit 1
+          fi
+          ASSETS=(
+            dist/open-couch-engine-linux-amd64
+            dist/open-couch-engine-linux-arm64
+            dist/SHA256SUMS
+            "${RPMS[@]}"
+            "${DEBS[@]}"
+          )
           if gh release view "${TAG}" >/dev/null 2>&1; then
             echo "Release ${TAG} already exists, uploading assets..."
             gh release upload "${TAG}" "${ASSETS[@]}" --clobber
@@ -108,3 +238,7 @@ jobs:
               --title "Open Couch ${TAG}" \
               --generate-notes
           fi
+
+  # An AUR publish job belongs here too, but AUR account registration is closed
+  # for now. The PKGBUILDs in packaging/aur/ are still version-bumped by
+  # release.sh and build from the tag tarball; they just are not pushed yet.

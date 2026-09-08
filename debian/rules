@@ -1,0 +1,25 @@
+#!/usr/bin/make -f
+
+# The engine runs as the login session itself, before much of the system is up,
+# and must not link shared libraries. CGO_ENABLED=0 exported here makes even the
+# go build that CMake drives produce a static binary, so there is no second
+# build as there is in the RPM spec and the PKGBUILD.
+export CGO_ENABLED = 0
+export GOFLAGS = -mod=mod
+
+# engine/go.mod needs Go >= 1.26, newer than golang-go on the current stable
+# distributions. CI unpacks that toolchain under /usr/local/go; prefer it when
+# it is there and fall through to golang-go otherwise.
+export PATH := /usr/local/go/bin:$(PATH)
+
+%:
+	dh $@ --buildsystem=cmake+ninja --sourcedirectory=app
+
+# The Go tests reach the network for modules and already run in their own CI
+# job; a package build is the wrong place for them.
+override_dh_auto_test:
+
+# Everything the single CMake install produces is claimed by one of the two
+# *.install files. Fail the build if that stops being true.
+override_dh_missing:
+	dh_missing --fail-missing
