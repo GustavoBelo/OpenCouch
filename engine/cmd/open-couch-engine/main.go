@@ -418,9 +418,14 @@ func status(ctx context.Context) error {
 		out.Mode = string(live.Mode)
 	}
 	// The same call the wrapper and the doctor use: the panel shows safe mode
-	// for exactly as long as a switch would really be held.
-	if why, held := console.SafeModeReason(e.StateDir, time.Now()); held {
-		out.SafeMode = why
+	// for exactly as long as a switch would really be held. Suppressed when
+	// disabled, the way the doctor does it -- `disabled` already carries the
+	// reason, and a red "logins ended early" alarm would blame a fault on a
+	// user who switched the console off on purpose.
+	if !out.Disabled {
+		if why, held := console.SafeModeReason(e.StateDir, time.Now()); held {
+			out.SafeMode = why
+		}
 	}
 	// Taken, not just read. The breadcrumb exists so the user hears once why
 	// the console did not start, and this is the path that tells them: the app
@@ -656,8 +661,9 @@ func setEnabled(on bool) error {
 	fmt.Println("The session entry stays installed; `open-couch-engine enable` turns the console back on.")
 	fmt.Println()
 	fmt.Println("To remove it entirely instead, from a text console (Ctrl+Alt+F2):")
-	fmt.Printf("  sudo rm -f /usr/local/share/wayland-sessions/%s \\\n", console.HostingEntryFile)
-	fmt.Printf("             /usr/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  sudo rm -f /usr/local/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  sudo rm -f /usr/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  rm -f ~/.local/share/wayland-sessions/%s\n", console.HostingEntryFile)
 	fmt.Printf("  sudo rm -f /etc/sddm.conf.d/%s   # only if you set up autologin\n", console.AutologinDropIn)
 	return nil
 }

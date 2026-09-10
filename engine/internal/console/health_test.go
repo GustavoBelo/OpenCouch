@@ -104,6 +104,46 @@ func TestRecordHostStartTrimsHistory(t *testing.T) {
 	}
 }
 
+// A half-written file must lose the streak, not load a partial one and still
+// trip -- the in-memory short-run guard is the backstop, and the next start
+// rebuilds the count if the machine really is looping.
+func TestLoadHostHealthOnCorruptFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(hostHealthPath(dir), []byte(`{"starts": ["2026`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, tripped := SafeModeReason(dir, time.Now()); tripped {
+		t.Error("a truncated host-health.json tripped safe mode")
+	}
+	if h := loadHostHealth(dir); len(h.Starts) != 0 || h.LastGood != nil {
+		t.Errorf("corrupt file did not load as empty: %+v", h)
+	}
+}
+
+// The window is by wall clock, which is routinely wrong on an early-boot reboot
+// loop before NTP. A failure whose age reads negative (clock went back) or
+// absurd (jumped forward) must still count; only a plausible, positive age past
+// the window is aged out.
+func TestSafeModeCountsFailuresThroughClockSteps(t *testing.T) {
+	now := time.Now()
+
+	future := t.TempDir()
+	for i := 0; i < failLoginLimit; i++ {
+		RecordHostStart(future, now.Add(time.Hour))
+	}
+	if _, tripped := SafeModeReason(future, now); !tripped {
+		t.Error("failures timestamped in the future (clock stepped back) were discarded")
+	}
+
+	ancient := t.TempDir()
+	for i := 0; i < failLoginLimit; i++ {
+		RecordHostStart(ancient, now.Add(-72*time.Hour))
+	}
+	if _, tripped := SafeModeReason(ancient, now); !tripped {
+		t.Error("failures with an absurd age (clock jumped forward) were discarded")
+	}
+}
+
 // A wrapper may have no state directory; none of this may panic on one.
 func TestHealthIsQuietWithNoStateDir(t *testing.T) {
 	RecordHostStart("", time.Now())

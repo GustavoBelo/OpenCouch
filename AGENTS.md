@@ -125,15 +125,19 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
     `host-session` que morre em segundos derruba o login; o guard de restart curto do `session.go`
     conta em memória e zera a cada login, sem enxergar o laço que atravessa reboots. `RecordHostStart`
     grava cada início em `~/.cache/open-couch/host-health.json` (**`StateDir`, não runtime dir** — o
-    reboot que fecha o laço apagaria a contagem). **`SafeModeReason(stateDir, now)` é a fonte de
-    verdade única**: `failLoginLimit` (3) inícios em `failLoginWindow` (10 min) sem um login que durou
-    → o wrapper hospeda **só o desktop**, ignora `boot`/request de console e não arma o gatilho; e o
-    `status`, o `doctor` e o portão do `enter` recusam lendo essa **mesma** chamada, então não
-    divergem (não há arquivo `safe-mode` separado — a versão anterior tinha um e ele defasava). O
-    hold é recalculado por iteração, não travado no início do login: um login longo para de recusar
-    troca quando o streak envelhece pra fora da janela. `RecordHostHealthy` (login normal aos
-    `healthyRun` 45 s; login held **só** quando desloga tendo durado 45 s; ou `open-couch-engine
-    enable`) zera o streak. `disabled` é o mesmo hold por escolha do usuário, via marcador em
+    reboot que fecha o laço apagaria a contagem), **só quando o wrapper ia oferecer o console**:
+    login `disabled` não conta. **`SafeModeReason(stateDir, now)` é a fonte de verdade única**:
+    `failLoginLimit` (3) inícios em `failLoginWindow` (10 min) sem um login que durou → o wrapper
+    hospeda **só o desktop**, ignora `boot`/request de console e não arma o gatilho; e o `status`, o
+    `doctor` e o portão do `enter` recusam lendo essa **mesma** chamada, então não divergem (não há
+    arquivo `safe-mode` separado — a versão anterior tinha um e ele defasava). O hold é `heldNow()`,
+    recalculado por iteração e de novo antes de engolir um request (que aí faz `continue`, nunca
+    `break` — cair no ramo de logout largava o usuário no greeter). A janela é wall-clock, então
+    idade negativa/absurda (relógio pulou antes do NTP) conta como recente. `RecordHostHealthy`
+    (desktop de pé por `healthyRun` 45 s — medido do compositor subir, não do topo do `Run`; ou
+    `open-couch-engine enable`) zera o streak; um desktop held que durou grava isso **no logout**,
+    não no meio. RMW do arquivo é serializado por `flock` (`host-health.json.lock`) contra o
+    handover de sessão do DM. `disabled` é o mesmo hold por escolha do usuário, via marcador em
     `~/.config/open-couch/`.
 - `internal/audio/` — EDID→ELD→pin→profile→sink. O WirePlumber move *streams*, não o sink default.
   - `logfile.go` — o log do login atual e os anteriores. `RotateLog` arquiva no topo do

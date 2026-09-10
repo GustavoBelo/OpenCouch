@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"syscall"
 	"time"
 
 	"github.com/GustavoBelo/OpenCouch/engine/internal/atomicfile"
@@ -62,23 +63,46 @@ const (
 type hostHealth struct {
 	// Starts is when the hosting session has begun, oldest first.
 	Starts []time.Time `json:"starts"`
-	// LastGood is when a login last lasted long enough to fix things from.
-	LastGood time.Time `json:"last_good,omitempty"`
+	// LastGood is when a login last lasted long enough to fix things from. A
+	// pointer so a machine that has never had one leaves the field out of the
+	// file rather than carrying a zero timestamp -- omitempty does not fire on
+	// a plain time.Time.
+	LastGood *time.Time `json:"last_good,omitempty"`
 }
 
 func hostHealthPath(stateDir string) string { return filepath.Join(stateDir, hostHealthFile) }
+
+// withHostHealthLock serialises a read-modify-write of host-health.json against
+// a concurrent write from an overlapping session -- a display manager hands the
+// next login over before the last one has unwound, and the outgoing wrapper's
+// healthy-timer can fire at the same moment the incoming one records its start.
+func withHostHealthLock(stateDir string, fn func()) {
+	lock, err := os.OpenFile(filepath.Join(stateDir, hostHealthFile+".lock"),
+		os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		fn()
+		return
+	}
+	defer lock.Close()
+	if syscall.Flock(int(lock.Fd()), syscall.LOCK_EX) == nil {
+		defer syscall.Flock(int(lock.Fd()), syscall.LOCK_UN)
+	}
+	fn()
+}
 
 // loadHostHealth reads the record, treating anything unreadable as no history.
 // A corrupt file loses the streak rather than holding the console hostage: the
 // in-memory short-run guard is still the backstop, and the next start rebuilds
 // the count if the machine really is looping.
 func loadHostHealth(stateDir string) hostHealth {
-	var h hostHealth
 	data, err := os.ReadFile(hostHealthPath(stateDir))
 	if err != nil {
-		return h
+		return hostHealth{}
 	}
-	_ = json.Unmarshal(data, &h)
+	var h hostHealth
+	if err := json.Unmarshal(data, &h); err != nil {
+		return hostHealth{}
+	}
 	return h
 }
 
@@ -91,18 +115,21 @@ func saveHostHealth(stateDir string, h hostHealth) {
 }
 
 // RecordHostStart notes that the hosting session has just begun. Called once,
-// at the top of the wrapper, before anything can go wrong.
+// at the top of the wrapper, before anything can go wrong -- and only when it
+// meant to offer the console, never for a `disable`d login.
 func RecordHostStart(stateDir string, now time.Time) {
 	if stateDir == "" {
 		return
 	}
-	h := loadHostHealth(stateDir)
-	h.Starts = append(h.Starts, now.UTC())
-	sort.Slice(h.Starts, func(i, j int) bool { return h.Starts[i].Before(h.Starts[j]) })
-	if len(h.Starts) > hostStartsKept {
-		h.Starts = h.Starts[len(h.Starts)-hostStartsKept:]
-	}
-	saveHostHealth(stateDir, h)
+	withHostHealthLock(stateDir, func() {
+		h := loadHostHealth(stateDir)
+		h.Starts = append(h.Starts, now.UTC())
+		sort.Slice(h.Starts, func(i, j int) bool { return h.Starts[i].Before(h.Starts[j]) })
+		if len(h.Starts) > hostStartsKept {
+			h.Starts = h.Starts[len(h.Starts)-hostStartsKept:]
+		}
+		saveHostHealth(stateDir, h)
+	})
 }
 
 // RecordHostHealthy notes that a login has worked: a session stayed up long
@@ -113,7 +140,10 @@ func RecordHostHealthy(stateDir string, now time.Time) {
 	if stateDir == "" {
 		return
 	}
-	saveHostHealth(stateDir, hostHealth{LastGood: now.UTC()})
+	t := now.UTC()
+	withHostHealthLock(stateDir, func() {
+		saveHostHealth(stateDir, hostHealth{LastGood: &t})
+	})
 }
 
 // SafeModeReason reports whether the console should be held back because recent
@@ -131,10 +161,15 @@ func SafeModeReason(stateDir string, now time.Time) (string, bool) {
 	h := loadHostHealth(stateDir)
 	recent := 0
 	for _, start := range h.Starts {
-		if !h.LastGood.IsZero() && !start.After(h.LastGood) {
+		if h.LastGood != nil && !start.After(*h.LastGood) {
 			continue
 		}
-		if now.Sub(start) > failLoginWindow {
+		// The window drops trouble from before today. It is by wall clock,
+		// which is routinely wrong on an early-boot reboot loop -- exactly what
+		// this guards -- so an age that is negative (clock stepped back) or
+		// absurd (stepped forward) is treated as recent rather than discarding
+		// a real failure. Only a plausible, positive age is aged out.
+		if age := now.Sub(start); age > failLoginWindow && age < 24*time.Hour {
 			continue
 		}
 		recent++
