@@ -169,9 +169,10 @@ func (w *Wrapper) Run(ctx context.Context) error {
 
 	// Note this login before the first thing that could end it. What decides
 	// safe mode is how many of these were followed by a session that lasted --
-	// so the start is recorded now and the outcome is judged by how long the
-	// desktop below stays up.
-	RecordHostStart(w.StateDir, time.Now())
+	// so the start is recorded now and the outcome is judged by how long this
+	// login runs before it is over.
+	runStart := time.Now()
+	RecordHostStart(w.StateDir, runStart)
 
 	// Mark the session so the doctor can tell a hosted session from a plain
 	// one: the compositor underneath looks identical either way.
@@ -195,34 +196,32 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	shortRuns := 0
 	generation := 0
 
-	// disable and safe mode both come to the same thing: host the desktop,
-	// nothing else, for the whole login. disable is the user's standing choice;
-	// safe mode is where the wrapper lands on its own after too many logins
-	// ended in seconds. The hold is decided once, here, and does not lift
-	// mid-login: a desktop forced by safe mode lasting proves the way in works,
-	// not that the trouble is over, so what clears safe mode is a *later* login
-	// that was offered the console and still lasted (markHealthyAfter).
-	heldSession := w.Disabled
-	heldReason := ""
-	if w.Disabled {
-		heldReason = "the console is switched off (`open-couch-engine disable`)"
-	} else if reason, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
-		heldSession, heldReason = true, reason
-	}
-	if heldSession {
-		w.logf("console: hosting the desktop only -- %s", heldReason)
-		if !w.Disabled {
-			// Only the persistent breadcrumb: `status` reads it every poll, so
-			// the panel keeps saying so for as long as it is true. A one-shot
-			// console-failure alongside it would just be a second, near-identical
-			// line racing this one onto the same banner.
-			WriteSafeMode(w.StateDir, heldReason, time.Now())
-		}
-	}
+	// wasHeld records whether any pass hosted the desktop only -- because the
+	// user ran `disable`, or because safe mode tripped. It decides, at the end,
+	// whether a login that lasted counts as the machine recovering.
+	wasHeld := false
+	loggedHold := false
 
 	for {
-		if heldSession {
+		// disable and safe mode both come to the same thing: host the desktop,
+		// nothing else. disable is the user's standing choice; safe mode is
+		// where the wrapper lands on its own after too many logins ended early.
+		// Read live from the same call `status` and the `enter` gate use, so a
+		// long login does not go on refusing switches after the streak has aged
+		// out from under it.
+		held, heldReason := false, ""
+		if w.Disabled {
+			held, heldReason = true, "the console is switched off (`open-couch-engine disable`)"
+		} else if reason, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
+			held, heldReason = true, reason
+		}
+		if held {
+			wasHeld = true
 			mode = ModeDesktop
+			if !loggedHold {
+				w.logf("console: hosting the desktop only -- %s", heldReason)
+				loggedHold = true
+			}
 		}
 
 		// The screen is black from here until the next compositor draws. Each
@@ -281,15 +280,14 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		session, endSession := context.WithCancel(ctx)
 		if mode == ModeDesktop {
 			// The trigger offers the console; while the console is held back
-			// there is nothing for it to offer, so it stays disarmed.
-			if !heldSession {
+			// there is nothing for it to offer, so it stays disarmed. And a
+			// desktop safe mode forced does not get the healthy timer -- a
+			// forced desktop lasting proves only that the way in works, so it
+			// counts as recovery at logout, not 45s in.
+			if !held {
 				go w.watchControllers(session)
+				go w.markHealthyAfter(session)
 			}
-			// Once this desktop has been up HealthyRun it has proved itself.
-			// What that means depends on whether the console was on the table:
-			// a normal login clears safe mode outright, a held one only frees
-			// the next login to try the console again.
-			go w.markHealthyAfter(session, heldSession)
 		} else {
 			// Brackets the compositor coming up against the rest of the black
 			// screen: once its socket is there, what is left is Steam.
@@ -314,7 +312,7 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		}
 
 		next, ok := TakeRequest(w.RuntimeDir)
-		if ok && next == ModeConsole && heldSession {
+		if ok && next == ModeConsole && held {
 			w.logf("console: a switch to the console was asked for but %s; staying on the desktop", heldReason)
 			ok = false
 		}
@@ -334,6 +332,16 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		mode = next
 	}
 
+	// A login safe mode forced to the desktop does not clear the streak while it
+	// runs -- `status` and the `enter` gate keep saying so, no mid-login flip.
+	// But if it lasted, the machine has had somewhere to fix things from, so the
+	// next login should start fresh rather than held again.
+	if wasHeld && !w.Disabled && time.Since(runStart) >= w.HealthyRun {
+		w.logf("console: the held login lasted %s; the next login will offer the console again",
+			time.Since(runStart).Round(time.Second))
+		RecordHostHealthy(w.StateDir, time.Now())
+	}
+
 	// Whatever happened, the desktop's audio goes back and the manager is left
 	// clean for whoever logs in next.
 	RestoreAudio(ctx, w.StateDir, w.logf)
@@ -341,31 +349,19 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	return nil
 }
 
-// markHealthyAfter judges a desktop that has been up HealthyRun.
-//
-// A login the console was offered and that still lasted is proof the trouble is
-// over: RecordHostHealthy clears the run of failed starts and the safe-mode
-// breadcrumb outright. A login safe mode *forced* to the desktop is weaker
-// proof -- it only shows the way in works -- so it just clears the streak, which
-// frees the next login to try the console again while `status` still says safe
-// mode until that one lasts. It watches ctx so a desktop that never exits (the
-// normal case) still counts.
-func (w *Wrapper) markHealthyAfter(ctx context.Context, heldSession bool) {
+// markHealthyAfter records a login that worked once the desktop has been up
+// HealthyRun: the run of failed starts is cleared, so a machine that was in
+// safe mode is out of it. It watches ctx so a desktop that never exits -- the
+// normal case -- still counts, and it is spawned only for a desktop the console
+// was genuinely on the table for, never one safe mode forced.
+func (w *Wrapper) markHealthyAfter(ctx context.Context) {
 	if w.StateDir == "" {
 		return
 	}
 	select {
 	case <-ctx.Done():
 	case <-time.After(w.HealthyRun):
-		if heldSession {
-			ClearHostStreak(w.StateDir)
-			return
-		}
-		_, _, wasHeld := ReadSafeMode(w.StateDir)
 		RecordHostHealthy(w.StateDir, time.Now())
-		if wasHeld {
-			w.logf("console: this login has lasted with the console available; safe mode cleared")
-		}
 	}
 }
 

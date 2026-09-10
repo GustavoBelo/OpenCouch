@@ -395,8 +395,8 @@ func status(ctx context.Context) error {
 		Requirements             []requirement `json:"requirements"`
 		Failure                  string        `json:"failure,omitempty"`
 		// SafeMode is why the wrapper is hosting only the desktop after a run of
-		// failed logins, empty when it is not. Unlike Failure it is not cleared
-		// by reading: it stands until a login lasts or `enable` is run.
+		// logins that ended early, empty when it is not. It is computed, not
+		// stored: the same SafeModeReason call the wrapper decides the hold from.
 		SafeMode string `json:"safe_mode,omitempty"`
 		// Disabled is set while `open-couch-engine disable` is in effect.
 		Disabled bool `json:"disabled"`
@@ -417,9 +417,9 @@ func status(ctx context.Context) error {
 	if live, ok := console.ReadLive(e.RuntimeDir); ok {
 		out.Mode = string(live.Mode)
 	}
-	// Read, not taken: the panel shows this for as long as it is true, and a
-	// clean login is what ends it.
-	if why, _, ok := console.ReadSafeMode(e.StateDir); ok {
+	// The same call the wrapper and the doctor use: the panel shows safe mode
+	// for exactly as long as a switch would really be held.
+	if why, held := console.SafeModeReason(e.StateDir, time.Now()); held {
 		out.SafeMode = why
 	}
 	// Taken, not just read. The breadcrumb exists so the user hears once why

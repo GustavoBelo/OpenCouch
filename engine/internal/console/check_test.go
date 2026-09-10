@@ -177,7 +177,10 @@ func TestRequirementsSurfaceSafeModeAndDisable(t *testing.T) {
 		t.Fatal("safe mode reported on a healthy machine")
 	}
 
-	WriteSafeMode(stateDir, "3 logins in a row ended within seconds", time.Now())
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(stateDir, now.Add(-time.Duration(i)*time.Minute))
+	}
 	if !anyContains(Unmet(Requirements(context.Background(), ready, systemdWith(), entries, configPath)), "safe mode") {
 		t.Error("a machine in safe mode did not say so")
 	}

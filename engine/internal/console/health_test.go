@@ -66,47 +66,23 @@ func TestSafeModeIgnoresStartsOutsideTheWindow(t *testing.T) {
 	}
 }
 
-// Turning the console back on, or a login that lasts, has to lift the hold and
-// wipe the streak behind it.
-func TestRecordHostHealthyLiftsTheHold(t *testing.T) {
+// A login that worked -- a normal one at HealthyRun, a held one at logout, or
+// `enable` -- wipes the run of failed starts, and safe mode goes with it because
+// it is only ever that run being counted.
+func TestRecordHostHealthyClearsTheStreak(t *testing.T) {
 	dir := t.TempDir()
 	now := time.Now()
 	for i := failLoginLimit; i > 0; i-- {
 		RecordHostStart(dir, now.Add(-time.Duration(i)*time.Minute))
 	}
-	WriteSafeMode(dir, "3 logins in a row ended within seconds", now)
+	if _, tripped := SafeModeReason(dir, now); !tripped {
+		t.Fatal("the streak did not trip to begin with")
+	}
 
 	RecordHostHealthy(dir, now)
 
-	if _, _, held := ReadSafeMode(dir); held {
-		t.Error("the safe-mode breadcrumb outlived a login that worked")
-	}
 	if _, tripped := SafeModeReason(dir, now); tripped {
 		t.Error("the streak survived a login that worked")
-	}
-}
-
-// A desktop that safe mode forced clears the streak once it has lasted -- so
-// the next login can try the console -- but leaves the breadcrumb, so `status`
-// keeps saying safe mode until a login that had the console still lasts.
-func TestClearHostStreakKeepsTheBreadcrumb(t *testing.T) {
-	dir := t.TempDir()
-	now := time.Now()
-	for i := failLoginLimit; i > 0; i-- {
-		RecordHostStart(dir, now.Add(-time.Duration(i)*time.Minute))
-	}
-	WriteSafeMode(dir, "3 logins in a row ended within seconds", now)
-
-	ClearHostStreak(dir)
-
-	if _, tripped := SafeModeReason(dir, now); tripped {
-		t.Error("the streak was not cleared, so the next login stays held")
-	}
-	if _, _, held := ReadSafeMode(dir); !held {
-		t.Error("ClearHostStreak wiped the breadcrumb; only a login that lasts should")
-	}
-	if h := loadHostHealth(dir); !h.LastGood.IsZero() {
-		t.Error("ClearHostStreak recorded a login that worked; it did not")
 	}
 }
 
@@ -128,35 +104,13 @@ func TestRecordHostStartTrimsHistory(t *testing.T) {
 	}
 }
 
-// `status` shows this for as long as it is true, so it must survive a read --
-// unlike the console-failure breadcrumb, which is seen once.
-func TestSafeModeBreadcrumbSurvivesReads(t *testing.T) {
-	dir := t.TempDir()
-	WriteSafeMode(dir, "3 logins in a row ended within seconds", time.Now())
-
-	for i := 0; i < 3; i++ {
-		if _, _, ok := ReadSafeMode(dir); !ok {
-			t.Fatalf("read %d found nothing; the hold has to stand until a login lasts", i)
-		}
-	}
-	ClearSafeMode(dir)
-	if _, _, ok := ReadSafeMode(dir); ok {
-		t.Error("the breadcrumb outlived ClearSafeMode")
-	}
-}
-
 // A wrapper may have no state directory; none of this may panic on one.
 func TestHealthIsQuietWithNoStateDir(t *testing.T) {
 	RecordHostStart("", time.Now())
 	RecordHostHealthy("", time.Now())
-	WriteSafeMode("", "something", time.Now())
 	if _, tripped := SafeModeReason("", time.Now()); tripped {
 		t.Error("an empty state dir tripped safe mode")
 	}
-	if _, _, ok := ReadSafeMode(""); ok {
-		t.Error("an empty state dir reported a hold")
-	}
-	ClearSafeMode("")
 }
 
 // `open-couch-engine disable` is the recovery that needs no root: a marker in

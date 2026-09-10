@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 // Requirement is one thing a console session needs, and whether this machine
@@ -98,15 +99,16 @@ func Requirements(ctx context.Context, cfg Config, sc Runner, entries []Entry, c
 
 	// Safe mode and `disable` both stop the console from starting, and for the
 	// same visible reason: `enter` would end the desktop for a switch that is
-	// not going to happen. Reported here so the panel, the doctor and the enter
-	// gate all see it and say the same thing. configPath is <base>/console.json.
+	// not going to happen. Read from the same SafeModeReason call the wrapper
+	// holds the desktop from, so the panel, the doctor and the gate cannot
+	// disagree with it. configPath is <base>/console.json.
 	base := filepath.Dir(configPath)
 	switch {
 	case IsDisabled(base):
 		add(false, "", "Open Couch is switched off; run `open-couch-engine enable` to offer the console again")
 	default:
 		if stateDir, err := checkStateDir(); err == nil {
-			if reason, _, held := ReadSafeMode(stateDir); held {
+			if reason, held := SafeModeReason(stateDir, time.Now()); held {
 				add(false, "", "Open Couch is in safe mode after "+reason+
 					"; fix the setup and log in once, or run `open-couch-engine enable`")
 			}

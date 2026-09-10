@@ -125,12 +125,16 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
     `host-session` que morre em segundos derruba o login; o guard de restart curto do `session.go`
     conta em memória e zera a cada login, sem enxergar o laço que atravessa reboots. `RecordHostStart`
     grava cada início em `~/.cache/open-couch/host-health.json` (**`StateDir`, não runtime dir** — o
-    reboot que fecha o laço apagaria a contagem). Depois de `failLoginLimit` (3) inícios em
-    `failLoginWindow` (10 min) sem um login que durou, o wrapper hospeda **só o desktop**, ignora
-    `boot`/request de console e não arma o gatilho, e escreve `safe-mode` (que o `status` reporta até
-    limpar — ao contrário do `console-failure`, que é lido uma vez). `RecordHostHealthy` (um desktop
-    de pé por `healthyRun`, 45 s, ou `open-couch-engine enable`) zera tudo. `disabled` é o mesmo
-    comportamento por escolha do usuário, via marcador em `~/.config/open-couch/`.
+    reboot que fecha o laço apagaria a contagem). **`SafeModeReason(stateDir, now)` é a fonte de
+    verdade única**: `failLoginLimit` (3) inícios em `failLoginWindow` (10 min) sem um login que durou
+    → o wrapper hospeda **só o desktop**, ignora `boot`/request de console e não arma o gatilho; e o
+    `status`, o `doctor` e o portão do `enter` recusam lendo essa **mesma** chamada, então não
+    divergem (não há arquivo `safe-mode` separado — a versão anterior tinha um e ele defasava). O
+    hold é recalculado por iteração, não travado no início do login: um login longo para de recusar
+    troca quando o streak envelhece pra fora da janela. `RecordHostHealthy` (login normal aos
+    `healthyRun` 45 s; login held **só** quando desloga tendo durado 45 s; ou `open-couch-engine
+    enable`) zera o streak. `disabled` é o mesmo hold por escolha do usuário, via marcador em
+    `~/.config/open-couch/`.
 - `internal/audio/` — EDID→ELD→pin→profile→sink. O WirePlumber move *streams*, não o sink default.
   - `logfile.go` — o log do login atual e os anteriores. `RotateLog` arquiva no topo do
     `host-session`; `log --list`/`--session` são o que a GUI mostra em **History**. O id é
@@ -146,7 +150,7 @@ Runtime:
 - Config: `${XDG_CONFIG_HOME:-~/.config}/open-couch/console.json` (+ marcador `disabled`, de
   `open-couch-engine disable`)
 - Estado: `~/.cache/open-couch/` (`last-session`, `console-failure`, `console-prepared.json`,
-  `host-health.json` e `safe-mode` — o disjuntor do `health.go` —, `console.log`,
+  `host-health.json` — o disjuntor do `health.go` —, `console.log`,
   `logs/AAAAMMDD-HHMMSS.log` — os 10 logins anteriores)
 - Runtime: `$XDG_RUNTIME_DIR/open-couch-{live,hosted,next-session,cancel-entry,entry-pending}`
 
@@ -344,13 +348,13 @@ depois da tag) — e é por isso que o `release.sh` valida com `--no-net`.
   mexer no wrapper, peça teste manual — entrar, voltar pelo "Switch to Desktop" do Steam, e repetir
   **duas vezes** (o guard de restart curto só aparece na segunda volta), conferindo
   `systemctl --user list-units --failed` vazio.
-- **Safe mode (`health.go`) tem teste unitário, mas o trajeto entre logins não.** O `SafeModeReason`,
-  o override de `mode` e a auto-recuperação estão em `health_test.go`/`session_test.go`; o
-  comportamento real precisa de login de verdade. Roteiro: aponte `desktop_session` para uma entrada
-  inexistente (ou renomeie o gamescope + `boot console`) e logue 3×, cada uma morrendo em segundos;
-  no 4º login o desktop simples sobe e o app mostra a faixa; `open-couch-engine disable` daí →
-  reboot → vai direto ao desktop sem root; `enable` volta a oferecer; desfaça a config, logue 1×
-  normal e fique > 45 s → `safe_mode` some sozinho.
+- **Safe mode (`health.go`) tem teste unitário, mas o trajeto entre logins não.** `SafeModeReason`,
+  o hold por iteração e a recuperação estão em `health_test.go`/`session_test.go`; o comportamento
+  real precisa de login de verdade. Roteiro: logue e deslogue **3× rápido** (cada sessão < 45 s); no
+  3º já dispara — o desktop simples sobe, o app mostra a faixa, `open-couch-engine status`/`doctor`
+  reportam `safe_mode` a sessão **inteira** (sem flip). Fique nessa sessão held **> 45 s** e deslogue
+  → o login seguinte já oferece o console (`status` limpo do 1º segundo). `open-couch-engine disable`
+  daí → reboot → vai direto ao desktop sem root; `enable` volta a oferecer.
 - Após alterações no engine que exigem nova versão mínima, atualizar `kMinEngineVersion`.
 
 ## Armadilhas conhecidas e validações do `release.sh`

@@ -113,11 +113,11 @@ The hosting session is what your machine logs into, so anything that breaks the
 engine breaks your login. Two things keep that from trapping you:
 
 - The entry declares `TryExec`, so a **missing** binary just hides the session.
-- After three logins that end within seconds, the engine stops offering the
+- After three logins in a row that do not last, the engine stops offering the
   console on its own: it starts your plain desktop, ignores the boot setting and
-  any pending switch, and says why in the application. One normal login brings
-  the console back. From that desktop, `open-couch-engine disable` makes the
-  pause permanent -- no root, the session entry stays installed, and
+  any pending switch, and says why in the application. The next login that lasts
+  brings the console back. From that desktop, `open-couch-engine disable` makes
+  the pause permanent -- no root, the session entry stays installed, and
   `open-couch-engine enable` undoes it.
 
 If a login still will not take -- a binary that is present but failing, an

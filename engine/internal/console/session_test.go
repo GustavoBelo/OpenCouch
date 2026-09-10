@@ -203,11 +203,13 @@ func TestWrapperHoldsTheDesktopInSafeMode(t *testing.T) {
 	if len(launched) != 1 || launched[0] != "desktop-compositor" {
 		t.Fatalf("launched %v, want the desktop only while safe mode holds", launched)
 	}
-	if _, _, held := ReadSafeMode(w.StateDir); !held {
-		t.Error("safe mode left nothing for status to show")
+	// This login was instant, so it does not count as recovery: the streak
+	// stands and `status` / `doctor` still read the machine as held.
+	if _, held := SafeModeReason(w.StateDir, time.Now()); !held {
+		t.Error("an instant held login cleared safe mode")
 	}
-	// The persistent breadcrumb only -- a one-shot console-failure alongside it
-	// would race the same near-identical line onto the app's banner.
+	// No one-shot console-failure alongside it -- that would race a
+	// near-identical line onto the app's banner.
 	if reason, ok := TakeFailure(w.StateDir); ok {
 		t.Errorf("safe mode also wrote a one-shot failure breadcrumb: %q", reason)
 	}
@@ -215,7 +217,7 @@ func TestWrapperHoldsTheDesktopInSafeMode(t *testing.T) {
 
 // `open-couch-engine disable` holds the desktop the same way, for the whole
 // login, and a switch asked for mid-login is ignored. It is a choice, not a
-// fault, so there is no safe-mode breadcrumb and no failure notification.
+// fault, so it manufactures no safe-mode streak and no failure breadcrumb.
 func TestWrapperHoldsTheDesktopWhenDisabled(t *testing.T) {
 	var launched []string
 	var w *Wrapper
@@ -236,16 +238,20 @@ func TestWrapperHoldsTheDesktopWhenDisabled(t *testing.T) {
 	if len(launched) != 1 || launched[0] != "desktop-compositor" {
 		t.Fatalf("launched %v, want the desktop only while the console is disabled", launched)
 	}
-	if _, _, held := ReadSafeMode(w.StateDir); held {
-		t.Error("disable wrote a safe-mode breadcrumb; it is a choice, not a fault")
+	if _, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
+		t.Error("disable manufactured a safe-mode streak; it is a choice, not a fault")
+	}
+	if reason, ok := TakeFailure(w.StateDir); ok {
+		t.Errorf("disable wrote a failure breadcrumb: %q", reason)
 	}
 }
 
-// A login safe mode forced to the desktop does not lift the hold by lasting --
-// it only frees the next login to try the console. What clears the breadcrumb
-// is a later login that had the console on the table and still lasted.
-func TestSafeModeLiftsOnlyAfterALaterLoginLasts(t *testing.T) {
-	state := t.TempDir() // the one thing shared between the two logins
+// A held login that lasts is the machine recovering: at its logout the streak
+// clears, so the next login is offered the console again. A held login that does
+// not last leaves the streak, so the next login is held too -- that half is
+// TestWrapperHoldsTheDesktopInSafeMode.
+func TestAHeldLoginThatLastsClearsSafeMode(t *testing.T) {
+	state := t.TempDir() // shared between the two logins
 	now := time.Now()
 	for i := failLoginLimit; i > 0; i-- {
 		RecordHostStart(state, now.Add(-time.Duration(i)*time.Minute))
@@ -275,8 +281,8 @@ func TestSafeModeLiftsOnlyAfterALaterLoginLasts(t *testing.T) {
 	}
 
 	// Login 1 is safe mode: desktop only, even with boot=console and a console
-	// request pending. After it lasts, the streak clears but the breadcrumb does
-	// not.
+	// request pending. It lasts past HealthyRun, so at logout it counts as
+	// recovery and clears the streak.
 	first := true
 	w1, l1 := newLogin(t.TempDir(), func(w *Wrapper, _ []string) {
 		if first {
@@ -291,12 +297,11 @@ func TestSafeModeLiftsOnlyAfterALaterLoginLasts(t *testing.T) {
 	if strings.Join(*l1, ",") != "desktop-compositor" {
 		t.Fatalf("login 1 launched %v, want the desktop only", *l1)
 	}
-	if _, _, held := ReadSafeMode(state); !held {
-		t.Fatal("login 1 cleared the breadcrumb; a forced desktop lasting is not proof enough")
+	if _, held := SafeModeReason(state, time.Now()); held {
+		t.Fatal("a held login that lasted did not clear the streak at logout")
 	}
 
-	// Login 2: the streak is gone, so the console is offered again. It lasts,
-	// and that is what finally clears safe mode.
+	// Login 2: not held, so boot=console is honoured and the console starts.
 	w2, l2 := newLogin(t.TempDir(), func(_ *Wrapper, _ []string) {
 		time.Sleep(40 * time.Millisecond)
 	})
@@ -305,9 +310,6 @@ func TestSafeModeLiftsOnlyAfterALaterLoginLasts(t *testing.T) {
 	}
 	if len(*l2) == 0 || (*l2)[0] != "start-gamescope-session" {
 		t.Fatalf("login 2 launched %v, want the console offered again", *l2)
-	}
-	if _, _, held := ReadSafeMode(state); held {
-		t.Error("safe mode survived a later login that had the console and lasted")
 	}
 }
 
