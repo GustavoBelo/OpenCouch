@@ -154,7 +154,7 @@ Runtime:
 - Config: `${XDG_CONFIG_HOME:-~/.config}/open-couch/console.json` (+ marcador `disabled`, de
   `open-couch-engine disable`)
 - Estado: `~/.cache/open-couch/` (`last-session`, `console-failure`, `console-prepared.json`,
-  `host-health.json` — o disjuntor do `health.go` —, `console.log`,
+  `host-health.json` + `host-health.json.lock` — o disjuntor do `health.go` —, `console.log`,
   `logs/AAAAMMDD-HHMMSS.log` — os 10 logins anteriores)
 - Runtime: `$XDG_RUNTIME_DIR/open-couch-{live,hosted,next-session,cancel-entry,entry-pending}`
 

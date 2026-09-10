@@ -115,8 +115,8 @@ engine breaks your login. Two things keep that from trapping you:
 - The entry declares `TryExec`, so a **missing** binary just hides the session.
 - After three logins in a row that do not last, the engine stops offering the
   console on its own: it starts your plain desktop, ignores the boot setting and
-  any pending switch, and says why in the application. Staying logged in for a
-  minute lifts it, and so does `open-couch-engine enable` or ten minutes without
+  any pending switch, and says why in the application. Staying logged in for 45
+  seconds lifts it, and so does `open-couch-engine enable` or ten minutes without
   another short login. `open-couch-engine disable` makes the pause permanent
   instead -- no root, the session entry stays installed, and `enable` undoes it.
 

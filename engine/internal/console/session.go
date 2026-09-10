@@ -109,8 +109,10 @@ const (
 )
 
 // noDesktopBackoff is how long the wrapper waits before ending a login it has
-// no desktop to host at all. A var so a test does not have to sit through it.
-var noDesktopBackoff = 20 * time.Second
+// no desktop to host at all. Long enough that the login manager's retry is not
+// a spin, short enough that the black screen before the greeter comes back is
+// not a stare. A var so a test does not have to sit through it.
+var noDesktopBackoff = 10 * time.Second
 
 func (w *Wrapper) logf(format string, args ...any) {
 	if w.Logf != nil {
@@ -136,8 +138,8 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		RecordFailure(w.StateDir, "No desktop session is installed for Open Couch to hand back to. "+
 			"Install your desktop's session package, or run `open-couch-engine setup` to pick one. "+
 			"If the login screen offers nothing else, switch to a text console with Ctrl+Alt+F2 and "+
-			"remove the entry: sudo rm -f /usr/local/share/wayland-sessions/"+HostingEntryFile+
-			" /usr/share/wayland-sessions/"+HostingEntryFile+".")
+			"remove the entry with: sudo rm -f /usr/local/share/wayland-sessions/"+HostingEntryFile+
+			" /usr/share/wayland-sessions/"+HostingEntryFile)
 		select {
 		case <-ctx.Done():
 		case <-time.After(noDesktopBackoff):
@@ -273,15 +275,20 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		// switching a pad on inside the console has nothing left to ask for, and
 		// a watch outliving the compositor would arm itself against the next one.
 		session, endSession := context.WithCancel(ctx)
+		// Any session the console was genuinely on the table for proves the
+		// login worked once it has lasted -- gamescope counts as much as the
+		// desktop, or a `boot console` machine that plays and shuts down would
+		// never record a healthy login at all. A desktop safe mode *forced* is
+		// the exception: it lasting shows only that the way in works, so it
+		// counts as recovery at logout rather than HealthyRun in.
+		if !held {
+			go w.markHealthyAfter(session)
+		}
 		if mode == ModeDesktop {
 			// The trigger offers the console; while the console is held back
-			// there is nothing for it to offer, so it stays disarmed. And a
-			// desktop safe mode forced does not get the healthy timer -- a
-			// forced desktop lasting proves only that the way in works, so it
-			// counts as recovery at logout, not 45s in.
+			// there is nothing for it to offer, so it stays disarmed.
 			if !held {
 				go w.watchControllers(session)
-				go w.markHealthyAfter(session)
 			}
 		} else {
 			// Brackets the compositor coming up against the rest of the black
@@ -322,6 +329,12 @@ func (w *Wrapper) Run(ctx context.Context) error {
 			// honour the request.
 			if stillHeld, reason := w.heldNow(); stillHeld {
 				w.logf("console: a switch to the console was asked for but %s; staying on the desktop", reason)
+				// The desktop the user was looking at is already gone -- whatever
+				// asked for the switch stopped the compositor to get here -- and
+				// they are about to land on a fresh one with no console and no
+				// reason given. The log alone is not somewhere they will look.
+				RecordFailure(w.StateDir, "Open Couch stayed on the desktop instead of switching to "+
+					"the console: "+reason+".")
 				mode = ModeDesktop
 				continue
 			}

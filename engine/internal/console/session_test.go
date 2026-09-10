@@ -216,8 +216,9 @@ func TestWrapperHoldsTheDesktopInSafeMode(t *testing.T) {
 }
 
 // `open-couch-engine disable` holds the desktop the same way, for the whole
-// login, and a switch asked for mid-login is ignored. It is a choice, not a
-// fault, so it manufactures no safe-mode streak and no failure breadcrumb.
+// login, and a switch asked for mid-login is refused -- with a word to the user,
+// because the desktop they were looking at is gone by then. It is a choice, not
+// a fault, so it manufactures no safe-mode streak.
 func TestWrapperHoldsTheDesktopWhenDisabled(t *testing.T) {
 	var launched []string
 	var w *Wrapper
@@ -248,8 +249,14 @@ func TestWrapperHoldsTheDesktopWhenDisabled(t *testing.T) {
 	if _, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
 		t.Error("disable manufactured a safe-mode streak; it is a choice, not a fault")
 	}
-	if reason, ok := TakeFailure(w.StateDir); ok {
-		t.Errorf("disable wrote a failure breadcrumb: %q", reason)
+	// The refused switch is worth saying out loud: the log alone is not
+	// somewhere the user will look for why their desktop restarted.
+	reason, ok := TakeFailure(w.StateDir)
+	if !ok {
+		t.Fatal("the refused switch left nothing to tell the user")
+	}
+	if !strings.Contains(reason, "switched off") {
+		t.Errorf("the refusal %q does not say the console is switched off", reason)
 	}
 }
 
@@ -369,6 +376,41 @@ func TestAHeldLoginThatLastsClearsSafeMode(t *testing.T) {
 	}
 }
 
+// A login that boots into the console and lasts is a login that worked. Gating
+// the healthy timer on ModeDesktop meant a `boot console` machine that plays
+// and shuts down from Steam's power menu never recorded one, so ordinary boots
+// piled up a streak and tripped safe mode with nothing broken.
+func TestALastingConsoleSessionCountsAsHealthy(t *testing.T) {
+	state := t.TempDir()
+	RecordHostStart(state, time.Now().Add(-time.Minute))
+
+	w := &Wrapper{
+		DesktopExec: []string{"desktop-compositor"}, ConsoleExec: []string{"start-gamescope-session"},
+		ConsoleSessionName: "gamescope-session",
+		StateDir:           state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
+		ShortRun: time.Nanosecond, HealthyRun: 10 * time.Millisecond,
+		Boot:        BootConsole,
+		Controllers: func() int { return 0 },
+	}
+	first := true
+	w.Launch = func(_ context.Context, argv []string, _ []string) error {
+		if first {
+			first = false
+			if argv[0] != "start-gamescope-session" {
+				t.Errorf("first launch was %q, want the console", argv[0])
+			}
+			time.Sleep(40 * time.Millisecond) // the console session lasts
+		}
+		return nil
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if h := loadHostHealth(state); h.LastGood == nil {
+		t.Error("a console session that lasted was not recorded as a login that worked")
+	}
+}
+
 // `disable` is a choice, not a failed login: repeated disabled logins must not
 // build a streak that a later `enable` then reads as safe mode.
 func TestDisabledLoginsBuildNoStreak(t *testing.T) {
@@ -387,6 +429,10 @@ func TestDisabledLoginsBuildNoStreak(t *testing.T) {
 	}
 	if _, tripped := SafeModeReason(state, time.Now()); tripped {
 		t.Error("disabled logins tripped safe mode")
+	}
+	// Nobody asked for a switch, so being disabled on its own is silent.
+	if reason, ok := TakeFailure(state); ok {
+		t.Errorf("a quiet disabled login wrote a failure breadcrumb: %q", reason)
 	}
 }
 

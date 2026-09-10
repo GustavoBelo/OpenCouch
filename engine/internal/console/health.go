@@ -180,7 +180,10 @@ func SafeModeReason(stateDir string, now time.Time) (string, bool) {
 	if recent < failLoginLimit {
 		return "", false
 	}
-	return fmt.Sprintf("%d logins in a row ended early", recent), true
+	// Counted since the last login that worked rather than "just now": the
+	// window clamp above can keep an old start when the clock stepped, and a
+	// bare "N logins in a row" would then imply a recency it cannot promise.
+	return fmt.Sprintf("%d short logins in a row since the last one that worked", recent), true
 }
 
 // DisabledMarkerPath is the file `open-couch-engine disable` writes.
