@@ -110,14 +110,23 @@ your desktop.
 ## 🆘 If you cannot log in
 
 The hosting session is what your machine logs into, so anything that breaks the
-engine breaks your login. The entry declares `TryExec`, so a **missing** binary
-just hides the session -- but one that is present and failing will start, exit,
-and hand you back to the greeter, which may offer the same session again.
+engine breaks your login. Two things keep that from trapping you:
 
-Switch to a text console with **Ctrl+Alt+F2**, log in there, and remove the entry:
+- The entry declares `TryExec`, so a **missing** binary just hides the session.
+- After three logins in a row that do not last, the engine stops offering the
+  console on its own: it starts your plain desktop, ignores the boot setting and
+  any pending switch, and says why in the application. Staying logged in for 45
+  seconds lifts it, and so does `open-couch-engine enable` or ten minutes without
+  another short login. `open-couch-engine disable` makes the pause permanent
+  instead -- no root, the session entry stays installed, and `enable` undoes it.
+
+If a login still will not take -- a binary that is present but failing, an
+autologin pointed straight at a broken session -- switch to a text console with
+**Ctrl+Alt+F2**, log in there, and remove the entry:
 
 ```sh
 sudo rm -f /usr/local/share/wayland-sessions/open-couch-session.desktop
+sudo rm -f /usr/share/wayland-sessions/open-couch-session.desktop
 rm -f ~/.local/share/wayland-sessions/open-couch-session.desktop
 ```
 
@@ -132,11 +141,16 @@ is the first thing to read.
 
 ## 🧹 Remove
 
-Take the session entry out **first**. A machine that still offers a session whose
-engine you have deleted is a machine you may not be able to log into.
+To pause it without root: `open-couch-engine disable`. The next login goes
+straight to the desktop, and the session entry stays installed.
+
+To take it out for good, remove the session entry **first**. A machine that
+still offers a session whose engine you have deleted is a machine you may not be
+able to log into.
 
 ```sh
 sudo rm -f /usr/local/share/wayland-sessions/open-couch-session.desktop
+sudo rm -f /usr/share/wayland-sessions/open-couch-session.desktop
 sudo rm -f /etc/sddm.conf.d/zzz-open-couch.conf     # only if you set up autologin
 rm -f ~/.local/bin/open-couch-engine
 rm -rf ~/.config/open-couch ~/.cache/open-couch

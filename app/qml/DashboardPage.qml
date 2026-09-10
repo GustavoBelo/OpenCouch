@@ -20,10 +20,27 @@ Item {
         // this window is the first thing able to say what happened.
         if (page.status.failure) {
             banner.show(page.status.failure, true);
+            banner.raisedBy = "alert";
             // And the account of it is one click away, behind a section the
             // user has no reason to suspect is there. A failure is the one time
             // the log is the point of the window, so it opens itself.
             logSection.expanded = true;
+        }
+        // The wrapper is hosting only the desktop -- after too many failed
+        // logins, or because the user asked it to. Reason string from the
+        // engine, same as a failure; the log and the buttons below say the
+        // rest. else-if, so a one-shot failure this same poll is not clobbered.
+        else if (page.status.safe_mode) {
+            banner.show(page.status.safe_mode, true);
+            banner.raisedBy = "alert";
+            logSection.expanded = true;
+        }
+        // Safe mode lifts on its own once the streak ages out; the banner it
+        // raised has to come down with it rather than sit there as a stale
+        // alarm while the rest of the page has flipped to ready.
+        else if (banner.raisedBy === "alert") {
+            banner.visible = false;
+            banner.raisedBy = "";
         }
     }
 
@@ -98,9 +115,15 @@ Item {
                 implicitHeight: bannerRow.implicitHeight + Metrics.x5
 
                 property bool bannerBad: false
+                // Set by reload() to "alert" when the banner is showing a
+                // failure or safe-mode reason, so reload() can take it back down
+                // once that reason is gone -- other callers leave it empty and
+                // own their banner until the user dismisses it.
+                property string raisedBy: ""
                 function show(message, bad) {
                     bannerText.text = message;
                     bannerBad = bad;
+                    raisedBy = "";
                     visible = true;
                 }
 
@@ -212,6 +235,43 @@ Item {
                 text: qsTrId("dashboard.enter_console")
                 enabled: page.ready && !backend.running
                 onClicked: countdown.arm()
+            }
+
+            // Safe mode / disabled --------------------------------------------
+            //
+            // The wrapper is hosting only the desktop. In safe mode it lifts on
+            // its own after one login that lasts; these are the shortcuts --
+            // offer the console again now, or make the hold stick so a machine
+            // that was looping stops trying. When disabled, only the first one
+            // applies. No root: a marker file in the user's own config directory.
+            RowLayout {
+                id: holdActions
+                Layout.fillWidth: true
+                Layout.leftMargin: Metrics.pagePadding
+                Layout.rightMargin: Metrics.pagePadding
+                visible: !!page.status.safe_mode || page.status.disabled === true
+                spacing: Metrics.md
+
+                function apply(enable) {
+                    if (backend.setConsoleEnabled(enable)) {
+                        page.reload();
+                        page.loadLog();
+                    }
+                }
+
+                AppButton {
+                    Layout.fillWidth: true
+                    icon: "enter"
+                    text: qsTrId("dashboard.console_enable")
+                    onClicked: holdActions.apply(true)
+                }
+                AppButton {
+                    Layout.fillWidth: true
+                    visible: page.status.disabled !== true
+                    icon: "close"
+                    text: qsTrId("dashboard.console_disable")
+                    onClicked: holdActions.apply(false)
+                }
             }
 
             AppButton {

@@ -76,5 +76,7 @@
 <message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation>Entering ends this desktop session, so anything still open goes with it — you get a countdown you can cancel first. Steam's own Power menu brings you home.</translation></message>
 <message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation>Already installed for every account on this machine. Nothing to do but log out and pick it at your login screen.</translation></message>
 <message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation>Check again</translation></message>
+<message id="dashboard.console_disable"><source>dashboard.console_disable</source><translation>Stop offering the console</translation></message>
+<message id="dashboard.console_enable"><source>dashboard.console_enable</source><translation>Offer the console again</translation></message>
 </context>
 </TS>

@@ -104,6 +104,10 @@ func run(args []string) error {
 		return setBoot(rest)
 	case "controller":
 		return setController(rest)
+	case "disable":
+		return setEnabled(false)
+	case "enable":
+		return setEnabled(true)
 	case "log":
 		return showLog(rest)
 	case "help", "-h", "--help":
@@ -130,6 +134,8 @@ func usage() {
   boot <MODE>    where a fresh login starts: desktop, console or last
   controller <on|off>
                  offer the console when a gamepad is switched on
+  disable        stop hosting the console; the next login goes straight to the desktop
+  enable         host the console again after disable, or after safe mode
   log [--clear | --list | --session <ID>]
                  the wrapper's log for this login, or the logins kept before it
   config-path    where the settings file lives
@@ -226,14 +232,18 @@ func hostSession(ctx context.Context) error {
 	}
 	if !ok {
 		fallback, found := console.FallbackDesktop(e.Entries)
-		if !found {
-			return fmt.Errorf("the desktop session %q was not found and no other desktop is installed; "+
-				"run `open-couch-engine setup` or set desktop_session in %s",
-				e.Config.DesktopSession, console.ConfigPath(e.Base))
+		if found {
+			logf("console: the configured desktop %q is not installed; hosting %s instead. Run `open-couch-engine setup` to choose again",
+				e.Config.DesktopSession, fallback.File())
+			desktop = fallback
+		} else {
+			// No desktop at all. Handled by the wrapper rather than returned
+			// here: it logs how to recover, waits so the login manager's retry
+			// is not a spin, and ends the session once instead of dropping
+			// straight back into a password loop.
+			logf("console: no desktop session is installed; the wrapper will explain and hand back")
+			desktop = console.Entry{}
 		}
-		logf("console: the configured desktop %q is not installed; hosting %s instead. Run `open-couch-engine setup` to choose again",
-			e.Config.DesktopSession, fallback.File())
-		desktop = fallback
 	}
 
 	w := &console.Wrapper{
@@ -244,7 +254,10 @@ func hostSession(ctx context.Context) error {
 		RuntimeDir:     e.RuntimeDir,
 		Choices:        e.Config,
 		Boot:           e.Config.Boot,
-		Logf:           logf,
+		// Set with `open-couch-engine disable`. The wrapper then hosts only the
+		// desktop for the whole login, the same as safe mode but by choice.
+		Disabled: console.IsDisabled(e.Base),
+		Logf:     logf,
 		// Started once, by the login manager, then hosting every session until
 		// the user logs out. What it was told above was true at login; what it
 		// acts on has to be what the file says now.
@@ -381,6 +394,12 @@ func status(ctx context.Context) error {
 		ConfigPath               string        `json:"config_path"`
 		Requirements             []requirement `json:"requirements"`
 		Failure                  string        `json:"failure,omitempty"`
+		// SafeMode is why the wrapper is hosting only the desktop after a run of
+		// logins that ended early, empty when it is not. It is computed, not
+		// stored: the same SafeModeReason call the wrapper decides the hold from.
+		SafeMode string `json:"safe_mode,omitempty"`
+		// Disabled is set while `open-couch-engine disable` is in effect.
+		Disabled bool `json:"disabled"`
 	}{
 		Version:                  version,
 		Ready:                    len(console.Unmet(reqs)) == 0,
@@ -393,9 +412,20 @@ func status(ctx context.Context) error {
 		EnterOnControllerConnect: e.Config.EnterOnControllerConnect,
 		Controllers:              console.ConnectedControllers(),
 		ConfigPath:               console.ConfigPath(e.Base),
+		Disabled:                 console.IsDisabled(e.Base),
 	}
 	if live, ok := console.ReadLive(e.RuntimeDir); ok {
 		out.Mode = string(live.Mode)
+	}
+	// The same call the wrapper and the doctor use: the panel shows safe mode
+	// for exactly as long as a switch would really be held. Suppressed when
+	// disabled, the way the doctor does it -- `disabled` already carries the
+	// reason, and a red "logins ended early" alarm would blame a fault on a
+	// user who switched the console off on purpose.
+	if !out.Disabled {
+		if why, held := console.SafeModeReason(e.StateDir, time.Now()); held {
+			out.SafeMode = why
+		}
 	}
 	// Taken, not just read. The breadcrumb exists so the user hears once why
 	// the console did not start, and this is the path that tells them: the app
@@ -599,6 +629,43 @@ func setController(args []string) error {
 	}
 	cfg.EnterOnControllerConnect = enabled
 	return console.SaveConfig(base, cfg)
+}
+
+// setEnabled turns the console off or back on without touching anything a login
+// manager reads -- a marker file in the user's own config directory.
+//
+// It is the recovery that needs no root. The README's older answer to a login
+// that will not take is Ctrl+Alt+F2 and `sudo rm` of a file under
+// /usr/share/wayland-sessions; from any shell, `open-couch-engine disable` does
+// the same job for the common case, and the next login goes straight to the
+// desktop. The session entry stays installed, so `enable` is all it takes to
+// undo.
+func setEnabled(on bool) error {
+	base, err := ensureBaseDir()
+	if err != nil {
+		return err
+	}
+	if err := console.SetDisabled(base, !on); err != nil {
+		return err
+	}
+	if on {
+		// Turning it back on also clears a safe-mode hold and the run of failed
+		// logins behind it, so the next login is judged from a clean slate.
+		if stateDir, err := console.StateDir(); err == nil {
+			console.RecordHostHealthy(stateDir, time.Now())
+		}
+		fmt.Println("Open Couch will host the console again after your next login.")
+		return nil
+	}
+	fmt.Println("Open Couch will start only your desktop from your next login.")
+	fmt.Println("The session entry stays installed; `open-couch-engine enable` turns the console back on.")
+	fmt.Println()
+	fmt.Println("To remove it entirely instead, from a text console (Ctrl+Alt+F2):")
+	fmt.Printf("  sudo rm -f /usr/local/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  sudo rm -f /usr/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  rm -f ~/.local/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  sudo rm -f /etc/sddm.conf.d/%s   # only if you set up autologin\n", console.AutologinDropIn)
+	return nil
 }
 
 // showLog is the whole of the log contract with the application.
