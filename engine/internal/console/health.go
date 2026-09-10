@@ -152,8 +152,8 @@ func RecordHostHealthy(stateDir string, now time.Time) {
 // `enter` gate refuse from the same call.
 //
 // A start counts against the machine when it is newer than the last login that
-// worked and falls inside failLoginWindow. failLoginLimit of those and the
-// console is held until a login lasts.
+// worked and not a plausible age past failLoginWindow (see below).
+// failLoginLimit of those and the console is held until a login lasts.
 func SafeModeReason(stateDir string, now time.Time) (string, bool) {
 	if stateDir == "" {
 		return "", false
@@ -164,11 +164,14 @@ func SafeModeReason(stateDir string, now time.Time) (string, bool) {
 		if h.LastGood != nil && !start.After(*h.LastGood) {
 			continue
 		}
-		// The window drops trouble from before today. It is by wall clock,
-		// which is routinely wrong on an early-boot reboot loop -- exactly what
-		// this guards -- so an age that is negative (clock stepped back) or
-		// absurd (stepped forward) is treated as recent rather than discarding
-		// a real failure. Only a plausible, positive age is aged out.
+		// The window is meant to drop failures from before today, so last
+		// week's trouble does not hold the console back now. But it is by wall
+		// clock, which is routinely wrong on an early-boot reboot loop before
+		// NTP -- the very case this guards -- so it only ages out a *plausible*
+		// gap: an age that is negative (clock stepped back) or longer than a
+		// day (stepped forward, or a record older than a recovery that was
+		// never written) is kept. `last_good` above is the firmer guard
+		// against stale history.
 		if age := now.Sub(start); age > failLoginWindow && age < 24*time.Hour {
 			continue
 		}

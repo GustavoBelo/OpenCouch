@@ -135,8 +135,9 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		w.logf("console: no desktop session is installed, so there is no way back")
 		RecordFailure(w.StateDir, "No desktop session is installed for Open Couch to hand back to. "+
 			"Install your desktop's session package, or run `open-couch-engine setup` to pick one. "+
-			"If you cannot log in: switch to a text console with Ctrl+Alt+F2 and run "+
-			"`open-couch-engine disable`.")
+			"If the login screen offers nothing else, switch to a text console with Ctrl+Alt+F2 and "+
+			"remove the entry: sudo rm -f /usr/local/share/wayland-sessions/"+HostingEntryFile+
+			" /usr/share/wayland-sessions/"+HostingEntryFile+".")
 		select {
 		case <-ctx.Done():
 		case <-time.After(noDesktopBackoff):
