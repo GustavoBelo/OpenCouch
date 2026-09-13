@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/GustavoBelo/OpenCouch/engine/internal/console"
 )
@@ -72,5 +75,32 @@ func TestLoadForHostingSurvivesNowhereToWrite(t *testing.T) {
 	}
 	if e.Config.Boot != console.BootDesktop {
 		t.Errorf("boot mode is %q, want the normalized default", e.Config.Boot)
+	}
+}
+
+// `host-session` typed inside a desktop is a command refusing, not a login
+// collapsing. The floor exists because a login manager offers the same session
+// again within the second; nothing is waiting to retry this, and the person who
+// typed it is at a terminal reading the answer.
+func TestHostSessionRefusesInsideASessionWithoutWaiting(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	runtimeDir := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
+	// A compositor already running, the way SessionRunning finds one.
+	if err := os.WriteFile(filepath.Join(runtimeDir, "wayland-1"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("WAYLAND_DISPLAY", "wayland-1")
+
+	begun := time.Now()
+	err := hostSession(context.Background())
+	waited := time.Since(begun)
+
+	if !errors.Is(err, console.ErrNotALogin) {
+		t.Fatalf("err = %v, want the refusal", err)
+	}
+	if waited > 2*time.Second {
+		t.Errorf("waited %s before refusing; the floor is for logins, not for a command typed at a terminal", waited)
 	}
 }

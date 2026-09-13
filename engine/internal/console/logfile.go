@@ -74,6 +74,13 @@ func ClearLog(stateDir string) error {
 //
 // Called at the top of `host-session`, which is the one moment a login begins.
 func RotateLog(stateDir string) error {
+	// No state directory is a login whose cache directory could not be
+	// resolved. LogPath would then be a bare "console.log" in whatever the
+	// login manager left as the working directory -- and this does not read
+	// that file, it renames it.
+	if stateDir == "" {
+		return nil
+	}
 	path := LogPath(stateDir)
 	info, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) || (err == nil && info.Size() == 0) {

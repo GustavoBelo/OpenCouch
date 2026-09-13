@@ -278,7 +278,10 @@ func loadForHosting() (env, []string) {
 func hostSession(ctx context.Context) error {
 	begun := time.Now()
 	err := hostLogin(ctx)
-	if err != nil {
+	// Everything except the one refusal that is not a login at all. Somebody
+	// typed this inside their own desktop: no login manager is waiting to offer
+	// the session again, and they are at a terminal waiting to read the answer.
+	if err != nil && !errors.Is(err, console.ErrNotALogin) {
 		console.HoldFailedLogin(ctx, begun)
 	}
 	return err

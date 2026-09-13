@@ -137,6 +137,16 @@ var loginFloor = 10 * time.Second
 // It is the floor *under* safe mode rather than a part of it: the counter only
 // starts counting once the wrapper is running, and the failures this catches
 // are the ones that happen before that.
+// ErrNotALogin is the refusal Run returns when it was not started as a login at
+// all: somebody typed `host-session` inside a session it would tear down.
+//
+// It carries its own message because the caller both prints it and tests for
+// it. This is the one way out of Run that is not a login collapsing, so it is
+// the one that must not be held to the floor above -- there is no login manager
+// waiting to offer the session again, only a person at a terminal waiting to
+// read why the command will not work.
+var ErrNotALogin = errors.New("a compositor is already running: `host-session` is what the login manager starts, not something to run inside a session it would tear down.\nTo switch now, use `open-couch-engine enter`")
+
 func HoldFailedLogin(ctx context.Context, begun time.Time) {
 	remaining := loginFloor - time.Since(begun)
 	if remaining <= 0 {
@@ -163,6 +173,19 @@ func (w *Wrapper) logf(format string, args ...any) {
 // the session closes exactly as it always did.
 func (w *Wrapper) Run(ctx context.Context) error {
 	begun := time.Now()
+	// The login manager starts this before any compositor exists. Finding one
+	// already running means somebody typed the command inside their own desktop,
+	// and the first thing the loop does is Sanitize, which stops
+	// graphical-session.target and takes that desktop's services down with it.
+	// The command's help says it will not work; refusing is what makes that true.
+	//
+	// Asked before anything about the machine, because this is about how the
+	// command was invoked and not about what is installed: someone typing it in
+	// the wrong place should hear that, not a diagnosis of their session
+	// entries.
+	if SessionRunning(w.RuntimeDir) {
+		return ErrNotALogin
+	}
 	if len(w.DesktopExec) == 0 {
 		// No desktop entry to fall back to at all. Returning at once makes the
 		// login manager offer this same session again within the second, which
@@ -177,14 +200,6 @@ func (w *Wrapper) Run(ctx context.Context) error {
 			" /usr/share/wayland-sessions/"+HostingEntryFile)
 		HoldFailedLogin(ctx, begun)
 		return errors.New("no desktop session is installed: there is no way back")
-	}
-	// The login manager starts this before any compositor exists. Finding one
-	// already running means somebody typed the command inside their own desktop,
-	// and the first thing the loop does is Sanitize, which stops
-	// graphical-session.target and takes that desktop's services down with it.
-	// The command's help says it will not work; refusing is what makes that true.
-	if SessionRunning(w.RuntimeDir) {
-		return errors.New("a compositor is already running: `host-session` is what the login manager starts, not something to run inside a session it would tear down.\nTo switch now, use `open-couch-engine enter`")
 	}
 	if w.Systemctl == nil {
 		w.Systemctl = Systemctl{}

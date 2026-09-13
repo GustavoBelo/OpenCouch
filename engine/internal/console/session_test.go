@@ -611,6 +611,12 @@ func TestRunRefusesInsideALiveSession(t *testing.T) {
 	if err == nil {
 		t.Fatal("running inside a live session was allowed")
 	}
+	// Named, not just worded: this is the one way out of Run that is a command
+	// refusing rather than a login collapsing, and the caller holds every other
+	// one to the login floor before letting the greeter see it.
+	if !errors.Is(err, ErrNotALogin) {
+		t.Errorf("err = %v, want it to carry ErrNotALogin", err)
+	}
 	if !strings.Contains(err.Error(), "already running") {
 		t.Errorf("err = %v, want it to name the running compositor", err)
 	}
@@ -918,5 +924,23 @@ func TestAHeldLoginLeavesTheBootPreferenceAlone(t *testing.T) {
 	}
 	if last, ok := ReadLastMode(w.StateDir); !ok || last != ModeConsole {
 		t.Errorf("last session is %q (found=%v), want the console the user actually left off in", last, ok)
+	}
+}
+
+// Asked before anything about the machine. A person who typed the command in
+// the wrong place should hear that, not a diagnosis of their session entries --
+// and the no-desktop branch below it spends the login floor, which this must
+// not.
+func TestRefusingInsideASessionComesBeforeTheDesktopCheck(t *testing.T) {
+	restore := loginFloor
+	loginFloor = time.Hour // any wait at all would hang this test
+	t.Cleanup(func() { loginFloor = restore })
+
+	runtimeDir := t.TempDir()
+	w := &Wrapper{RuntimeDir: runtimeDir, StateDir: t.TempDir(), Systemctl: &fakeRunner{}}
+	pretendCompositorRunning(t, runtimeDir)
+
+	if err := w.Run(context.Background()); !errors.Is(err, ErrNotALogin) {
+		t.Fatalf("err = %v, want the refusal rather than the no-desktop path", err)
 	}
 }
