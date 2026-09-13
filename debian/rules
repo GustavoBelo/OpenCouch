@@ -5,7 +5,14 @@
 # go build that CMake drives produce a static binary, so there is no second
 # build as there is in the RPM spec and the PKGBUILD.
 export CGO_ENABLED = 0
-export GOFLAGS = -mod=mod
+
+# -buildvcs=false because `go build` stamps the binary with VCS information and
+# treats a git that exits non-zero as an error rather than as "there is no VCS
+# here" -- which failed the whole package on the first tag after this packaging
+# landed. The RPM never hit it (%autosetup unpacks the tarball, which has no
+# .git) and neither did the engine job (it runs on the runner, not in a
+# container). Nothing is lost: the version comes from -X main.version.
+export GOFLAGS = -mod=mod -buildvcs=false
 
 # engine/go.mod needs Go >= 1.26, newer than golang-go on the current stable
 # distributions. CI unpacks that toolchain under /usr/local/go; prefer it when

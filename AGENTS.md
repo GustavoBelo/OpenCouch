@@ -279,13 +279,31 @@ git log --oneline -2 && git show --stat HEAD
 Revisar `app/version.txt`, o `SELF_VERSION` de `packaging/host/install.sh`, o `pkgver` dos dois
 PKGBUILDs e o `Version:` do `.spec`. Conferir com `open-couch-engine version`.
 
-### 3. Push da tag
+### 3. Levar o commit de release e a tag
+
+A `main` é protegida (os dois checks obrigatórios, `enforce_admins: true`), então o commit que o
+`release.sh` acabou de criar **não vai direto** — `git push origin main --tags` volta com
+`protected branch hook declined` e, pior, **empurra a tag mesmo assim**: o workflow passa a
+construir a partir de um commit que não está na `main`. Empurre a tag só **depois** do merge.
 
 ```sh
-git push origin main --tags
-# dispara .github/workflows/release.yml — job `engine` (testa, compila estático
-# para amd64/arm64, gera SHA256SUMS) e job `release` (cria ou atualiza a release)
+git branch chore/release-X.Y.Z            # a partir da main local, que já tem o commit
+git push -u origin chore/release-X.Y.Z
+gh pr create --fill
+# esperar os dois checks e mergear (squash: merge commit está desligado no repo).
+# A main ganha um commit novo, com SHA diferente do que o release.sh criou -- por
+# isso a tag é reapontada e empurrada só **depois** do merge.
+git switch main && git pull --ff-only
+git tag -f vX.Y.Z && git push --force origin vX.Y.Z
+# dispara .github/workflows/release.yml — jobs `engine` (estático amd64/arm64 +
+# SHA256SUMS), `rpm`, `deb` e `release` (cria ou atualiza a release). Os três
+# primeiros são dependência do último: um só que falhe e a release fica sem
+# nenhum asset.
 ```
+
+Se a tag já tiver sido empurrada antes do merge, mova-a para o commit de merge
+(`git tag -f vX.Y.Z && git push --force origin vX.Y.Z`) em vez de cortar um patch: enquanto a
+release não tiver asset nenhum, ninguém pode ter baixado nada.
 
 ### 4. Release notes
 
