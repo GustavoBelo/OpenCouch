@@ -287,7 +287,16 @@ Item {
                     if (backend.setConsoleEnabled(enable)) {
                         page.reload();
                         page.loadLog();
+                        return;
                     }
+                    // The other settings in this window are preferences, and a
+                    // preference that will not save is an annoyance. These two
+                    // are the way out of a machine that has stopped offering the
+                    // console, which makes this the worst place in the window to
+                    // fail quietly. Raised with show() rather than raiseAlert(),
+                    // so it belongs to the user: the hold that is still on screen
+                    // will not take the banner back until they dismiss this.
+                    banner.show(qsTrId("dashboard.console_hold_failed"), true);
                 }
 
                 AppButton {
