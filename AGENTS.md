@@ -208,6 +208,17 @@ cmake --build app-build --parallel "$(nproc)"
 Dependências de build: Go ≥ 1.26, Qt6 (Core, Gui, Widgets, Qml, Quick, QuickControls2, DBus,
 LinguistTools), C++17, CMake ≥ 3.16.
 
+**Armadilha: `cmake -E env GOFLAGS=... ` substitui o `GOFLAGS` do ambiente, não acrescenta.** O alvo
+`engine` passa `GOFLAGS=-mod=mod` desse jeito, então nada de fora — `debian/rules`, `.spec`,
+PKGBUILD, sua shell — consegue pedir uma flag de `go build` via `GOFLAGS`: ela é descartada em
+silêncio, sem erro e sem aviso. Flag que precisa valer para todo build entra na **linha de comando**
+do alvo, no `app/CMakeLists.txt`. Foi assim que o `-buildvcs=false` acabou lá: posto no
+`debian/rules` primeiro, ele não mudou nada e a tag da 2.1.0 falhou uma segunda vez.
+
+O `-buildvcs=false` fica, aliás, porque `go build` carimba informação de VCS e trata um `git` que
+sai não-zero como **erro**, não como "aqui não tem VCS" — o que derruba o build inteiro dentro de um
+container. A versão vem do `-ldflags`, então o carimbo não pagava nada.
+
 ## Versionamento (CRÍTICO)
 
 A versão é sincronizada em **vários arquivos** e não deve ser editada manualmente:
