@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -23,6 +24,11 @@ func testWrapper(t *testing.T, launched *[]string, onLaunch func(argv []string))
 		Systemctl:          &fakeRunner{},
 		ShortRun:           time.Nanosecond, // no run is "short" in a test
 		ShortRunLimit:      2,
+		// Counted here rather than off the machine: a test of the hosting loop
+		// has no business reading this host's input devices, and the watch it
+		// arms outlives Run by however long the goroutine takes to notice the
+		// cancel.
+		Controllers: func() int { return 0 },
 		Launch: func(_ context.Context, argv []string, _ []string) error {
 			*launched = append(*launched, argv[0])
 			if onLaunch != nil {
@@ -231,7 +237,10 @@ func TestWrapperHoldsTheDesktopWhenDisabled(t *testing.T) {
 			}
 		}
 	})
-	w.Disabled = true
+	w.BaseDir = t.TempDir()
+	if err := SetDisabled(w.BaseDir, true); err != nil {
+		t.Fatal(err)
+	}
 	w.Boot = BootConsole
 	if err := w.Run(context.Background()); err != nil {
 		t.Fatal(err)
@@ -415,11 +424,15 @@ func TestALastingConsoleSessionCountsAsHealthy(t *testing.T) {
 // build a streak that a later `enable` then reads as safe mode.
 func TestDisabledLoginsBuildNoStreak(t *testing.T) {
 	state := t.TempDir()
+	base := t.TempDir()
+	if err := SetDisabled(base, true); err != nil {
+		t.Fatal(err)
+	}
 	for i := 0; i < failLoginLimit+2; i++ {
 		w := &Wrapper{
 			DesktopExec: []string{"desktop-compositor"},
 			StateDir:    state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
-			ShortRun: time.Nanosecond, Disabled: true,
+			ShortRun: time.Nanosecond, BaseDir: base,
 			Controllers: func() int { return 0 },
 			Launch:      func(context.Context, []string, []string) error { return nil },
 		}
@@ -467,6 +480,7 @@ func TestConsoleRunsWithTheGamescopeIdentity(t *testing.T) {
 	var env []string
 	w := &Wrapper{
 		DesktopExec: []string{"desktop"}, ConsoleExec: []string{"console"},
+		Controllers:        func() int { return 0 },
 		ConsoleSessionName: "gamescope-session",
 		StateDir:           t.TempDir(), RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
 		ShortRun: time.Nanosecond,
@@ -737,5 +751,149 @@ func TestHoldFailedLoginWaitsOutTheFloor(t *testing.T) {
 	HoldFailedLogin(context.Background(), begun.Add(-time.Hour))
 	if waited := time.Since(begun); waited >= loginFloor {
 		t.Errorf("waited %s on a login that had already outlived the floor", waited)
+	}
+}
+
+// `enable` from inside a disabled login has to take effect in that login.
+//
+// The panel offers the button on the desktop the wrapper is holding, and the
+// `enter` gate reads the marker live -- so a wrapper holding a copy of the
+// answer from login let the gate through, let `enter` stop the desktop to make
+// the switch, and only then refused it. The user clicked "offer the console
+// again", lost everything they had open, and was told the console was switched
+// off.
+func TestEnableDuringADisabledLoginOffersTheConsole(t *testing.T) {
+	var launched []string
+	var w *Wrapper
+	first := true
+	w = testWrapper(t, &launched, func([]string) {
+		if !first {
+			return
+		}
+		first = false
+		// What the panel does: clear the marker, then ask for the switch.
+		if err := SetDisabled(w.BaseDir, false); err != nil {
+			t.Error(err)
+		}
+		if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+			t.Error(err)
+		}
+	})
+	w.BaseDir = t.TempDir()
+	if err := SetDisabled(w.BaseDir, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) < 2 || launched[0] != "desktop-compositor" || launched[1] != "start-gamescope-session" {
+		t.Fatalf("launched %v, want the held desktop and then the console once it was enabled", launched)
+	}
+	if reason, ok := TakeFailure(w.StateDir); ok {
+		t.Errorf("the switch was refused after `enable` lifted the hold: %q", reason)
+	}
+}
+
+// `disable` typed mid-login holds the console from that moment, without waiting
+// for a relogin -- the same liveness, in the other direction.
+func TestDisableDuringALoginHoldsTheConsole(t *testing.T) {
+	var launched []string
+	var w *Wrapper
+	first := true
+	w = testWrapper(t, &launched, func([]string) {
+		if !first {
+			return
+		}
+		first = false
+		if err := SetDisabled(w.BaseDir, true); err != nil {
+			t.Error(err)
+		}
+		if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+			t.Error(err)
+		}
+	})
+	w.BaseDir = t.TempDir()
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range launched {
+		if l != "desktop-compositor" {
+			t.Fatalf("launched %v, want the desktop only once the console was switched off", launched)
+		}
+	}
+	if reason, ok := TakeFailure(w.StateDir); !ok || !strings.Contains(reason, "switched off") {
+		t.Errorf("the refused switch left %q, want a word about the console being switched off", reason)
+	}
+}
+
+// The watch belongs to every hosted desktop, including one the wrapper is
+// holding. Arming it only when the hold was down meant a hold that lifted
+// mid-login left the trigger dead until the next login, while the panel,
+// `status` and the `enter` gate all reported the console as ready.
+func TestAHeldDesktopStillArmsTheControllerTrigger(t *testing.T) {
+	state := t.TempDir()
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(state, now.Add(-time.Duration(i)*time.Minute))
+	}
+
+	stopped := make(chan struct{}, 1)
+	var launched []string
+	// A desktop pass arms a watch and the next one arms another, so this script
+	// is read from two goroutines: the outgoing watch has been cancelled but
+	// has not necessarily noticed yet.
+	var mu sync.Mutex
+	calls := 0
+	w := &Wrapper{
+		DesktopExec: []string{"desktop-compositor"}, ConsoleExec: []string{"start-gamescope-session"},
+		ConsoleSessionName: "gamescope-session",
+		StateDir:           state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
+		ShortRun: time.Nanosecond, HealthyRun: time.Hour,
+		Choices:         Config{TVName: "HDMI-A-1", EnterOnControllerConnect: true},
+		ControllerPoll:  time.Millisecond,
+		ControllerGrace: 10 * time.Millisecond,
+		QuitSteam:       func(context.Context) {},
+		// The pad goes on only after the hold has lifted, which is the order it
+		// happens in: the machine recovers, then the user picks a controller up.
+		Controllers: func() int {
+			mu.Lock()
+			defer mu.Unlock()
+			calls++
+			switch {
+			case calls < 3:
+				return 0
+			case calls == 3:
+				RecordHostHealthy(state, time.Now())
+				return 0
+			default:
+				return 1
+			}
+		},
+		StopDesktop: func(context.Context) error {
+			select {
+			case stopped <- struct{}{}:
+			default:
+			}
+			return nil
+		},
+	}
+	w.Launch = func(_ context.Context, argv []string, _ []string) error {
+		launched = append(launched, argv[0])
+		if len(launched) > 1 {
+			return nil
+		}
+		// The held desktop stays up until the trigger stops it for the switch.
+		select {
+		case <-stopped:
+		case <-time.After(3 * time.Second):
+			t.Error("the controller trigger never stopped the held desktop")
+		}
+		return nil
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) < 2 || launched[1] != "start-gamescope-session" {
+		t.Fatalf("launched %v, want the console once the hold had lifted", launched)
 	}
 }

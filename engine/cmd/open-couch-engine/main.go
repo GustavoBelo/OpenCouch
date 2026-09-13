@@ -337,10 +337,11 @@ func hostLogin(ctx context.Context) error {
 		RuntimeDir:     e.RuntimeDir,
 		Choices:        e.Config,
 		Boot:           e.Config.Boot,
-		// Set with `open-couch-engine disable`. The wrapper then hosts only the
-		// desktop for the whole login, the same as safe mode but by choice.
-		Disabled: console.IsDisabled(e.Base),
-		Logf:     logf,
+		// Where `open-couch-engine disable` leaves its marker. The wrapper reads
+		// it for itself, every time the answer matters, so `enable` from the
+		// desktop it is holding takes effect in that same login.
+		BaseDir: e.Base,
+		Logf:    logf,
 	}
 	if e.Base != "" {
 		// Started once, by the login manager, then hosting every session until
@@ -739,10 +740,12 @@ func setEnabled(on bool) error {
 		if stateDir, err := console.StateDir(); err == nil {
 			console.RecordHostHealthy(stateDir, time.Now())
 		}
-		fmt.Println("Open Couch will host the console again after your next login.")
+		// Now, not next login: the wrapper reads the marker live, so the login
+		// this was typed from can switch to the console straight away.
+		fmt.Println("Open Couch will offer the console again, starting with this login.")
 		return nil
 	}
-	fmt.Println("Open Couch will start only your desktop from your next login.")
+	fmt.Println("Open Couch will host only your desktop from now on, and your next login goes straight to it.")
 	fmt.Println("The session entry stays installed; `open-couch-engine enable` turns the console back on.")
 	fmt.Println()
 	fmt.Println("To remove it entirely instead, from a text console (Ctrl+Alt+F2):")

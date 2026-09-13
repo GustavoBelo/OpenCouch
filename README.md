@@ -119,10 +119,12 @@ engine breaks your login. Three things keep that from trapping you:
   desktop with the defaults and says so in the application.
 - After three logins in a row that do not last, the engine stops offering the
   console on its own: it starts your plain desktop, ignores the boot setting and
-  any pending switch, and says why in the application. Staying logged in for 45
-  seconds lifts it, and so does `open-couch-engine enable` or ten minutes without
-  another short login. `open-couch-engine disable` makes the pause permanent
-  instead -- no root, the session entry stays installed, and `enable` undoes it.
+  any pending switch, and says why in the application. It lifts by itself once a
+  login works -- stay in that desktop past 45 seconds and log out, or leave ten
+  minutes without another short login. `open-couch-engine enable` lifts it at
+  once, in the login you type it from. `open-couch-engine disable` makes the
+  pause permanent instead -- no root, the session entry stays installed, and
+  `enable` undoes it.
 
 If a login still will not take -- a binary that is present but failing, an
 autologin pointed straight at a broken session -- switch to a text console with

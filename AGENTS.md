@@ -132,7 +132,9 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
     reboot que fecha o laço apagaria a contagem), **só quando o wrapper ia oferecer o console**:
     login `disabled` não conta. **`SafeModeReason(stateDir, now)` é a fonte de verdade única**:
     `failLoginLimit` (3) inícios em `failLoginWindow` (10 min) sem um login que durou → o wrapper
-    hospeda **só o desktop**, ignora `boot`/request de console e não arma o gatilho; e o `status`, o
+    hospeda **só o desktop**, ignora `boot`/request de console e o gatilho do controle recusa (fica
+    armado e relê o hold quando o pad sobe, para que um hold que lifta no meio do login valha já); e
+    o `status`, o
     `doctor` e o portão do `enter` recusam lendo essa **mesma** chamada, então não divergem (não há
     arquivo `safe-mode` separado — a versão anterior tinha um e ele defasava). O hold é `heldNow()`,
     recalculado por iteração e de novo antes de engolir um request (que aí faz `continue`, nunca
@@ -142,7 +144,9 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
     `open-couch-engine enable`) zera o streak; um desktop held que durou grava isso **no logout**,
     não no meio. RMW do arquivo é serializado por `flock` (`host-health.json.lock`) contra o
     handover de sessão do DM. `disabled` é o mesmo hold por escolha do usuário, via marcador em
-    `~/.config/open-couch/`.
+    `~/.config/open-couch/` — **lido ao vivo (`Wrapper.BaseDir`), como o safe mode, nunca copiado no
+    login**: o portão do `enter` lê o marcador ao vivo, então um wrapper com a resposta congelada
+    deixava o `enter` passar, derrubava o desktop para a troca e só então recusava.
 - `internal/audio/` — EDID→ELD→pin→profile→sink. O WirePlumber move *streams*, não o sink default.
   - `logfile.go` — o log do login atual e os anteriores. `RotateLog` arquiva no topo do
     `host-session`; `log --list`/`--session` são o que a GUI mostra em **History**. O id é
@@ -362,7 +366,8 @@ depois da tag) — e é por isso que o `release.sh` valida com `--no-net`.
   3º já dispara — o desktop simples sobe, o app mostra a faixa, `open-couch-engine status`/`doctor`
   reportam `safe_mode` a sessão **inteira** (sem flip). Fique nessa sessão held **> 45 s** e deslogue
   → o login seguinte já oferece o console (`status` limpo do 1º segundo). `open-couch-engine disable`
-  daí → reboot → vai direto ao desktop sem root; `enable` volta a oferecer.
+  daí → reboot → vai direto ao desktop sem root; `enable` volta a oferecer — **no mesmo login**, sem
+  deslogar: clique em "Oferecer o console de novo" no app e entre no console em seguida.
 - **Config ilegível não derruba o login.** Corrompa o `console.json` à mão (`echo "{" >`), delogue e
   logue: tem que subir o desktop com os padrões e a faixa do app dizendo qual arquivo consertar —
   nunca voltar ao greeter.

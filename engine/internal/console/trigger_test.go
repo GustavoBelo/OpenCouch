@@ -177,3 +177,71 @@ func TestCompositorForNamesTheHostedDesktop(t *testing.T) {
 		t.Errorf("compositor = %s, want a refusal", name)
 	}
 }
+
+// Nothing to offer while the console is held back. The watch is armed for every
+// hosted desktop, so the hold is what has to say no -- read when the pad rises,
+// not decided when the desktop started.
+func TestTriggerIsIgnoredWhileTheConsoleIsHeld(t *testing.T) {
+	stopped := make(chan struct{}, 1)
+	w := triggerWrapper(t, counter(0, 1), stopped)
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(w.StateDir, now.Add(-time.Duration(i)*time.Minute))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	w.watchControllers(ctx)
+
+	select {
+	case <-stopped:
+		t.Fatal("a pad switched on entered the console while it was held back")
+	default:
+	}
+}
+
+// And the moment the hold lifts, the pad works -- in that login, without a
+// relogin. Arming the watch only for a desktop that was not held meant `enable`
+// from the panel left the trigger dead for the rest of the login, while the
+// panel, `status` and the `enter` gate all reported the console as ready.
+func TestTriggerArmsItselfWhenTheHoldLifts(t *testing.T) {
+	stopped := make(chan struct{}, 1)
+	base := t.TempDir()
+	if err := SetDisabled(base, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// The pad goes on only after the hold has been lifted, the way it happens
+	// on a desk: the user clicks "offer the console again", then picks the
+	// controller up.
+	calls := 0
+	pads := func() int {
+		calls++
+		switch {
+		case calls < 3:
+			return 0
+		case calls == 3:
+			if err := SetDisabled(base, false); err != nil {
+				t.Error(err)
+			}
+			return 0
+		default:
+			return 1
+		}
+	}
+	w := triggerWrapper(t, pads, stopped)
+	w.BaseDir = base
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	go w.watchControllers(ctx)
+
+	select {
+	case <-stopped:
+	case <-ctx.Done():
+		t.Fatal("the pad did nothing after the hold was lifted")
+	}
+	if mode, ok := TakeRequest(w.RuntimeDir); !ok || mode != ModeConsole {
+		t.Errorf("request = %v, %v; want the console", mode, ok)
+	}
+}

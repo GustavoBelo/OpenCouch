@@ -87,11 +87,21 @@ type Wrapper struct {
 	ShortRun      time.Duration
 	ShortRunLimit int
 
-	// Disabled holds the console back for this whole login because the user ran
-	// `open-couch-engine disable`. The loop then behaves exactly as it does in
-	// safe mode -- desktop only, no trigger, console requests ignored -- but it
-	// is a choice rather than a fallback, so the wording differs.
-	Disabled bool
+	// BaseDir is the configuration directory, which is where `open-couch-engine
+	// disable` leaves its marker. While it is there the loop behaves exactly as
+	// it does in safe mode -- desktop only, no trigger, console requests
+	// ignored -- but it is a choice rather than a fallback, so the wording
+	// differs.
+	//
+	// Read live, every time the answer matters, exactly as safe mode is. Held
+	// as a copy taken at login instead, it was the one hold the user could not
+	// lift from the desktop they were sitting on: the panel's `enable` removed
+	// the marker, `status` and the `enter` gate went green off that same live
+	// marker, and the switch was then refused by a wrapper still holding the
+	// answer from login -- after `enter` had already stopped the desktop to make
+	// it. Empty in a wrapper built without a configuration directory, which is
+	// nothing disabled.
+	BaseDir string
 	// HealthyRun is how long a desktop session has to last before this login
 	// counts as one that worked, which is what lifts safe mode. healthyRun when
 	// unset; a test that had to sit through forty-five real seconds would not be
@@ -196,7 +206,7 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	// the wrapper meant to offer the console. `disable` is a standing choice,
 	// not a failed login, so a disabled session must not accumulate a streak
 	// that a later `enable` would then read as safe mode.
-	if !w.Disabled {
+	if !w.disabledNow() {
 		RecordHostStart(w.StateDir, time.Now())
 	}
 
@@ -307,11 +317,13 @@ func (w *Wrapper) Run(ctx context.Context) error {
 			go w.markHealthyAfter(session)
 		}
 		if mode == ModeDesktop {
-			// The trigger offers the console; while the console is held back
-			// there is nothing for it to offer, so it stays disarmed.
-			if !held {
-				go w.watchControllers(session)
-			}
+			// Armed for every hosted desktop, held or not. The trigger offers
+			// the console and there is nothing to offer while it is held back,
+			// but that is read again when a pad rises rather than decided here:
+			// a hold that lifted mid-login -- `enable` from the panel, or a
+			// streak ageing out -- used to leave the trigger dead until the
+			// next login, with everything else reporting the console as ready.
+			go w.watchControllers(session)
 		} else {
 			// Brackets the compositor coming up against the rest of the black
 			// screen: once its socket is there, what is left is Steam.
@@ -381,7 +393,7 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	// streak clears now, at logout, so the next login offers the console again
 	// -- but not while the held login ran, which would flip the hold under it.
 	// `disable` is excluded: it is a choice, and only `enable` lifts it.
-	if heldDesktopLasted && !w.Disabled {
+	if heldDesktopLasted && !w.disabledNow() {
 		w.logf("console: the held desktop lasted; the next login will offer the console again")
 		RecordHostHealthy(w.StateDir, time.Now())
 	}
@@ -399,13 +411,21 @@ func (w *Wrapper) Run(ctx context.Context) error {
 // answer matters, so `status`, the doctor, the `enter` gate and the loop cannot
 // disagree.
 func (w *Wrapper) heldNow() (bool, string) {
-	if w.Disabled {
+	if w.disabledNow() {
 		return true, "the console is switched off (`open-couch-engine disable`)"
 	}
 	if reason, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
 		return true, reason
 	}
 	return false, ""
+}
+
+// disabledNow reads the marker `open-couch-engine disable` writes, now rather
+// than as it was at login. A wrapper with no configuration directory -- one
+// whose login could not resolve one, or a test -- has nothing to read and
+// nothing switched off.
+func (w *Wrapper) disabledNow() bool {
+	return w.BaseDir != "" && IsDisabled(w.BaseDir)
 }
 
 // markHealthyAfter records that this login worked once its desktop has been up

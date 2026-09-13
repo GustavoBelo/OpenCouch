@@ -19,7 +19,9 @@ const controllerPoll = 2 * time.Second
 //
 // It runs only while the desktop is the session on screen, and only for as long
 // as that session lasts: entering from the console is meaningless, and a watch
-// that outlived the compositor would arm itself against the next one.
+// that outlived the compositor would arm itself against the next one. It runs
+// for a desktop the wrapper is holding as well -- the hold is read when a pad
+// rises, not when the watch started, so one that lifts mid-login counts.
 func (w *Wrapper) watchControllers(ctx context.Context) {
 	count := w.Controllers
 	if count == nil {
@@ -28,6 +30,15 @@ func (w *Wrapper) watchControllers(ctx context.Context) {
 	poll := w.ControllerPoll
 	if poll <= 0 {
 		poll = controllerPoll
+	}
+
+	// The session may already be over: Run cancels this the moment its
+	// compositor exits, and a goroutine that read sysfs before it looked would
+	// outlive the session it belongs to by that read.
+	select {
+	case <-ctx.Done():
+		return
+	default:
 	}
 
 	// Whatever is already attached when the desktop starts is not an event.
@@ -54,6 +65,13 @@ func (w *Wrapper) watchControllers(ctx context.Context) {
 			// Read on every rise rather than once: a login lasts days, and the
 			// switch is in a window the user opens during one.
 			if !cfg.EnterOnControllerConnect || !cfg.Configured() {
+				continue
+			}
+			// The hold for the same reason, and from the same call the loop and
+			// the `enter` gate use. Said out loud because a pad that lights up
+			// and does nothing is otherwise a machine with no explanation.
+			if held, reason := w.heldNow(); held {
+				w.logf("console: a controller connected but %s; not offering the console", reason)
 				continue
 			}
 			w.enterOnTrigger(ctx, cfg)
