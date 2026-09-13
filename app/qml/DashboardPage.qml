@@ -12,6 +12,13 @@ Item {
     property string viewingHistory: ""
     readonly property bool ready: status.ready === true
     readonly property string displayName: status.tv_description || status.tv_name || ""
+    // The engine's reason is English, and it is the one sentence every held user
+    // reads. When the engine sends the number behind it, say it in their
+    // language; an engine too old to send the number sends only the sentence,
+    // so that stays as the fallback.
+    readonly property string safeModeText: status.safe_mode_logins > 0
+        ? qsTrId("dashboard.safe_mode_reason").arg(status.safe_mode_logins)
+        : (status.safe_mode || "")
 
     function reload() {
         page.status = backend.consoleStatus();
@@ -19,21 +26,25 @@ Item {
         // desktop it fell back to came up with no notification server yet, so
         // this window is the first thing able to say what happened.
         if (page.status.failure) {
-            banner.show(page.status.failure, true);
-            banner.raisedBy = "alert";
+            // Insists: a failure is one-shot news -- the engine hands it over
+            // once and forgets it -- so a banner somebody else raised must not
+            // be what swallows it.
+            //
             // And the account of it is one click away, behind a section the
             // user has no reason to suspect is there. A failure is the one time
-            // the log is the point of the window, so it opens itself.
-            logSection.expanded = true;
+            // the log is the point of the window, so it opens itself. Only on
+            // the poll that actually raises it, or a section the user just
+            // collapsed would spring open again a second later.
+            if (banner.raiseAlert(page.status.failure, true))
+                logSection.expanded = true;
         }
         // The wrapper is hosting only the desktop -- after too many failed
-        // logins, or because the user asked it to. Reason string from the
-        // engine, same as a failure; the log and the buttons below say the
-        // rest. else-if, so a one-shot failure this same poll is not clobbered.
+        // logins, or because the user asked it to. A standing state rather than
+        // news, so it yields the banner to anything a person raised. else-if,
+        // so a one-shot failure this same poll is not clobbered.
         else if (page.status.safe_mode) {
-            banner.show(page.status.safe_mode, true);
-            banner.raisedBy = "alert";
-            logSection.expanded = true;
+            if (banner.raiseAlert(page.safeModeText, false))
+                logSection.expanded = true;
         }
         // Safe mode lifts on its own once the streak ages out; the banner it
         // raised has to come down with it rather than sit there as a stale
@@ -125,6 +136,26 @@ Item {
                     bannerBad = bad;
                     raisedBy = "";
                     visible = true;
+                }
+
+                // raiseAlert is how reload() puts the engine's own news here. It
+                // answers whether it took the banner over, so the caller only
+                // opens the log for something that is actually new.
+                //
+                // Two things it will not do. It will not re-show what it is
+                // already showing: reload() runs on a timer, and a banner rebuilt
+                // every second is one the user cannot dismiss. And unless the
+                // caller insists, it will not take the banner from somebody else
+                // -- a hold that was already on screen must not wipe out the word
+                // a person just earned by pressing a button.
+                function raiseAlert(message, insist) {
+                    if (visible && raisedBy !== "alert" && !insist)
+                        return false;
+                    if (visible && raisedBy === "alert" && bannerText.text === message)
+                        return false;
+                    show(message, true);
+                    raisedBy = "alert";
+                    return true;
                 }
 
                 RowLayout {

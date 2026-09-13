@@ -78,5 +78,6 @@
 <message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation>Check again</translation></message>
 <message id="dashboard.console_disable"><source>dashboard.console_disable</source><translation>Stop offering the console</translation></message>
 <message id="dashboard.console_enable"><source>dashboard.console_enable</source><translation>Offer the console again</translation></message>
+<message id="dashboard.safe_mode_reason"><source>dashboard.safe_mode_reason</source><translation>Open Couch is hosting only your desktop: %1 logins in a row ended too soon. It will offer the console again after one that lasts.</translation></message>
 </context>
 </TS>

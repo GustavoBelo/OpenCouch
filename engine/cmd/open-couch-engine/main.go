@@ -484,6 +484,10 @@ func status(ctx context.Context) error {
 		// logins that ended early, empty when it is not. It is computed, not
 		// stored: the same SafeModeReason call the wrapper decides the hold from.
 		SafeMode string `json:"safe_mode,omitempty"`
+		// SafeModeLogins is the number that sentence is built from. The panel
+		// renders its own line from it, in the user's language, and keeps the
+		// English above as the fallback for an engine too old to send this.
+		SafeModeLogins int `json:"safe_mode_logins,omitempty"`
 		// Disabled is set while `open-couch-engine disable` is in effect.
 		Disabled bool `json:"disabled"`
 	}{
@@ -509,8 +513,10 @@ func status(ctx context.Context) error {
 	// reason, and a red "logins ended early" alarm would blame a fault on a
 	// user who switched the console off on purpose.
 	if !out.Disabled {
-		if why, held := console.SafeModeReason(e.StateDir, time.Now()); held {
+		now := time.Now()
+		if why, held := console.SafeModeReason(e.StateDir, now); held {
 			out.SafeMode = why
+			out.SafeModeLogins = console.SafeModeLogins(e.StateDir, now)
 		}
 	}
 	// Taken, not just read. The breadcrumb exists so the user hears once why

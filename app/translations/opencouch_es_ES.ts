@@ -78,5 +78,6 @@
 <message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation type="unfinished"></translation></message>
 <message id="dashboard.console_disable"><source>dashboard.console_disable</source><translation type="unfinished"></translation></message>
 <message id="dashboard.console_enable"><source>dashboard.console_enable</source><translation type="unfinished"></translation></message>
+<message id="dashboard.safe_mode_reason"><source>dashboard.safe_mode_reason</source><translation type="unfinished"></translation></message>
 </context>
 </TS>
