@@ -147,8 +147,9 @@ is the first thing to read.
 
 ## 🧹 Remove
 
-To pause it without root: `open-couch-engine disable`. The next login goes
-straight to the desktop, and the session entry stays installed.
+To pause it without root: `open-couch-engine disable`. It takes effect at once,
+in the login you type it from as well as the next one, and the session entry
+stays installed.
 
 To take it out for good, remove the session entry **first**. A machine that
 still offers a session whose engine you have deleted is a machine you may not be
