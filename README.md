@@ -110,9 +110,13 @@ your desktop.
 ## 🆘 If you cannot log in
 
 The hosting session is what your machine logs into, so anything that breaks the
-engine breaks your login. Two things keep that from trapping you:
+engine breaks your login. Three things keep that from trapping you:
 
 - The entry declares `TryExec`, so a **missing** binary just hides the session.
+- A login that cannot start never ends instantly: the engine waits ten seconds
+  before handing back, so the greeter is not a spin and you have time to pick
+  another session. Settings it cannot read do not end it at all -- it starts your
+  desktop with the defaults and says so in the application.
 - After three logins in a row that do not last, the engine stops offering the
   console on its own: it starts your plain desktop, ignores the boot setting and
   any pending switch, and says why in the application. Staying logged in for 45

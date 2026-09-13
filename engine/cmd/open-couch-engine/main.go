@@ -202,12 +202,90 @@ func load() (env, error) {
 	}, nil
 }
 
-// hostSession runs the wrapper for the whole login.
-func hostSession(ctx context.Context) error {
-	e, err := load()
+// loadForHosting is load() for the one caller that must not fail.
+//
+// Every step load() gives up on is downgraded here to a note in the log and the
+// emptiest value the wrapper can still work from: a blank configuration hosts
+// the first desktop it finds, and an empty state or runtime directory is
+// already "nothing to record" everywhere the wrapper touches one.
+//
+// A configuration file that will not parse is the case this is really for. It
+// is the exact shape of failure safe mode exists to break -- every login ends in
+// milliseconds and the greeter offers the same session straight back -- except
+// that it happens before the wrapper runs, so nothing counts it and nothing
+// holds the console back. Hosting the desktop with the defaults puts the user
+// somewhere they can fix the file from.
+//
+// The notes come back rather than going to the log here because the log lives
+// in the state directory, which is one of the things being resolved.
+func loadForHosting() (env, []string) {
+	var notes []string
+	note := func(format string, args ...any) { notes = append(notes, fmt.Sprintf(format, args...)) }
+
+	// The state directory first: the log goes there, so resolving it before
+	// anything else is what lets the rest of these notes be read afterwards.
+	stateDir, err := console.StateDir()
 	if err != nil {
-		return err
+		note("console: there is no state directory (%v), so this login is not recorded and safe mode cannot count it", err)
 	}
+	runtimeDir, err := console.RuntimeDir()
+	if err != nil {
+		note("console: there is no runtime directory (%v), so switching sessions will not work in this login", err)
+	}
+	// A failure here still leaves a path worth trying: ensureBaseDir only makes
+	// the directory, and a config that is sitting in one it could not create is
+	// a config that reads fine.
+	base, err := ensureBaseDir()
+	if err != nil {
+		note("console: the configuration directory could not be prepared (%v); hosting with whatever can still be read", err)
+	}
+	var cfg console.Config
+	if base != "" {
+		if cfg, err = console.LoadConfig(base); err != nil {
+			note("console: %s could not be read (%v); hosting with the defaults", console.ConfigPath(base), err)
+			// The user hears this one. The machine looks fine from the outside
+			// -- it logs in, it just ignores everything they chose -- and the
+			// desktop about to come up is the only place the news can reach
+			// them.
+			console.RecordFailure(stateDir, "Open Couch could not read its settings ("+console.ConfigPath(base)+
+				"), so it started your desktop with the defaults. Fix or delete that file and log in again.")
+			cfg = console.Config{}
+		}
+	}
+	// A blank configuration carries no boot mode, and everything downstream
+	// reads one. LoadConfig normalizes what it returns; what is built here has
+	// to be normalized too.
+	cfg.Normalize()
+
+	return env{
+		Base:       base,
+		Config:     cfg,
+		RuntimeDir: runtimeDir,
+		StateDir:   stateDir,
+		Entries:    console.FindEntries(console.SessionDirs()),
+	}, notes
+}
+
+// hostSession runs the wrapper for the whole login.
+//
+// The login manager started this process, so returning from it ends the login,
+// and the greeter answers a login that lasted a second by offering the same
+// session again. Nothing in here may end one quickly, however broken the
+// machine is: loadForHosting refuses to fail, and whatever error still comes
+// back from the wrapper is held to the floor before the greeter is allowed to
+// see it. Without that floor the fastest failures were the ones safe mode could
+// not see -- it only counts logins the wrapper itself reached.
+func hostSession(ctx context.Context) error {
+	begun := time.Now()
+	err := hostLogin(ctx)
+	if err != nil {
+		console.HoldFailedLogin(ctx, begun)
+	}
+	return err
+}
+
+func hostLogin(ctx context.Context) error {
+	e, notes := loadForHosting()
 	// A session's stderr goes wherever the login manager decided, which on SDDM
 	// is nowhere a person can reach. Without a file there is no way to find out
 	// why a session that lasted five seconds gave up.
@@ -218,6 +296,11 @@ func hostSession(ctx context.Context) error {
 		fmt.Fprintln(os.Stderr, "could not file the previous log away:", err)
 	}
 	logf := logger(e.StateDir)
+	// What loadForHosting had to work around, now that there is somewhere to
+	// say it. After the rotation above, so the notes belong to this login.
+	for _, note := range notes {
+		logf("%s", note)
+	}
 
 	// Nothing below refuses to start. This process is what the login manager
 	// ran, so returning an error here ends the session as fast as it began, and
@@ -258,10 +341,12 @@ func hostSession(ctx context.Context) error {
 		// desktop for the whole login, the same as safe mode but by choice.
 		Disabled: console.IsDisabled(e.Base),
 		Logf:     logf,
+	}
+	if e.Base != "" {
 		// Started once, by the login manager, then hosting every session until
 		// the user logs out. What it was told above was true at login; what it
 		// acts on has to be what the file says now.
-		Reload: func() (console.Config, error) { return console.LoadConfig(e.Base) },
+		w.Reload = func() (console.Config, error) { return console.LoadConfig(e.Base) }
 	}
 	if gamescope, ok := console.FindGamescopeSession(e.Entries); ok {
 		w.ConsoleExec = gamescope.Exec
@@ -754,6 +839,12 @@ func displayName(cfg console.Config) string {
 const logTimeLayout = "2006-01-02T15:04:05.000Z07:00"
 
 func logger(stateDir string) func(string, ...any) {
+	// No state directory is a login whose cache directory could not be
+	// resolved. Joining onto "" would put this login's console.log in whatever
+	// the login manager left as the working directory.
+	if stateDir == "" {
+		return func(format string, args ...any) { fmt.Fprintf(os.Stderr, format+"\n", args...) }
+	}
 	path := filepath.Join(stateDir, "console.log")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {

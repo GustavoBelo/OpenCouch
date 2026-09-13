@@ -56,6 +56,12 @@ func ReadLastMode(stateDir string) (Mode, bool) {
 // WriteLastMode records the mode now running, so a BootLast machine comes back
 // to it.
 func WriteLastMode(stateDir string, mode Mode) {
+	// No state directory is a login whose cache directory could not be
+	// resolved. Joining onto "" would drop a last-session file into whatever
+	// the login manager left as the working directory.
+	if stateDir == "" {
+		return
+	}
 	_ = os.WriteFile(filepath.Join(stateDir, lastModeFile), []byte(string(mode)+"\n"), 0o600)
 }
 

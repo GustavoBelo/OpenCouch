@@ -108,6 +108,10 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
   `~/.config/open-couch/disabled` — a saída sem root do modo hospedeiro (ver `health.go`).
 - `internal/console/` — o núcleo. As peças que carregam o valor são as chatas:
   - `session.go` — o loop do wrapper: `Sanitize` → `SettleJobs` → `commandFor` → `Launch`, repetindo.
+    **`loginFloor`/`HoldFailedLogin` (10 s) é o piso de todo login que desiste**: o `host-session` *é*
+    o login, e devolver rápido faz o greeter reoferecer a mesma sessão — laço de senha. O disjuntor
+    do `health.go` só conta login que o wrapper alcançou, então o que quebra **antes** dele
+    (`loadForHosting`) é segurado aqui ou não é segurado por ninguém.
   - `systemd.go` — **`Sanitize`**. Nada mais limpa o systemd user manager na saída de uma sessão
     gamescope; sem isso o uwsm recusa o compositor seguinte e a sessão morre no segundo em que sobe.
   - `connector.go` — **`AwaitConnector`**. O gamescope enumera conectores uma vez e nunca reexamina;
@@ -359,6 +363,9 @@ depois da tag) — e é por isso que o `release.sh` valida com `--no-net`.
   reportam `safe_mode` a sessão **inteira** (sem flip). Fique nessa sessão held **> 45 s** e deslogue
   → o login seguinte já oferece o console (`status` limpo do 1º segundo). `open-couch-engine disable`
   daí → reboot → vai direto ao desktop sem root; `enable` volta a oferecer.
+- **Config ilegível não derruba o login.** Corrompa o `console.json` à mão (`echo "{" >`), delogue e
+  logue: tem que subir o desktop com os padrões e a faixa do app dizendo qual arquivo consertar —
+  nunca voltar ao greeter.
 - Após alterações no engine que exigem nova versão mínima, atualizar `kMinEngineVersion`.
 
 ## Armadilhas conhecidas e validações do `release.sh`

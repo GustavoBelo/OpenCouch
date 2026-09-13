@@ -166,16 +166,16 @@ func TestWrapperFallsBackToTheDesktopWhenTheConsoleCannotStart(t *testing.T) {
 // picker-less greeter is a password loop. It waits, leaves word of how to
 // recover, and ends once.
 func TestWrapperWithoutADesktopWaitsThenEndsOnce(t *testing.T) {
-	restore := noDesktopBackoff
-	noDesktopBackoff = 20 * time.Millisecond
-	t.Cleanup(func() { noDesktopBackoff = restore })
+	restore := loginFloor
+	loginFloor = 20 * time.Millisecond
+	t.Cleanup(func() { loginFloor = restore })
 
 	w := &Wrapper{RuntimeDir: t.TempDir(), StateDir: t.TempDir(), Systemctl: &fakeRunner{}}
 	start := time.Now()
 	if err := w.Run(context.Background()); err == nil {
 		t.Fatal("a wrapper with no way back must still end with an error")
 	}
-	if time.Since(start) < noDesktopBackoff {
+	if time.Since(start) < loginFloor {
 		t.Error("the wrapper returned at once; the login manager's retry would be a spin")
 	}
 	if _, ok := TakeFailure(w.StateDir); !ok {
@@ -713,5 +713,29 @@ func TestDesktopSessionGetsItsIdentityFromTheWrapper(t *testing.T) {
 		if strings.HasPrefix(entry, "XDG_CURRENT_DESKTOP=") {
 			t.Errorf("invented a desktop identity: %q", entry)
 		}
+	}
+}
+
+// The floor under every way a login can give up. Safe mode only counts logins
+// the wrapper itself reached, so the failures that happen before it -- a
+// configuration that will not parse, a runtime directory that will not resolve
+// -- are held here or not at all.
+func TestHoldFailedLoginWaitsOutTheFloor(t *testing.T) {
+	restore := loginFloor
+	loginFloor = 40 * time.Millisecond
+	t.Cleanup(func() { loginFloor = restore })
+
+	begun := time.Now()
+	HoldFailedLogin(context.Background(), begun)
+	if waited := time.Since(begun); waited < loginFloor {
+		t.Errorf("waited %s, want at least the %s floor", waited, loginFloor)
+	}
+
+	// A caller that has already spent the floor does not spend it twice: the
+	// no-desktop path waits inside Run, and hostSession wraps that same login.
+	begun = time.Now()
+	HoldFailedLogin(context.Background(), begun.Add(-time.Hour))
+	if waited := time.Since(begun); waited >= loginFloor {
+		t.Errorf("waited %s on a login that had already outlived the floor", waited)
 	}
 }

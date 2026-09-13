@@ -108,11 +108,35 @@ const (
 	connectorWait = 20 * time.Second
 )
 
-// noDesktopBackoff is how long the wrapper waits before ending a login it has
-// no desktop to host at all. Long enough that the login manager's retry is not
-// a spin, short enough that the black screen before the greeter comes back is
-// not a stare. A var so a test does not have to sit through it.
-var noDesktopBackoff = 10 * time.Second
+// loginFloor is the shortest a login that is giving up may take.
+//
+// The login manager started this process, so a login that ends in the time it
+// takes to read a file is answered by the greeter offering the same broken
+// session straight back -- and on a picker-less greeter, or with autologin,
+// that is a password loop with no way out. Long enough that the retry is not a
+// spin, short enough that the black screen before the greeter comes back is not
+// a stare. A var so a test does not have to sit through it.
+var loginFloor = 10 * time.Second
+
+// HoldFailedLogin keeps a login that is ending in failure from ending fast.
+//
+// Measured from when the login began rather than from here, so a caller that
+// has already spent the floor -- the no-desktop path below -- does not spend it
+// twice, and so the wait covers the whole login rather than just its last step.
+//
+// It is the floor *under* safe mode rather than a part of it: the counter only
+// starts counting once the wrapper is running, and the failures this catches
+// are the ones that happen before that.
+func HoldFailedLogin(ctx context.Context, begun time.Time) {
+	remaining := loginFloor - time.Since(begun)
+	if remaining <= 0 {
+		return
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(remaining):
+	}
+}
 
 func (w *Wrapper) logf(format string, args ...any) {
 	if w.Logf != nil {
@@ -128,6 +152,7 @@ func (w *Wrapper) logf(format string, args ...any) {
 // still works: the compositor exits with no request pending, the loop ends, and
 // the session closes exactly as it always did.
 func (w *Wrapper) Run(ctx context.Context) error {
+	begun := time.Now()
 	if len(w.DesktopExec) == 0 {
 		// No desktop entry to fall back to at all. Returning at once makes the
 		// login manager offer this same session again within the second, which
@@ -140,10 +165,7 @@ func (w *Wrapper) Run(ctx context.Context) error {
 			"If the login screen offers nothing else, switch to a text console with Ctrl+Alt+F2 and "+
 			"remove the entry with: sudo rm -f /usr/local/share/wayland-sessions/"+HostingEntryFile+
 			" /usr/share/wayland-sessions/"+HostingEntryFile)
-		select {
-		case <-ctx.Done():
-		case <-time.After(noDesktopBackoff):
-		}
+		HoldFailedLogin(ctx, begun)
 		return errors.New("no desktop session is installed: there is no way back")
 	}
 	// The login manager starts this before any compositor exists. Finding one
