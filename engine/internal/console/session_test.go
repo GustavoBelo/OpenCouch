@@ -897,3 +897,26 @@ func TestAHeldDesktopStillArmsTheControllerTrigger(t *testing.T) {
 		t.Fatalf("launched %v, want the console once the hold had lifted", launched)
 	}
 }
+
+// A desktop the wrapper forced is not where the user left off. Recording it as
+// the last session demoted a `boot last` machine that plays into one that comes
+// back to the desktop -- in silence, and long after the hold itself had lifted.
+func TestAHeldLoginLeavesTheBootPreferenceAlone(t *testing.T) {
+	var launched []string
+	w := testWrapper(t, &launched, nil)
+	w.Boot = BootLast
+	WriteLastMode(w.StateDir, ModeConsole)
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(w.StateDir, now.Add(-time.Duration(i)*time.Minute))
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) != 1 || launched[0] != "desktop-compositor" {
+		t.Fatalf("launched %v, want the desktop only while safe mode holds", launched)
+	}
+	if last, ok := ReadLastMode(w.StateDir); !ok || last != ModeConsole {
+		t.Errorf("last session is %q (found=%v), want the console the user actually left off in", last, ok)
+	}
+}

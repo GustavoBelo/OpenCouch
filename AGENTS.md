@@ -142,7 +142,9 @@ Módulo Go próprio (`github.com/GustavoBelo/OpenCouch/engine`). Dependências: 
     idade negativa/absurda (relógio pulou antes do NTP) conta como recente. `RecordHostHealthy`
     (desktop de pé por `healthyRun` 45 s — medido do compositor subir, não do topo do `Run`; ou
     `open-couch-engine enable`) zera o streak; um desktop held que durou grava isso **no logout**,
-    não no meio. RMW do arquivo é serializado por `flock` (`host-health.json.lock`) contra o
+    não no meio. Um desktop que o hold forçou **não** grava `last-session`: `boot last` é onde o
+    *usuário* parou, e um episódio de safe mode rebaixava em silêncio a máquina que dá boot no
+    console. RMW do arquivo é serializado por `flock` (`host-health.json.lock`) contra o
     handover de sessão do DM. `disabled` é o mesmo hold por escolha do usuário, via marcador em
     `~/.config/open-couch/` — **lido ao vivo (`Wrapper.BaseDir`), como o safe mode, nunca copiado no
     login**: o portão do `enter` lê o marcador ao vivo, então um wrapper com a resposta congelada

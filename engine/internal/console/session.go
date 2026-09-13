@@ -288,7 +288,15 @@ func (w *Wrapper) Run(ctx context.Context) error {
 
 		// Recorded before launching, not after: a machine switched off while
 		// playing has to come back playing, and there is no "after" then.
-		WriteLastMode(w.StateDir, mode)
+		//
+		// Never recorded for a desktop the wrapper forced. `boot last` is where
+		// the *user* left off, and a hold is not that: one safe-mode episode
+		// used to overwrite a console `last` with the desktop it had forced, so
+		// a machine that boots into the console came back to the desktop in
+		// silence, long after the hold itself had lifted.
+		if !held {
+			WriteLastMode(w.StateDir, mode)
+		}
 		// Recorded before launching for the same reason as the mode above: the
 		// process that asked for this switch is watching for the generation to
 		// move, and it is watching now, not once the compositor has finished
