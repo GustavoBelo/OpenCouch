@@ -1,5 +1,5 @@
 Name:           open-couch
-Version:        2.0.1
+Version:        2.1.0
 Release:        1%{?dist}
 Summary:        Console mode for your Linux desktop
 
@@ -93,6 +93,9 @@ install -Dm755 %{_builddir}/open-couch-engine %{buildroot}%{_bindir}/open-couch-
 %{_datadir}/wayland-sessions/open-couch-session.desktop
 
 %changelog
+* Sun Sep 13 2026 Gustavo Belo <gustavobelo28@gmail.com> - 2.1.0-1
+- See https://github.com/GustavoBelo/OpenCouch/releases/tag/v2.1.0
+
 * Mon Sep 07 2026 Gustavo Belo <gustavobelo28@gmail.com> - 2.0.1-1
 - See https://github.com/GustavoBelo/OpenCouch/releases/tag/v2.0.1
 
