@@ -290,10 +290,11 @@ construir a partir de um commit que não está na `main`. Empurre a tag só **de
 git branch chore/release-X.Y.Z            # a partir da main local, que já tem o commit
 git push -u origin chore/release-X.Y.Z
 gh pr create --fill
-# esperar os dois checks e mergear com **merge commit**, não squash: o squash cria
-# outro SHA e a tag ficaria apontando para fora da main
+# esperar os dois checks e mergear (squash: merge commit está desligado no repo).
+# A main ganha um commit novo, com SHA diferente do que o release.sh criou -- por
+# isso a tag é reapontada e empurrada só **depois** do merge.
 git switch main && git pull --ff-only
-git push origin vX.Y.Z
+git tag -f vX.Y.Z && git push --force origin vX.Y.Z
 # dispara .github/workflows/release.yml — jobs `engine` (estático amd64/arm64 +
 # SHA256SUMS), `rpm`, `deb` e `release` (cria ou atualiza a release). Os três
 # primeiros são dependência do último: um só que falhe e a release fica sem
