@@ -22,7 +22,15 @@ namespace {
     // simply be empty and the controller switch would simply do nothing, with
     // nothing anywhere to say why. Refusing it is what turns both into a
     // sentence the user can act on.
-    constexpr const char *kMinEngineVersion = "2.0.1";
+    //
+    // 2.1.0 adds safe mode: `disable` / `enable`, and the `safe_mode` and
+    // `disabled` keys in `status`. A 2.0.1 engine answers status without them,
+    // so the banner and the two buttons simply never appear -- and they are the
+    // way out of a machine that has stopped offering the console. Degrading
+    // quietly is right for a panel; it is wrong for the rescue, which is the one
+    // screen the user reaches it from. "Update the engine" is the better answer
+    // than a window that explains nothing.
+    constexpr const char *kMinEngineVersion = "2.1.0";
 
     // What `check` must print. An exit code alone cannot tell this engine from
     // the bash one it replaced: that one's `check` also succeeds, reports the

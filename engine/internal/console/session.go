@@ -86,6 +86,27 @@ type Wrapper struct {
 	// and ShortRunLimit how many consecutive short ones end the loop.
 	ShortRun      time.Duration
 	ShortRunLimit int
+
+	// BaseDir is the configuration directory, which is where `open-couch-engine
+	// disable` leaves its marker. While it is there the loop behaves exactly as
+	// it does in safe mode -- desktop only, no trigger, console requests
+	// ignored -- but it is a choice rather than a fallback, so the wording
+	// differs.
+	//
+	// Read live, every time the answer matters, exactly as safe mode is. Held
+	// as a copy taken at login instead, it was the one hold the user could not
+	// lift from the desktop they were sitting on: the panel's `enable` removed
+	// the marker, `status` and the `enter` gate went green off that same live
+	// marker, and the switch was then refused by a wrapper still holding the
+	// answer from login -- after `enter` had already stopped the desktop to make
+	// it. Empty in a wrapper built without a configuration directory, which is
+	// nothing disabled.
+	BaseDir string
+	// HealthyRun is how long a desktop session has to last before this login
+	// counts as one that worked, which is what lifts safe mode. healthyRun when
+	// unset; a test that had to sit through forty-five real seconds would not be
+	// run often enough to catch anything.
+	HealthyRun time.Duration
 }
 
 const (
@@ -96,6 +117,46 @@ const (
 	// loaded, which is well before a television has finished waking up.
 	connectorWait = 20 * time.Second
 )
+
+// loginFloor is the shortest a login that is giving up may take.
+//
+// The login manager started this process, so a login that ends in the time it
+// takes to read a file is answered by the greeter offering the same broken
+// session straight back -- and on a picker-less greeter, or with autologin,
+// that is a password loop with no way out. Long enough that the retry is not a
+// spin, short enough that the black screen before the greeter comes back is not
+// a stare. A var so a test does not have to sit through it.
+var loginFloor = 10 * time.Second
+
+// HoldFailedLogin keeps a login that is ending in failure from ending fast.
+//
+// Measured from when the login began rather than from here, so a caller that
+// has already spent the floor -- the no-desktop path below -- does not spend it
+// twice, and so the wait covers the whole login rather than just its last step.
+//
+// It is the floor *under* safe mode rather than a part of it: the counter only
+// starts counting once the wrapper is running, and the failures this catches
+// are the ones that happen before that.
+// ErrNotALogin is the refusal Run returns when it was not started as a login at
+// all: somebody typed `host-session` inside a session it would tear down.
+//
+// It carries its own message because the caller both prints it and tests for
+// it. This is the one way out of Run that is not a login collapsing, so it is
+// the one that must not be held to the floor above -- there is no login manager
+// waiting to offer the session again, only a person at a terminal waiting to
+// read why the command will not work.
+var ErrNotALogin = errors.New("a compositor is already running: `host-session` is what the login manager starts, not something to run inside a session it would tear down.\nTo switch now, use `open-couch-engine enter`")
+
+func HoldFailedLogin(ctx context.Context, begun time.Time) {
+	remaining := loginFloor - time.Since(begun)
+	if remaining <= 0 {
+		return
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(remaining):
+	}
+}
 
 func (w *Wrapper) logf(format string, args ...any) {
 	if w.Logf != nil {
@@ -111,16 +172,34 @@ func (w *Wrapper) logf(format string, args ...any) {
 // still works: the compositor exits with no request pending, the loop ends, and
 // the session closes exactly as it always did.
 func (w *Wrapper) Run(ctx context.Context) error {
-	if len(w.DesktopExec) == 0 {
-		return errors.New("no desktop compositor command: there would be no way back")
-	}
+	begun := time.Now()
 	// The login manager starts this before any compositor exists. Finding one
 	// already running means somebody typed the command inside their own desktop,
 	// and the first thing the loop does is Sanitize, which stops
 	// graphical-session.target and takes that desktop's services down with it.
 	// The command's help says it will not work; refusing is what makes that true.
+	//
+	// Asked before anything about the machine, because this is about how the
+	// command was invoked and not about what is installed: someone typing it in
+	// the wrong place should hear that, not a diagnosis of their session
+	// entries.
 	if SessionRunning(w.RuntimeDir) {
-		return errors.New("a compositor is already running: `host-session` is what the login manager starts, not something to run inside a session it would tear down.\nTo switch now, use `open-couch-engine enter`")
+		return ErrNotALogin
+	}
+	if len(w.DesktopExec) == 0 {
+		// No desktop entry to fall back to at all. Returning at once makes the
+		// login manager offer this same session again within the second, which
+		// on a picker-less greeter is a password loop. Leave word of how to
+		// recover, wait long enough that the retry is not a spin, and end the
+		// session once.
+		w.logf("console: no desktop session is installed, so there is no way back")
+		RecordFailure(w.StateDir, "No desktop session is installed for Open Couch to hand back to. "+
+			"Install your desktop's session package, or run `open-couch-engine setup` to pick one. "+
+			"If the login screen offers nothing else, switch to a text console with Ctrl+Alt+F2 and "+
+			"remove the entry with: sudo rm -f /usr/local/share/wayland-sessions/"+HostingEntryFile+
+			" /usr/share/wayland-sessions/"+HostingEntryFile)
+		HoldFailedLogin(ctx, begun)
+		return errors.New("no desktop session is installed: there is no way back")
 	}
 	if w.Systemctl == nil {
 		w.Systemctl = Systemctl{}
@@ -133,6 +212,17 @@ func (w *Wrapper) Run(ctx context.Context) error {
 	}
 	if w.ShortRunLimit == 0 {
 		w.ShortRunLimit = defaultShortRunLimit
+	}
+	if w.HealthyRun == 0 {
+		w.HealthyRun = healthyRun
+	}
+
+	// Note this login before the first thing that could end it -- but only when
+	// the wrapper meant to offer the console. `disable` is a standing choice,
+	// not a failed login, so a disabled session must not accumulate a streak
+	// that a later `enable` would then read as safe mode.
+	if !w.disabledNow() {
+		RecordHostStart(w.StateDir, time.Now())
 	}
 
 	// Mark the session so the doctor can tell a hosted session from a plain
@@ -156,7 +246,28 @@ func (w *Wrapper) Run(ctx context.Context) error {
 
 	shortRuns := 0
 	generation := 0
+
+	// heldDesktopLasted is set when a desktop the wrapper forced (disable or
+	// safe mode) stayed up past HealthyRun. It decides, at the end, whether the
+	// login counts as the machine recovering -- measured from the desktop
+	// coming up, not from here, so SettleJobs's wait does not count toward it.
+	heldDesktopLasted := false
+	loggedHold := false
+
 	for {
+		// disable and safe mode both come to the same thing: host the desktop,
+		// nothing else. Read live from the same call `status` and the `enter`
+		// gate use, so a long login does not go on refusing switches after the
+		// streak has aged out from under it.
+		held, heldReason := w.heldNow()
+		if held {
+			mode = ModeDesktop
+			if !loggedHold {
+				w.logf("console: hosting the desktop only -- %s", heldReason)
+				loggedHold = true
+			}
+		}
+
 		// The screen is black from here until the next compositor draws. Each
 		// step logs how long it took so a real switch shows which one is the
 		// long pole; the total is logged just before the handoff below.
@@ -192,7 +303,15 @@ func (w *Wrapper) Run(ctx context.Context) error {
 
 		// Recorded before launching, not after: a machine switched off while
 		// playing has to come back playing, and there is no "after" then.
-		WriteLastMode(w.StateDir, mode)
+		//
+		// Never recorded for a desktop the wrapper forced. `boot last` is where
+		// the *user* left off, and a hold is not that: one safe-mode episode
+		// used to overwrite a console `last` with the desktop it had forced, so
+		// a machine that boots into the console came back to the desktop in
+		// silence, long after the hold itself had lifted.
+		if !held {
+			WriteLastMode(w.StateDir, mode)
+		}
 		// Recorded before launching for the same reason as the mode above: the
 		// process that asked for this switch is watching for the generation to
 		// move, and it is watching now, not once the compositor has finished
@@ -211,7 +330,22 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		// switching a pad on inside the console has nothing left to ask for, and
 		// a watch outliving the compositor would arm itself against the next one.
 		session, endSession := context.WithCancel(ctx)
+		// Any session the console was genuinely on the table for proves the
+		// login worked once it has lasted -- gamescope counts as much as the
+		// desktop, or a `boot console` machine that plays and shuts down would
+		// never record a healthy login at all. A desktop safe mode *forced* is
+		// the exception: it lasting shows only that the way in works, so it
+		// counts as recovery at logout rather than HealthyRun in.
+		if !held {
+			go w.markHealthyAfter(session)
+		}
 		if mode == ModeDesktop {
+			// Armed for every hosted desktop, held or not. The trigger offers
+			// the console and there is nothing to offer while it is held back,
+			// but that is read again when a pad rises rather than decided here:
+			// a hold that lifted mid-login -- `enable` from the panel, or a
+			// streak ageing out -- used to leave the trigger dead until the
+			// next login, with everything else reporting the console as ready.
 			go w.watchControllers(session)
 		} else {
 			// Brackets the compositor coming up against the rest of the black
@@ -222,6 +356,13 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		endSession()
 		lasted := time.Since(started)
 		w.logf("console: the %s session ended after %s (%v)", mode, lasted.Round(time.Second), runErr)
+
+		// A desktop safe mode forced that stayed up past HealthyRun means the
+		// user has had somewhere to fix things from. Not cleared now -- that
+		// would flip the hold mid-login -- but recorded for the end of Run.
+		if held && lasted >= w.HealthyRun {
+			heldDesktopLasted = true
+		}
 
 		// A compositor that dies instantly would otherwise be restarted forever,
 		// and the user would have no way in at all. Hand back to the login
@@ -237,6 +378,24 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		}
 
 		next, ok := TakeRequest(w.RuntimeDir)
+		if ok && next == ModeConsole {
+			// Re-checked live, not from the pass's own `held`: a long desktop
+			// may have outlasted the streak's window. Still held -> keep
+			// hosting the desktop and go round again; this is not a logout, so
+			// it must not fall through to the break below. Not held any more ->
+			// honour the request.
+			if stillHeld, reason := w.heldNow(); stillHeld {
+				w.logf("console: a switch to the console was asked for but %s; staying on the desktop", reason)
+				// The desktop the user was looking at is already gone -- whatever
+				// asked for the switch stopped the compositor to get here -- and
+				// they are about to land on a fresh one with no console and no
+				// reason given. The log alone is not somewhere they will look.
+				RecordFailure(w.StateDir, "Open Couch stayed on the desktop instead of switching to "+
+					"the console: "+reason+".")
+				mode = ModeDesktop
+				continue
+			}
+		}
 		if !ok {
 			// Nobody logs out *from* the console: leaving it means going home.
 			// Big Picture's own "Switch to Desktop" just stops the session's
@@ -253,11 +412,59 @@ func (w *Wrapper) Run(ctx context.Context) error {
 		mode = next
 	}
 
+	// A desktop safe mode forced that lasted is the machine recovering: the
+	// streak clears now, at logout, so the next login offers the console again
+	// -- but not while the held login ran, which would flip the hold under it.
+	// `disable` is excluded: it is a choice, and only `enable` lifts it.
+	if heldDesktopLasted && !w.disabledNow() {
+		w.logf("console: the held desktop lasted; the next login will offer the console again")
+		RecordHostHealthy(w.StateDir, time.Now())
+	}
+
 	// Whatever happened, the desktop's audio goes back and the manager is left
 	// clean for whoever logs in next.
 	RestoreAudio(ctx, w.StateDir, w.logf)
 	Sanitize(ctx, w.Systemctl)
 	return nil
+}
+
+// heldNow reports whether the console is being withheld right now, and why.
+// disable is the user's standing choice; safe mode is where the wrapper lands
+// on its own after too many logins ended early. It is read live wherever the
+// answer matters, so `status`, the doctor, the `enter` gate and the loop cannot
+// disagree.
+func (w *Wrapper) heldNow() (bool, string) {
+	if w.disabledNow() {
+		return true, "the console is switched off (`open-couch-engine disable`)"
+	}
+	if reason, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
+		return true, reason
+	}
+	return false, ""
+}
+
+// disabledNow reads the marker `open-couch-engine disable` writes, now rather
+// than as it was at login. A wrapper with no configuration directory -- one
+// whose login could not resolve one, or a test -- has nothing to read and
+// nothing switched off.
+func (w *Wrapper) disabledNow() bool {
+	return w.BaseDir != "" && IsDisabled(w.BaseDir)
+}
+
+// markHealthyAfter records that this login worked once its desktop has been up
+// HealthyRun: the run of failed starts is cleared, so a machine that was in
+// safe mode is out of it. It watches ctx so a login whose desktop never exits
+// -- the normal case -- still counts, and it is spawned only for a desktop the
+// console was genuinely on the table for, never one safe mode forced.
+func (w *Wrapper) markHealthyAfter(ctx context.Context) {
+	if w.StateDir == "" {
+		return
+	}
+	select {
+	case <-ctx.Done():
+	case <-time.After(w.HealthyRun):
+		RecordHostHealthy(w.StateDir, time.Now())
+	}
 }
 
 // choices is the configuration as it is now, not as it was at login.

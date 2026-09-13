@@ -76,5 +76,9 @@
 <message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation>Entering ends this desktop session, so anything still open goes with it — you get a countdown you can cancel first. Steam's own Power menu brings you home.</translation></message>
 <message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation>Already installed for every account on this machine. Nothing to do but log out and pick it at your login screen.</translation></message>
 <message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation>Check again</translation></message>
+<message id="dashboard.console_disable"><source>dashboard.console_disable</source><translation>Stop offering the console</translation></message>
+<message id="dashboard.console_enable"><source>dashboard.console_enable</source><translation>Offer the console again</translation></message>
+<message id="dashboard.safe_mode_reason"><source>dashboard.safe_mode_reason</source><translation>Open Couch is hosting only your desktop: %1 logins in a row ended too soon. It will offer the console again after one that lasts.</translation></message>
+<message id="dashboard.console_hold_failed"><source>dashboard.console_hold_failed</source><translation>Open Couch could not reach the engine to change that. From a terminal, `open-couch-engine enable` and `disable` do the same thing.</translation></message>
 </context>
 </TS>

@@ -104,6 +104,10 @@ func run(args []string) error {
 		return setBoot(rest)
 	case "controller":
 		return setController(rest)
+	case "disable":
+		return setEnabled(false)
+	case "enable":
+		return setEnabled(true)
 	case "log":
 		return showLog(rest)
 	case "help", "-h", "--help":
@@ -130,6 +134,8 @@ func usage() {
   boot <MODE>    where a fresh login starts: desktop, console or last
   controller <on|off>
                  offer the console when a gamepad is switched on
+  disable        stop hosting the console; the next login goes straight to the desktop
+  enable         host the console again after disable, or after safe mode
   log [--clear | --list | --session <ID>]
                  the wrapper's log for this login, or the logins kept before it
   config-path    where the settings file lives
@@ -196,12 +202,93 @@ func load() (env, error) {
 	}, nil
 }
 
-// hostSession runs the wrapper for the whole login.
-func hostSession(ctx context.Context) error {
-	e, err := load()
+// loadForHosting is load() for the one caller that must not fail.
+//
+// Every step load() gives up on is downgraded here to a note in the log and the
+// emptiest value the wrapper can still work from: a blank configuration hosts
+// the first desktop it finds, and an empty state or runtime directory is
+// already "nothing to record" everywhere the wrapper touches one.
+//
+// A configuration file that will not parse is the case this is really for. It
+// is the exact shape of failure safe mode exists to break -- every login ends in
+// milliseconds and the greeter offers the same session straight back -- except
+// that it happens before the wrapper runs, so nothing counts it and nothing
+// holds the console back. Hosting the desktop with the defaults puts the user
+// somewhere they can fix the file from.
+//
+// The notes come back rather than going to the log here because the log lives
+// in the state directory, which is one of the things being resolved.
+func loadForHosting() (env, []string) {
+	var notes []string
+	note := func(format string, args ...any) { notes = append(notes, fmt.Sprintf(format, args...)) }
+
+	// The state directory first: the log goes there, so resolving it before
+	// anything else is what lets the rest of these notes be read afterwards.
+	stateDir, err := console.StateDir()
 	if err != nil {
-		return err
+		note("console: there is no state directory (%v), so this login is not recorded and safe mode cannot count it", err)
 	}
+	runtimeDir, err := console.RuntimeDir()
+	if err != nil {
+		note("console: there is no runtime directory (%v), so switching sessions will not work in this login", err)
+	}
+	// A failure here still leaves a path worth trying: ensureBaseDir only makes
+	// the directory, and a config that is sitting in one it could not create is
+	// a config that reads fine.
+	base, err := ensureBaseDir()
+	if err != nil {
+		note("console: the configuration directory could not be prepared (%v); hosting with whatever can still be read", err)
+	}
+	var cfg console.Config
+	if base != "" {
+		if cfg, err = console.LoadConfig(base); err != nil {
+			note("console: %s could not be read (%v); hosting with the defaults", console.ConfigPath(base), err)
+			// The user hears this one. The machine looks fine from the outside
+			// -- it logs in, it just ignores everything they chose -- and the
+			// desktop about to come up is the only place the news can reach
+			// them.
+			console.RecordFailure(stateDir, "Open Couch could not read its settings ("+console.ConfigPath(base)+
+				"), so it started your desktop with the defaults. Fix or delete that file and log in again.")
+			cfg = console.Config{}
+		}
+	}
+	// A blank configuration carries no boot mode, and everything downstream
+	// reads one. LoadConfig normalizes what it returns; what is built here has
+	// to be normalized too.
+	cfg.Normalize()
+
+	return env{
+		Base:       base,
+		Config:     cfg,
+		RuntimeDir: runtimeDir,
+		StateDir:   stateDir,
+		Entries:    console.FindEntries(console.SessionDirs()),
+	}, notes
+}
+
+// hostSession runs the wrapper for the whole login.
+//
+// The login manager started this process, so returning from it ends the login,
+// and the greeter answers a login that lasted a second by offering the same
+// session again. Nothing in here may end one quickly, however broken the
+// machine is: loadForHosting refuses to fail, and whatever error still comes
+// back from the wrapper is held to the floor before the greeter is allowed to
+// see it. Without that floor the fastest failures were the ones safe mode could
+// not see -- it only counts logins the wrapper itself reached.
+func hostSession(ctx context.Context) error {
+	begun := time.Now()
+	err := hostLogin(ctx)
+	// Everything except the one refusal that is not a login at all. Somebody
+	// typed this inside their own desktop: no login manager is waiting to offer
+	// the session again, and they are at a terminal waiting to read the answer.
+	if err != nil && !errors.Is(err, console.ErrNotALogin) {
+		console.HoldFailedLogin(ctx, begun)
+	}
+	return err
+}
+
+func hostLogin(ctx context.Context) error {
+	e, notes := loadForHosting()
 	// A session's stderr goes wherever the login manager decided, which on SDDM
 	// is nowhere a person can reach. Without a file there is no way to find out
 	// why a session that lasted five seconds gave up.
@@ -212,6 +299,11 @@ func hostSession(ctx context.Context) error {
 		fmt.Fprintln(os.Stderr, "could not file the previous log away:", err)
 	}
 	logf := logger(e.StateDir)
+	// What loadForHosting had to work around, now that there is somewhere to
+	// say it. After the rotation above, so the notes belong to this login.
+	for _, note := range notes {
+		logf("%s", note)
+	}
 
 	// Nothing below refuses to start. This process is what the login manager
 	// ran, so returning an error here ends the session as fast as it began, and
@@ -226,14 +318,18 @@ func hostSession(ctx context.Context) error {
 	}
 	if !ok {
 		fallback, found := console.FallbackDesktop(e.Entries)
-		if !found {
-			return fmt.Errorf("the desktop session %q was not found and no other desktop is installed; "+
-				"run `open-couch-engine setup` or set desktop_session in %s",
-				e.Config.DesktopSession, console.ConfigPath(e.Base))
+		if found {
+			logf("console: the configured desktop %q is not installed; hosting %s instead. Run `open-couch-engine setup` to choose again",
+				e.Config.DesktopSession, fallback.File())
+			desktop = fallback
+		} else {
+			// No desktop at all. Handled by the wrapper rather than returned
+			// here: it logs how to recover, waits so the login manager's retry
+			// is not a spin, and ends the session once instead of dropping
+			// straight back into a password loop.
+			logf("console: no desktop session is installed; the wrapper will explain and hand back")
+			desktop = console.Entry{}
 		}
-		logf("console: the configured desktop %q is not installed; hosting %s instead. Run `open-couch-engine setup` to choose again",
-			e.Config.DesktopSession, fallback.File())
-		desktop = fallback
 	}
 
 	w := &console.Wrapper{
@@ -244,11 +340,17 @@ func hostSession(ctx context.Context) error {
 		RuntimeDir:     e.RuntimeDir,
 		Choices:        e.Config,
 		Boot:           e.Config.Boot,
-		Logf:           logf,
+		// Where `open-couch-engine disable` leaves its marker. The wrapper reads
+		// it for itself, every time the answer matters, so `enable` from the
+		// desktop it is holding takes effect in that same login.
+		BaseDir: e.Base,
+		Logf:    logf,
+	}
+	if e.Base != "" {
 		// Started once, by the login manager, then hosting every session until
 		// the user logs out. What it was told above was true at login; what it
 		// acts on has to be what the file says now.
-		Reload: func() (console.Config, error) { return console.LoadConfig(e.Base) },
+		w.Reload = func() (console.Config, error) { return console.LoadConfig(e.Base) }
 	}
 	if gamescope, ok := console.FindGamescopeSession(e.Entries); ok {
 		w.ConsoleExec = gamescope.Exec
@@ -381,6 +483,16 @@ func status(ctx context.Context) error {
 		ConfigPath               string        `json:"config_path"`
 		Requirements             []requirement `json:"requirements"`
 		Failure                  string        `json:"failure,omitempty"`
+		// SafeMode is why the wrapper is hosting only the desktop after a run of
+		// logins that ended early, empty when it is not. It is computed, not
+		// stored: the same SafeModeReason call the wrapper decides the hold from.
+		SafeMode string `json:"safe_mode,omitempty"`
+		// SafeModeLogins is the number that sentence is built from. The panel
+		// renders its own line from it, in the user's language, and keeps the
+		// English above as the fallback for an engine too old to send this.
+		SafeModeLogins int `json:"safe_mode_logins,omitempty"`
+		// Disabled is set while `open-couch-engine disable` is in effect.
+		Disabled bool `json:"disabled"`
 	}{
 		Version:                  version,
 		Ready:                    len(console.Unmet(reqs)) == 0,
@@ -393,9 +505,22 @@ func status(ctx context.Context) error {
 		EnterOnControllerConnect: e.Config.EnterOnControllerConnect,
 		Controllers:              console.ConnectedControllers(),
 		ConfigPath:               console.ConfigPath(e.Base),
+		Disabled:                 console.IsDisabled(e.Base),
 	}
 	if live, ok := console.ReadLive(e.RuntimeDir); ok {
 		out.Mode = string(live.Mode)
+	}
+	// The same call the wrapper and the doctor use: the panel shows safe mode
+	// for exactly as long as a switch would really be held. Suppressed when
+	// disabled, the way the doctor does it -- `disabled` already carries the
+	// reason, and a red "logins ended early" alarm would blame a fault on a
+	// user who switched the console off on purpose.
+	if !out.Disabled {
+		now := time.Now()
+		if why, held := console.SafeModeReason(e.StateDir, now); held {
+			out.SafeMode = why
+			out.SafeModeLogins = console.SafeModeLogins(e.StateDir, now)
+		}
 	}
 	// Taken, not just read. The breadcrumb exists so the user hears once why
 	// the console did not start, and this is the path that tells them: the app
@@ -601,6 +726,45 @@ func setController(args []string) error {
 	return console.SaveConfig(base, cfg)
 }
 
+// setEnabled turns the console off or back on without touching anything a login
+// manager reads -- a marker file in the user's own config directory.
+//
+// It is the recovery that needs no root. The README's older answer to a login
+// that will not take is Ctrl+Alt+F2 and `sudo rm` of a file under
+// /usr/share/wayland-sessions; from any shell, `open-couch-engine disable` does
+// the same job for the common case, and the next login goes straight to the
+// desktop. The session entry stays installed, so `enable` is all it takes to
+// undo.
+func setEnabled(on bool) error {
+	base, err := ensureBaseDir()
+	if err != nil {
+		return err
+	}
+	if err := console.SetDisabled(base, !on); err != nil {
+		return err
+	}
+	if on {
+		// Turning it back on also clears a safe-mode hold and the run of failed
+		// logins behind it, so the next login is judged from a clean slate.
+		if stateDir, err := console.StateDir(); err == nil {
+			console.RecordHostHealthy(stateDir, time.Now())
+		}
+		// Now, not next login: the wrapper reads the marker live, so the login
+		// this was typed from can switch to the console straight away.
+		fmt.Println("Open Couch will offer the console again, starting with this login.")
+		return nil
+	}
+	fmt.Println("Open Couch will host only your desktop from now on, and your next login goes straight to it.")
+	fmt.Println("The session entry stays installed; `open-couch-engine enable` turns the console back on.")
+	fmt.Println()
+	fmt.Println("To remove it entirely instead, from a text console (Ctrl+Alt+F2):")
+	fmt.Printf("  sudo rm -f /usr/local/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  sudo rm -f /usr/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  rm -f ~/.local/share/wayland-sessions/%s\n", console.HostingEntryFile)
+	fmt.Printf("  sudo rm -f /etc/sddm.conf.d/%s   # only if you set up autologin\n", console.AutologinDropIn)
+	return nil
+}
+
 // showLog is the whole of the log contract with the application.
 //
 // One command with flags rather than the six the app used to call -- `log`,
@@ -687,6 +851,12 @@ func displayName(cfg console.Config) string {
 const logTimeLayout = "2006-01-02T15:04:05.000Z07:00"
 
 func logger(stateDir string) func(string, ...any) {
+	// No state directory is a login whose cache directory could not be
+	// resolved. Joining onto "" would put this login's console.log in whatever
+	// the login manager left as the working directory.
+	if stateDir == "" {
+		return func(format string, args ...any) { fmt.Fprintf(os.Stderr, format+"\n", args...) }
+	}
 	path := filepath.Join(stateDir, "console.log")
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -23,6 +24,11 @@ func testWrapper(t *testing.T, launched *[]string, onLaunch func(argv []string))
 		Systemctl:          &fakeRunner{},
 		ShortRun:           time.Nanosecond, // no run is "short" in a test
 		ShortRunLimit:      2,
+		// Counted here rather than off the machine: a test of the hosting loop
+		// has no business reading this host's input devices, and the watch it
+		// arms outlives Run by however long the goroutine takes to notice the
+		// cancel.
+		Controllers: func() int { return 0 },
 		Launch: func(_ context.Context, argv []string, _ []string) error {
 			*launched = append(*launched, argv[0])
 			if onLaunch != nil {
@@ -160,12 +166,311 @@ func TestWrapperFallsBackToTheDesktopWhenTheConsoleCannotStart(t *testing.T) {
 	}
 }
 
-// There has to be a way back, so refusing up front beats hosting a session that
-// can never return to a desktop.
-func TestWrapperRefusesWithoutADesktopCommand(t *testing.T) {
+// There has to be a way back. With no desktop at all the wrapper still ends the
+// login with an error -- but not at once: returning immediately makes the login
+// manager offer the same session again within the second, which on a
+// picker-less greeter is a password loop. It waits, leaves word of how to
+// recover, and ends once.
+func TestWrapperWithoutADesktopWaitsThenEndsOnce(t *testing.T) {
+	restore := loginFloor
+	loginFloor = 20 * time.Millisecond
+	t.Cleanup(func() { loginFloor = restore })
+
 	w := &Wrapper{RuntimeDir: t.TempDir(), StateDir: t.TempDir(), Systemctl: &fakeRunner{}}
+	start := time.Now()
 	if err := w.Run(context.Background()); err == nil {
-		t.Fatal("a wrapper with no way back must refuse to start")
+		t.Fatal("a wrapper with no way back must still end with an error")
+	}
+	if time.Since(start) < loginFloor {
+		t.Error("the wrapper returned at once; the login manager's retry would be a spin")
+	}
+	if _, ok := TakeFailure(w.StateDir); !ok {
+		t.Error("nothing was left to tell the user how to recover")
+	}
+}
+
+// Safe mode: after a run of logins that died in seconds, the wrapper hosts only
+// the desktop -- a way in from which the setup can be fixed -- and ignores the
+// boot preference and any pending switch until a login lasts.
+func TestWrapperHoldsTheDesktopInSafeMode(t *testing.T) {
+	var launched []string
+	w := testWrapper(t, &launched, nil)
+	w.Boot = BootConsole
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(w.StateDir, now.Add(-time.Duration(i)*time.Minute))
+	}
+	if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) != 1 || launched[0] != "desktop-compositor" {
+		t.Fatalf("launched %v, want the desktop only while safe mode holds", launched)
+	}
+	// This login was instant, so it does not count as recovery: the streak
+	// stands and `status` / `doctor` still read the machine as held.
+	if _, held := SafeModeReason(w.StateDir, time.Now()); !held {
+		t.Error("an instant held login cleared safe mode")
+	}
+	// No one-shot console-failure alongside it -- that would race a
+	// near-identical line onto the app's banner.
+	if reason, ok := TakeFailure(w.StateDir); ok {
+		t.Errorf("safe mode also wrote a one-shot failure breadcrumb: %q", reason)
+	}
+}
+
+// `open-couch-engine disable` holds the desktop the same way, for the whole
+// login, and a switch asked for mid-login is refused -- with a word to the user,
+// because the desktop they were looking at is gone by then. It is a choice, not
+// a fault, so it manufactures no safe-mode streak.
+func TestWrapperHoldsTheDesktopWhenDisabled(t *testing.T) {
+	var launched []string
+	var w *Wrapper
+	first := true
+	w = testWrapper(t, &launched, func([]string) {
+		if first {
+			first = false
+			if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+				t.Error(err)
+			}
+		}
+	})
+	w.BaseDir = t.TempDir()
+	if err := SetDisabled(w.BaseDir, true); err != nil {
+		t.Fatal(err)
+	}
+	w.Boot = BootConsole
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	// The console request is squashed and the wrapper goes on hosting the
+	// desktop -- never the console, and never a fall-through to logout.
+	if len(launched) == 0 {
+		t.Fatal("nothing was launched")
+	}
+	for _, l := range launched {
+		if l != "desktop-compositor" {
+			t.Fatalf("launched %v, want only the desktop while the console is disabled", launched)
+		}
+	}
+	if _, tripped := SafeModeReason(w.StateDir, time.Now()); tripped {
+		t.Error("disable manufactured a safe-mode streak; it is a choice, not a fault")
+	}
+	// The refused switch is worth saying out loud: the log alone is not
+	// somewhere the user will look for why their desktop restarted.
+	reason, ok := TakeFailure(w.StateDir)
+	if !ok {
+		t.Fatal("the refused switch left nothing to tell the user")
+	}
+	if !strings.Contains(reason, "switched off") {
+		t.Errorf("the refusal %q does not say the console is switched off", reason)
+	}
+}
+
+// The regression: a console switch asked for while the desktop is held must not
+// end the login. Squashing the request used to fall through to the logout
+// branch, so `enter` from a held session dropped the user at the greeter with
+// their apps gone. It has to go on hosting the desktop instead.
+func TestHeldConsoleRequestDoesNotEndTheLogin(t *testing.T) {
+	var launched []string
+	var w *Wrapper
+	tries := 0
+	w = testWrapper(t, &launched, func([]string) {
+		if tries++; tries <= 3 {
+			// Keep asking, the way `enter` would after each stop of the
+			// desktop compositor.
+			if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+				t.Error(err)
+			}
+		}
+	})
+	w.Controllers = func() int { return 0 }
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(w.StateDir, now.Add(-time.Duration(i)*time.Minute))
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- w.Run(context.Background()) }()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Run never returned -- the squash loop did not terminate")
+	}
+
+	if len(launched) < 4 {
+		t.Fatalf("launched %v, want the desktop re-hosted after each squashed request", launched)
+	}
+	for _, l := range launched {
+		if l != "desktop-compositor" {
+			t.Fatalf("launched %v, want only the desktop while safe mode holds", launched)
+		}
+	}
+}
+
+// A held login that lasts is the machine recovering: at its logout the streak
+// clears, so the next login is offered the console again. A held login that does
+// not last leaves the streak, so the next login is held too -- that half is
+// TestWrapperHoldsTheDesktopInSafeMode.
+func TestAHeldLoginThatLastsClearsSafeMode(t *testing.T) {
+	state := t.TempDir() // shared between the two logins
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(state, now.Add(-time.Duration(i)*time.Minute))
+	}
+
+	newLogin := func(rt string, onLaunch func(*Wrapper, []string)) (*Wrapper, *[]string) {
+		launched := &[]string{}
+		w := &Wrapper{
+			DesktopExec: []string{"desktop-compositor"}, ConsoleExec: []string{"start-gamescope-session"},
+			ConsoleSessionName: "gamescope-session",
+			StateDir:           state, RuntimeDir: rt, Systemctl: &fakeRunner{},
+			ShortRun: time.Nanosecond, ShortRunLimit: 2,
+			HealthyRun: 10 * time.Millisecond,
+			Boot:       BootConsole,
+			// Stubbed so the trigger goroutine never reads the real
+			// /sys/class/input, which controllers_test.go swaps out mid-run.
+			Controllers: func() int { return 0 },
+		}
+		w.Launch = func(_ context.Context, argv []string, _ []string) error {
+			*launched = append(*launched, argv[0])
+			if onLaunch != nil {
+				onLaunch(w, argv)
+			}
+			return nil
+		}
+		return w, launched
+	}
+
+	// Login 1 is safe mode: desktop only, even with boot=console and a console
+	// request pending. It lasts past HealthyRun, so at logout it counts as
+	// recovery and clears the streak.
+	first := true
+	w1, l1 := newLogin(t.TempDir(), func(w *Wrapper, _ []string) {
+		if first {
+			first = false
+			time.Sleep(40 * time.Millisecond) // outlast HealthyRun
+			_ = Request(w.RuntimeDir, ModeConsole)
+		}
+	})
+	if err := w1.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(*l1) == 0 {
+		t.Fatal("login 1 launched nothing")
+	}
+	for _, l := range *l1 {
+		if l != "desktop-compositor" {
+			t.Fatalf("login 1 launched %v, want only the desktop", *l1)
+		}
+	}
+	if _, held := SafeModeReason(state, time.Now()); held {
+		t.Fatal("a held login that lasted did not clear the streak at logout")
+	}
+
+	// Login 2: not held, so boot=console is honoured and the console starts.
+	w2, l2 := newLogin(t.TempDir(), func(_ *Wrapper, _ []string) {
+		time.Sleep(40 * time.Millisecond)
+	})
+	if err := w2.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(*l2) == 0 || (*l2)[0] != "start-gamescope-session" {
+		t.Fatalf("login 2 launched %v, want the console offered again", *l2)
+	}
+}
+
+// A login that boots into the console and lasts is a login that worked. Gating
+// the healthy timer on ModeDesktop meant a `boot console` machine that plays
+// and shuts down from Steam's power menu never recorded one, so ordinary boots
+// piled up a streak and tripped safe mode with nothing broken.
+func TestALastingConsoleSessionCountsAsHealthy(t *testing.T) {
+	state := t.TempDir()
+	RecordHostStart(state, time.Now().Add(-time.Minute))
+
+	w := &Wrapper{
+		DesktopExec: []string{"desktop-compositor"}, ConsoleExec: []string{"start-gamescope-session"},
+		ConsoleSessionName: "gamescope-session",
+		StateDir:           state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
+		ShortRun: time.Nanosecond, HealthyRun: 10 * time.Millisecond,
+		Boot:        BootConsole,
+		Controllers: func() int { return 0 },
+	}
+	first := true
+	w.Launch = func(_ context.Context, argv []string, _ []string) error {
+		if first {
+			first = false
+			if argv[0] != "start-gamescope-session" {
+				t.Errorf("first launch was %q, want the console", argv[0])
+			}
+			time.Sleep(40 * time.Millisecond) // the console session lasts
+		}
+		return nil
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if h := loadHostHealth(state); h.LastGood == nil {
+		t.Error("a console session that lasted was not recorded as a login that worked")
+	}
+}
+
+// `disable` is a choice, not a failed login: repeated disabled logins must not
+// build a streak that a later `enable` then reads as safe mode.
+func TestDisabledLoginsBuildNoStreak(t *testing.T) {
+	state := t.TempDir()
+	base := t.TempDir()
+	if err := SetDisabled(base, true); err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < failLoginLimit+2; i++ {
+		w := &Wrapper{
+			DesktopExec: []string{"desktop-compositor"},
+			StateDir:    state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
+			ShortRun: time.Nanosecond, BaseDir: base,
+			Controllers: func() int { return 0 },
+			Launch:      func(context.Context, []string, []string) error { return nil },
+		}
+		if err := w.Run(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, tripped := SafeModeReason(state, time.Now()); tripped {
+		t.Error("disabled logins tripped safe mode")
+	}
+	// Nobody asked for a switch, so being disabled on its own is silent.
+	if reason, ok := TakeFailure(state); ok {
+		t.Errorf("a quiet disabled login wrote a failure breadcrumb: %q", reason)
+	}
+}
+
+// A held desktop that never reaches HealthyRun is not recovery: the streak
+// stands, so the next login is held too. This also pins that the measure is the
+// desktop's own uptime, not the whole login's (SettleJobs's wait must not
+// count).
+func TestAHeldLoginThatDoesNotLastKeepsSafeMode(t *testing.T) {
+	state := t.TempDir()
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(state, now.Add(-time.Duration(i)*time.Minute))
+	}
+	w := &Wrapper{
+		DesktopExec: []string{"desktop-compositor"},
+		StateDir:    state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
+		ShortRun: time.Nanosecond, HealthyRun: time.Hour,
+		Controllers: func() int { return 0 },
+		Launch:      func(context.Context, []string, []string) error { return nil },
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, held := SafeModeReason(state, time.Now()); !held {
+		t.Error("a held login that did not last cleared the streak")
 	}
 }
 
@@ -175,6 +480,7 @@ func TestConsoleRunsWithTheGamescopeIdentity(t *testing.T) {
 	var env []string
 	w := &Wrapper{
 		DesktopExec: []string{"desktop"}, ConsoleExec: []string{"console"},
+		Controllers:        func() int { return 0 },
 		ConsoleSessionName: "gamescope-session",
 		StateDir:           t.TempDir(), RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
 		ShortRun: time.Nanosecond,
@@ -305,6 +611,12 @@ func TestRunRefusesInsideALiveSession(t *testing.T) {
 	if err == nil {
 		t.Fatal("running inside a live session was allowed")
 	}
+	// Named, not just worded: this is the one way out of Run that is a command
+	// refusing rather than a login collapsing, and the caller holds every other
+	// one to the login floor before letting the greeter see it.
+	if !errors.Is(err, ErrNotALogin) {
+		t.Errorf("err = %v, want it to carry ErrNotALogin", err)
+	}
 	if !strings.Contains(err.Error(), "already running") {
 		t.Errorf("err = %v, want it to name the running compositor", err)
 	}
@@ -421,5 +733,214 @@ func TestDesktopSessionGetsItsIdentityFromTheWrapper(t *testing.T) {
 		if strings.HasPrefix(entry, "XDG_CURRENT_DESKTOP=") {
 			t.Errorf("invented a desktop identity: %q", entry)
 		}
+	}
+}
+
+// The floor under every way a login can give up. Safe mode only counts logins
+// the wrapper itself reached, so the failures that happen before it -- a
+// configuration that will not parse, a runtime directory that will not resolve
+// -- are held here or not at all.
+func TestHoldFailedLoginWaitsOutTheFloor(t *testing.T) {
+	restore := loginFloor
+	loginFloor = 40 * time.Millisecond
+	t.Cleanup(func() { loginFloor = restore })
+
+	begun := time.Now()
+	HoldFailedLogin(context.Background(), begun)
+	if waited := time.Since(begun); waited < loginFloor {
+		t.Errorf("waited %s, want at least the %s floor", waited, loginFloor)
+	}
+
+	// A caller that has already spent the floor does not spend it twice: the
+	// no-desktop path waits inside Run, and hostSession wraps that same login.
+	begun = time.Now()
+	HoldFailedLogin(context.Background(), begun.Add(-time.Hour))
+	if waited := time.Since(begun); waited >= loginFloor {
+		t.Errorf("waited %s on a login that had already outlived the floor", waited)
+	}
+}
+
+// `enable` from inside a disabled login has to take effect in that login.
+//
+// The panel offers the button on the desktop the wrapper is holding, and the
+// `enter` gate reads the marker live -- so a wrapper holding a copy of the
+// answer from login let the gate through, let `enter` stop the desktop to make
+// the switch, and only then refused it. The user clicked "offer the console
+// again", lost everything they had open, and was told the console was switched
+// off.
+func TestEnableDuringADisabledLoginOffersTheConsole(t *testing.T) {
+	var launched []string
+	var w *Wrapper
+	first := true
+	w = testWrapper(t, &launched, func([]string) {
+		if !first {
+			return
+		}
+		first = false
+		// What the panel does: clear the marker, then ask for the switch.
+		if err := SetDisabled(w.BaseDir, false); err != nil {
+			t.Error(err)
+		}
+		if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+			t.Error(err)
+		}
+	})
+	w.BaseDir = t.TempDir()
+	if err := SetDisabled(w.BaseDir, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) < 2 || launched[0] != "desktop-compositor" || launched[1] != "start-gamescope-session" {
+		t.Fatalf("launched %v, want the held desktop and then the console once it was enabled", launched)
+	}
+	if reason, ok := TakeFailure(w.StateDir); ok {
+		t.Errorf("the switch was refused after `enable` lifted the hold: %q", reason)
+	}
+}
+
+// `disable` typed mid-login holds the console from that moment, without waiting
+// for a relogin -- the same liveness, in the other direction.
+func TestDisableDuringALoginHoldsTheConsole(t *testing.T) {
+	var launched []string
+	var w *Wrapper
+	first := true
+	w = testWrapper(t, &launched, func([]string) {
+		if !first {
+			return
+		}
+		first = false
+		if err := SetDisabled(w.BaseDir, true); err != nil {
+			t.Error(err)
+		}
+		if err := Request(w.RuntimeDir, ModeConsole); err != nil {
+			t.Error(err)
+		}
+	})
+	w.BaseDir = t.TempDir()
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range launched {
+		if l != "desktop-compositor" {
+			t.Fatalf("launched %v, want the desktop only once the console was switched off", launched)
+		}
+	}
+	if reason, ok := TakeFailure(w.StateDir); !ok || !strings.Contains(reason, "switched off") {
+		t.Errorf("the refused switch left %q, want a word about the console being switched off", reason)
+	}
+}
+
+// The watch belongs to every hosted desktop, including one the wrapper is
+// holding. Arming it only when the hold was down meant a hold that lifted
+// mid-login left the trigger dead until the next login, while the panel,
+// `status` and the `enter` gate all reported the console as ready.
+func TestAHeldDesktopStillArmsTheControllerTrigger(t *testing.T) {
+	state := t.TempDir()
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(state, now.Add(-time.Duration(i)*time.Minute))
+	}
+
+	stopped := make(chan struct{}, 1)
+	var launched []string
+	// A desktop pass arms a watch and the next one arms another, so this script
+	// is read from two goroutines: the outgoing watch has been cancelled but
+	// has not necessarily noticed yet.
+	var mu sync.Mutex
+	calls := 0
+	w := &Wrapper{
+		DesktopExec: []string{"desktop-compositor"}, ConsoleExec: []string{"start-gamescope-session"},
+		ConsoleSessionName: "gamescope-session",
+		StateDir:           state, RuntimeDir: t.TempDir(), Systemctl: &fakeRunner{},
+		ShortRun: time.Nanosecond, HealthyRun: time.Hour,
+		Choices:         Config{TVName: "HDMI-A-1", EnterOnControllerConnect: true},
+		ControllerPoll:  time.Millisecond,
+		ControllerGrace: 10 * time.Millisecond,
+		QuitSteam:       func(context.Context) {},
+		// The pad goes on only after the hold has lifted, which is the order it
+		// happens in: the machine recovers, then the user picks a controller up.
+		Controllers: func() int {
+			mu.Lock()
+			defer mu.Unlock()
+			calls++
+			switch {
+			case calls < 3:
+				return 0
+			case calls == 3:
+				RecordHostHealthy(state, time.Now())
+				return 0
+			default:
+				return 1
+			}
+		},
+		StopDesktop: func(context.Context) error {
+			select {
+			case stopped <- struct{}{}:
+			default:
+			}
+			return nil
+		},
+	}
+	w.Launch = func(_ context.Context, argv []string, _ []string) error {
+		launched = append(launched, argv[0])
+		if len(launched) > 1 {
+			return nil
+		}
+		// The held desktop stays up until the trigger stops it for the switch.
+		select {
+		case <-stopped:
+		case <-time.After(3 * time.Second):
+			t.Error("the controller trigger never stopped the held desktop")
+		}
+		return nil
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) < 2 || launched[1] != "start-gamescope-session" {
+		t.Fatalf("launched %v, want the console once the hold had lifted", launched)
+	}
+}
+
+// A desktop the wrapper forced is not where the user left off. Recording it as
+// the last session demoted a `boot last` machine that plays into one that comes
+// back to the desktop -- in silence, and long after the hold itself had lifted.
+func TestAHeldLoginLeavesTheBootPreferenceAlone(t *testing.T) {
+	var launched []string
+	w := testWrapper(t, &launched, nil)
+	w.Boot = BootLast
+	WriteLastMode(w.StateDir, ModeConsole)
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(w.StateDir, now.Add(-time.Duration(i)*time.Minute))
+	}
+	if err := w.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if len(launched) != 1 || launched[0] != "desktop-compositor" {
+		t.Fatalf("launched %v, want the desktop only while safe mode holds", launched)
+	}
+	if last, ok := ReadLastMode(w.StateDir); !ok || last != ModeConsole {
+		t.Errorf("last session is %q (found=%v), want the console the user actually left off in", last, ok)
+	}
+}
+
+// Asked before anything about the machine. A person who typed the command in
+// the wrong place should hear that, not a diagnosis of their session entries --
+// and the no-desktop branch below it spends the login floor, which this must
+// not.
+func TestRefusingInsideASessionComesBeforeTheDesktopCheck(t *testing.T) {
+	restore := loginFloor
+	loginFloor = time.Hour // any wait at all would hang this test
+	t.Cleanup(func() { loginFloor = restore })
+
+	runtimeDir := t.TempDir()
+	w := &Wrapper{RuntimeDir: runtimeDir, StateDir: t.TempDir(), Systemctl: &fakeRunner{}}
+	pretendCompositorRunning(t, runtimeDir)
+
+	if err := w.Run(context.Background()); !errors.Is(err, ErrNotALogin) {
+		t.Fatalf("err = %v, want the refusal rather than the no-desktop path", err)
 	}
 }

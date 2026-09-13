@@ -48,6 +48,10 @@ public:
     Q_INVOKABLE bool setTv(const QString &connector);
     Q_INVOKABLE bool setBootMode(const QString &mode);
     Q_INVOKABLE bool setEnterOnController(bool enabled);
+    // Turn the hosting session off or back on without root. `disable` is the
+    // recovery the README's Ctrl+Alt+F2 + sudo dance used to be the only answer
+    // for; `enable` also clears a safe-mode hold.
+    Q_INVOKABLE bool setConsoleEnabled(bool enabled);
 
     // An entry the user did not ask for, announced by the wrapper. The
     // notification is the warning for a machine nobody is sitting at; this is

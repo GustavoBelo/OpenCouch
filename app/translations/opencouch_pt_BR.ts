@@ -76,5 +76,9 @@
 <message id="onboarding.entering_body"><source>onboarding.entering_body</source><translation>Entrar encerra esta sessão do desktop, então tudo que estiver aberto vai junto — você recebe uma contagem regressiva que dá para cancelar antes. O menu de energia do Steam traz você de volta.</translation></message>
 <message id="settings.hosting_installed"><source>settings.hosting_installed</source><translation>Já instalada para todas as contas desta máquina. Não falta nada além de deslogar e escolhê-la na tela de login.</translation></message>
 <message id="settings.recheck_setup"><source>settings.recheck_setup</source><translation>Verificar de novo</translation></message>
+<message id="dashboard.console_disable"><source>dashboard.console_disable</source><translation>Parar de oferecer o console</translation></message>
+<message id="dashboard.console_enable"><source>dashboard.console_enable</source><translation>Oferecer o console de novo</translation></message>
+<message id="dashboard.safe_mode_reason"><source>dashboard.safe_mode_reason</source><translation>O Open Couch está hospedando só o seu desktop: %1 logins seguidos terminaram cedo demais. Ele volta a oferecer o console depois de um que dure.</translation></message>
+<message id="dashboard.console_hold_failed"><source>dashboard.console_hold_failed</source><translation>O Open Couch não conseguiu falar com o engine para mudar isso. Num terminal, `open-couch-engine enable` e `disable` fazem o mesmo.</translation></message>
 </context>
 </TS>

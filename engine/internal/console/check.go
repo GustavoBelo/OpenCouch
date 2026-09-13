@@ -3,6 +3,8 @@ package console
 import (
 	"context"
 	"os/exec"
+	"path/filepath"
+	"time"
 )
 
 // Requirement is one thing a console session needs, and whether this machine
@@ -23,6 +25,10 @@ type Requirement struct {
 
 // lookPath is a variable so tests can decide what is installed.
 var lookPath = exec.LookPath
+
+// checkStateDir is a seam so a test can point the safe-mode check at a scratch
+// directory rather than the real ~/.cache/open-couch.
+var checkStateDir = StateDir
 
 func installed(name string) bool {
 	_, err := lookPath(name)
@@ -89,6 +95,24 @@ func Requirements(ctx context.Context, cfg Config, sc Runner, entries []Entry, c
 		add(Hosted(runtimeDir),
 			"this session is hosted, so switching will work",
 			"this session is not hosted; run `open-couch-engine setup` and log in again")
+	}
+
+	// Safe mode and `disable` both stop the console from starting, and for the
+	// same visible reason: `enter` would end the desktop for a switch that is
+	// not going to happen. Read from the same SafeModeReason call the wrapper
+	// holds the desktop from, so the panel, the doctor and the gate cannot
+	// disagree with it. configPath is <base>/console.json.
+	base := filepath.Dir(configPath)
+	switch {
+	case IsDisabled(base):
+		add(false, "", "Open Couch is switched off; run `open-couch-engine enable` to offer the console again")
+	default:
+		if stateDir, err := checkStateDir(); err == nil {
+			if reason, held := SafeModeReason(stateDir, time.Now()); held {
+				add(false, "", "Open Couch is in safe mode after "+reason+
+					"; fix the setup and log in once, or run `open-couch-engine enable`")
+			}
+		}
 	}
 	return reqs
 }
