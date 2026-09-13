@@ -179,8 +179,15 @@ find_program(GO_EXECUTABLE go REQUIRED)
 # Always out of date on purpose: Go's own build cache decides what to rebuild,
 # and listing every source here would go stale the first time one is added.
 add_custom_target(engine ALL
+    # -buildvcs=false, and on the command line rather than through GOFLAGS: the
+    # `cmake -E env GOFLAGS=` below *replaces* the environment's GOFLAGS, so a
+    # package build cannot ask for it from outside -- debian/rules tried, and the
+    # flag never reached go. Without it `go build` stamps the binary with VCS
+    # information and treats a git that exits non-zero as an error rather than as
+    # "there is no VCS here", which is what failed the .deb inside its container.
+    # The version comes from -ldflags, so the stamp buys nothing here.
     COMMAND "${CMAKE_COMMAND}" -E env GOFLAGS=-mod=mod
-            "${GO_EXECUTABLE}" build -trimpath
+            "${GO_EXECUTABLE}" build -trimpath -buildvcs=false
             -ldflags "-s -w -X main.version=${OPENCOUCH_VERSION}"
             -o "${OPENCOUCH_ENGINE_BINARY}"
             ./cmd/open-couch-engine
