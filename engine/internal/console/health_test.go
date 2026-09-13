@@ -2,6 +2,8 @@ package console
 
 import (
 	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -135,12 +137,74 @@ func TestSafeModeCountsFailuresThroughClockSteps(t *testing.T) {
 		t.Error("failures timestamped in the future (clock stepped back) were discarded")
 	}
 
-	ancient := t.TempDir()
+	// A clock that has not been set yet is wrong by the epoch, not by an
+	// afternoon: these are the starts of a real loop, written before the machine
+	// knew what time it was.
+	unset := t.TempDir()
 	for i := 0; i < failLoginLimit; i++ {
-		RecordHostStart(ancient, now.Add(-72*time.Hour))
+		RecordHostStart(unset, time.Unix(0, 0))
 	}
-	if _, tripped := SafeModeReason(ancient, now); !tripped {
-		t.Error("failures with an absurd age (clock jumped forward) were discarded")
+	if _, tripped := SafeModeReason(unset, now); !tripped {
+		t.Error("failures from a clock that had never been set were discarded")
+	}
+}
+
+// The other side of that line. A start a few days old is a start a few days
+// old, not a clock that is lying, and three short logins spread across a week
+// are not a loop. Keeping anything past a day counted an ordinary short login
+// from Tuesday against one on Friday, and held the console back over it.
+func TestSafeModeAgesOutStartsFromEarlierDays(t *testing.T) {
+	now := time.Now()
+	dir := t.TempDir()
+	for _, age := range []time.Duration{72 * time.Hour, 48 * time.Hour, 24*time.Hour + time.Minute} {
+		RecordHostStart(dir, now.Add(-age))
+	}
+	if _, tripped := SafeModeReason(dir, now); tripped {
+		t.Error("three short logins spread over days tripped safe mode")
+	}
+}
+
+// `last_good` is what clears the streak, so the starts can stay -- and they
+// have to, because the file is what a person reads when the machine is
+// misbehaving and a lone timestamp explains nothing.
+func TestRecordHostHealthyKeepsTheHistory(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(dir, now.Add(-time.Duration(i)*time.Minute))
+	}
+
+	RecordHostHealthy(dir, now)
+
+	h := loadHostHealth(dir)
+	if h.LastGood == nil {
+		t.Fatal("the login that worked was not recorded")
+	}
+	if len(h.Starts) != failLoginLimit {
+		t.Errorf("kept %d starts, want the %d already on file", len(h.Starts), failLoginLimit)
+	}
+	if _, tripped := SafeModeReason(dir, now); tripped {
+		t.Error("the streak survived a login that worked")
+	}
+}
+
+// The panel says the hold in the user's own language, so it needs the number
+// the engine's English sentence is built from.
+func TestSafeModeLoginsIsTheNumberInTheSentence(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now()
+	if n := SafeModeLogins(dir, now); n != 0 {
+		t.Errorf("SafeModeLogins = %d on a machine that is not held, want 0", n)
+	}
+	for i := failLoginLimit; i > 0; i-- {
+		RecordHostStart(dir, now.Add(-time.Duration(i)*time.Minute))
+	}
+	n := SafeModeLogins(dir, now)
+	if n != failLoginLimit {
+		t.Fatalf("SafeModeLogins = %d, want %d", n, failLoginLimit)
+	}
+	if reason, _ := SafeModeReason(dir, now); !strings.Contains(reason, strconv.Itoa(n)) {
+		t.Errorf("the sentence %q does not carry the number %d", reason, n)
 	}
 }
 

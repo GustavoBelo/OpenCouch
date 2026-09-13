@@ -53,6 +53,17 @@ const (
 	// worked. A wrapper that has hosted this long has given the user somewhere
 	// to fix things from, which is all safe mode is protecting.
 	healthyRun = 45 * time.Second
+	// implausibleAge is how far out a start's age has to be before the wall
+	// clock, rather than the start, is what looks wrong.
+	//
+	// The clock is routinely wrong on an early-boot reboot loop before NTP,
+	// which is the case safe mode exists for, so an age it cannot vouch for
+	// must not age a start out. But "cannot vouch for" is not the same as
+	// "old": a clock that is wrong before NTP is wrong by the whole epoch or by
+	// the length of the outage, while a start three days old is almost always a
+	// start that is three days old. A day was the first line drawn here, and it
+	// counted an ordinary short login from Tuesday against one on Friday.
+	implausibleAge = 30 * 24 * time.Hour
 	// hostStartsKept caps the timestamps kept in the health file. Only the last
 	// failLoginLimit decide anything; a few more are kept so the file still
 	// reads sensibly by hand.
@@ -142,7 +153,15 @@ func RecordHostHealthy(stateDir string, now time.Time) {
 	}
 	t := now.UTC()
 	withHostHealthLock(stateDir, func() {
-		saveHostHealth(stateDir, hostHealth{LastGood: &t})
+		// The starts are kept rather than dropped. `last_good` is what clears
+		// the streak -- every start older than this mark is forgiven either
+		// way, including one an overlapping login wrote a moment before the
+		// handover -- and a record holding nothing but a timestamp is one
+		// nobody can read back when something is wrong, which is the whole
+		// reason hostStartsKept keeps more than the count needs.
+		h := loadHostHealth(stateDir)
+		h.LastGood = &t
+		saveHostHealth(stateDir, h)
 	})
 }
 
@@ -155,8 +174,34 @@ func RecordHostHealthy(stateDir string, now time.Time) {
 // worked and not a plausible age past failLoginWindow (see below).
 // failLoginLimit of those and the console is held until a login lasts.
 func SafeModeReason(stateDir string, now time.Time) (string, bool) {
-	if stateDir == "" {
+	recent, tripped := safeModeStreak(stateDir, now)
+	if !tripped {
 		return "", false
+	}
+	// Counted since the last login that worked rather than "just now": the
+	// window clamp can keep an old start when the clock stepped, and a bare
+	// "N logins in a row" would then imply a recency it cannot promise.
+	return fmt.Sprintf("%d short logins in a row since the last one that worked", recent), true
+}
+
+// SafeModeLogins is the number behind that sentence, for the one caller that
+// can say it in the user's own language. The engine's prose is English and the
+// panel shows it to everyone; `status` carries this alongside it so the panel
+// can render a translated line and keep the sentence as the fallback for an
+// engine too old to send it. Zero when the console is not being held.
+func SafeModeLogins(stateDir string, now time.Time) int {
+	recent, tripped := safeModeStreak(stateDir, now)
+	if !tripped {
+		return 0
+	}
+	return recent
+}
+
+// safeModeStreak counts the starts held against the machine right now, and says
+// whether that is enough to hold the console back.
+func safeModeStreak(stateDir string, now time.Time) (int, bool) {
+	if stateDir == "" {
+		return 0, false
 	}
 	h := loadHostHealth(stateDir)
 	recent := 0
@@ -167,23 +212,17 @@ func SafeModeReason(stateDir string, now time.Time) (string, bool) {
 		// The window is meant to drop failures from before today, so last
 		// week's trouble does not hold the console back now. But it is by wall
 		// clock, which is routinely wrong on an early-boot reboot loop before
-		// NTP -- the very case this guards -- so it only ages out a *plausible*
-		// gap: an age that is negative (clock stepped back) or longer than a
-		// day (stepped forward, or a record older than a recovery that was
-		// never written) is kept. `last_good` above is the firmer guard
-		// against stale history.
-		if age := now.Sub(start); age > failLoginWindow && age < 24*time.Hour {
+		// NTP -- the very case this guards -- so it only ages out a gap the
+		// clock can vouch for: an age that is negative (stepped back) or past
+		// implausibleAge (stepped forward, or a record older than a recovery
+		// that was never written) is kept. `last_good` above is the firmer
+		// guard against stale history.
+		if age := now.Sub(start); age > failLoginWindow && age < implausibleAge {
 			continue
 		}
 		recent++
 	}
-	if recent < failLoginLimit {
-		return "", false
-	}
-	// Counted since the last login that worked rather than "just now": the
-	// window clamp above can keep an old start when the clock stepped, and a
-	// bare "N logins in a row" would then imply a recency it cannot promise.
-	return fmt.Sprintf("%d short logins in a row since the last one that worked", recent), true
+	return recent, recent >= failLoginLimit
 }
 
 // DisabledMarkerPath is the file `open-couch-engine disable` writes.
